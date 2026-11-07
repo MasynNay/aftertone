@@ -7,4 +7,4 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 ( sleep 1; open 'http://127.0.0.1:4173' ) &
-exec node server.mjs
+exec node app/server.mjs

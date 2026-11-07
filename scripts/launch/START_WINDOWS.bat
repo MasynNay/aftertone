@@ -15,5 +15,5 @@ if exist ".env" for /f "tokens=1,* delims==" %%A in (.env) do (
   if /I "%%A"=="JELLYFIN_USER_ID" set "JELLYFIN_USER_ID=%%B"
 )
 start "" "http://127.0.0.1:4173"
-node server.mjs
+node app/server.mjs
 pause

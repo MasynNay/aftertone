@@ -6,7 +6,7 @@
   "description": "AFTERTONE full discovery app, local Node backend and GitHub Pages browser Deezer adapter",
   "scripts": {
     "start": "node app/server.mjs",
-    "dev": "node --watch server.mjs",
+    "dev": "node --watch app/server.mjs",
     "themes": "node scripts/build-themes.mjs",
     "test": "node --test",
     "check": "node scripts/check-syntax.mjs && node --test && node scripts/build-static.mjs && node scripts/check-site.mjs",

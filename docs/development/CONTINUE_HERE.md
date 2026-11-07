@@ -54,3 +54,11 @@ The first GitHub Pages version called "v1.0.1" was an independent, 12-track fict
 - Preserved local `npm start`, build, GitHub Pages workflow, and original app behavior.
 - Before publishing: `npm run check` and browser smoke-test landing, modal, iframe, Deezer-shaped data, and direct app route.
 - Do not confuse GitHub Pages build success with real Deezer preview approval or live provider playback.
+
+## Repository cleanup final verification
+
+- Repository root contains only `README.md`, `LICENSE`, `.gitignore`, and `package.json`; full source grouped in `app/`, portfolio in `site/`, scripts and launchers in `scripts/launch/`, and docs/checkpoint in `docs/`.
+- README features actual screenshots of the portfolio introduction and disclaimer at `docs/screenshots/`.
+- Updated Mac and Windows launchers, plus npm development watch script, to use `app/server.mjs` after moving the backend.
+- `npm run check` passed 217/217 local tests and validated `dist/` build, domain CNAME, splash, embedded real application, and imports on 2026-11-07.
+- Verify the newest GitHub Pages workflow and live third-party Deezer playback separately; automated tests use mocks for live provider integration.
