@@ -16,11 +16,15 @@ cpSync(resolve(root,'site/assets'),resolve(dist,'assets'),{recursive:true});
 const demo=resolve(dist,'demo');mkdirSync(demo,{recursive:true});
 cpSync(resolve(root,'app/public'),demo,{recursive:true});
 cpSync(resolve(root,'app/src'),resolve(demo,'src'),{recursive:true});
-for(const file of ['index.html','main.js','api-browser.js']){
+// The original Node server serves /src/ from the root and public/ modules
+// import ../src/. After moving public/ to dist/demo/, rewrite *every* public
+// module to reference ./src/; missing a single import blanks the entire UI.
+for (const file of ['index.html', ...['main.js','api-browser.js','views.js','duels-view.js','view-utils.js']]) {
   const path=resolve(demo,file);
   let content=readFileSync(path,'utf8');
-  if(file==='index.html')content=content.replaceAll('href="/','href="./').replaceAll('src="/','src="./');
-  else content=content.replaceAll("from '/src/", "from './src/");
+  if (file==='index.html') content=content.replaceAll('href="/','href="./').replaceAll('src="/','src="./');
+  else content=content.replaceAll("'/src/", "'./src/").replaceAll('"/src/', '"./src/')
+                     .replaceAll("'../src/", "'./src/").replaceAll('"../src/', '"./src/');
   writeFileSync(path,content);
 }
 writeFileSync(resolve(demo,'.nojekyll'),'');

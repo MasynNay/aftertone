@@ -55,10 +55,17 @@ The first GitHub Pages version called "v1.0.1" was an independent, 12-track fict
 - Before publishing: `npm run check` and browser smoke-test landing, modal, iframe, Deezer-shaped data, and direct app route.
 - Do not confuse GitHub Pages build success with real Deezer preview approval or live provider playback.
 
-## Repository cleanup final verification
+## Live-site CSS and app boot repair — November 7, 2026
 
-- Repository root contains only `README.md`, `LICENSE`, `.gitignore`, and `package.json`; full source grouped in `app/`, portfolio in `site/`, scripts and launchers in `scripts/launch/`, and docs/checkpoint in `docs/`.
-- README features actual screenshots of the portfolio introduction and disclaimer at `docs/screenshots/`.
-- Updated Mac and Windows launchers, plus npm development watch script, to use `app/server.mjs` after moving the backend.
-- `npm run check` passed 217/217 local tests and validated `dist/` build, domain CNAME, splash, embedded real application, and imports on 2026-11-07.
-- Verify the newest GitHub Pages workflow and live third-party Deezer playback separately; automated tests use mocks for live provider integration.
+Root cause identified from user screenshots:
+1. `site/index.html` referenced `./assets/styles.css`, but the build publishes `site/styles.css` to `dist/styles.css`. Portfolio landing and welcome modal therefore rendered as unstyled HTML.
+2. The static build moved `app/public` into `dist/demo/`, but only adjusted root imports in `main.js` and `api-browser.js`. `views.js` and `duels-view.js` continued importing `../src/...`, which resolves outside `/demo/` and breaks the browser module graph, leaving an empty app content area.
+
+Repair:
+- Update portfolio stylesheet to `./styles.css`.
+- Rewrite browser module imports from both `/src/...` and `../src/...` to `./src/...` in every published public module.
+- Make the introductory portfolio disclaimer a genuine edge-to-edge full-screen modal with a clear primary **Enter AFTERTONE** link to the real `/demo/` app, and a secondary portfolio-info option.
+- Upgrade `scripts/check-site.mjs` to validate emitted CSS/HTML paths and **every locally imported ES module** (including indirect imports), not just string snippets.
+- Local Node checks after repair: 217/217 pass; static build passes; import graph validates 40 modules and 67 local imports. Chromium `page.set_content()` visual rendering verifies 1440x900 full-screen modal and styled landing; complete live navigation and Deezer playback are blocked from sandbox network access and must not be represented as verified.
+
+Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `https://aftertone.masynnay.com/` and `https://aftertone.masynnay.com/demo/`. The real provider's Deezer access still depends on Deezer JSONP/CDN availability.
