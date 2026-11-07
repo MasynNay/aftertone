@@ -6,6 +6,18 @@
 
 AFTERTONE makes discovering music interactive: hear a short excerpt, swipe **Keep** or **Pass**, use personalized discovery routes, build a local collection, and compete in fully featured Music Duels. Everything persists privately in your browser.
 
+## Screenshots
+
+**Portfolio landing** — an overview of the product and the live AFTERTONE experience.
+
+![AFTERTONE portfolio landing](docs/screenshots/portfolio-landing.webp)
+
+**First-visit notice** — a clear explanation that this is an independent portfolio project.
+
+![AFTERTONE portfolio disclaimer](docs/screenshots/portfolio-disclaimer.webp)
+
+The real music application is available [in the embedded demo](https://aftertone.masynnay.com/#experience) or [full screen](https://aftertone.masynnay.com/demo/). These images show the portfolio introduction, not simulated music-provider playback.
+
 ## Portfolio experience
 
 The first visit shows an accessible, dismissible portfolio and third-party media disclaimer. The home page explains the product, its engineering, and its development journey. The **real AFTERTONE application** is embedded in the Live App section, with an **Open full screen** option. There are no fictional songs or substitute mini-games in this live preview. The original local Node application logic is preserved under `app/`.
