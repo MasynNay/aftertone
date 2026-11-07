@@ -1,101 +1,176 @@
+<div align="center">
+
 # AFTERTONE
 
-**A product-design case study with the real AFTERTONE music discovery app embedded for visitors to play.**
+**Find your next favorite song.**
 
-[**Portfolio homepage & disclaimer ↗**](https://aftertone.masynnay.com/) · [**Play the full app directly ↗**](https://aftertone.masynnay.com/demo/) · [Release notes](docs/CHANGELOG.md)
+A music discovery experience built around listening, exploring, and discovering what you love.
 
-AFTERTONE makes discovering music interactive: hear a short excerpt, swipe **Keep** or **Pass**, use personalized discovery routes, build a local collection, and compete in fully featured Music Duels. Everything persists privately in your browser.
+**Real music discovery · Personalized paths · Music Duels · 20 themes**
+
+[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Features](#features) · [Get started](#get-started) · [Release notes](docs/CHANGELOG.md)
+
+</div>
+
+---
+
+## Discover music your own way
+
+AFTERTONE turns music discovery into something you can interact with. Listen to a short preview, choose **Keep** or **Pass**, and let your choices guide what you hear next. Search for artists, explore unfamiliar genres, save favorites, and challenge your music knowledge in tournament-style **Music Duels**.
+
+This is a portfolio project built around a real music discovery application—not a static mockup or a fictional 12-song demo. The [portfolio homepage](https://aftertone.masynnay.com/) introduces the project and embeds the application; you can also [open the app full screen](https://aftertone.masynnay.com/demo/).
+
+> **Portfolio and third-party media notice:** The public demo requests third-party catalog information and short audio previews where available. Music-provider availability, browser restrictions, and licensing can affect playback. The project does not host or redistribute commercial recordings, and a working preview is not guaranteed in every region or browser.
 
 ## Screenshots
 
-**Portfolio landing** — an overview of the product and the live AFTERTONE experience.
+**Portfolio homepage** — the introduction to AFTERTONE, its features, and the embedded music discovery experience.
 
-![AFTERTONE portfolio landing](docs/screenshots/portfolio-landing.webp)
+![AFTERTONE portfolio homepage](docs/screenshots/portfolio-landing.webp)
 
-**First-visit notice** — a clear explanation that this is an independent portfolio project.
+**First-visit notice** — explains the independent portfolio nature of the project and its use of third-party media.
 
 ![AFTERTONE portfolio disclaimer](docs/screenshots/portfolio-disclaimer.webp)
 
-The real music application is available [in the embedded demo](https://aftertone.masynnay.com/#experience) or [full screen](https://aftertone.masynnay.com/demo/). These images show the portfolio introduction, not simulated music-provider playback.
+The full application is available [inside the portfolio page](https://aftertone.masynnay.com/#experience) or through the [full-screen demo](https://aftertone.masynnay.com/demo/).
 
-## Portfolio experience
+## Features
 
-The first visit shows an accessible, dismissible portfolio and third-party media disclaimer. The home page explains the product, its engineering, and its development journey. The **real AFTERTONE application** is embedded in the Live App section, with an **Open full screen** option. There are no fictional songs or substitute mini-games in this live preview. The original local Node application logic is preserved under `app/`.
+- **Real music discovery.** Explore Deezer catalog metadata, artist information, album artwork, related artists, and short preview audio when the provider makes it accessible.
+- **Three discovery paths.** **Comfort Zone** builds on artists and songs you already enjoy. **New Territory** explores less-familiar artists. **Wild Card** takes you toward unexpected genres and sounds.
+- **Keep or Pass.** Quickly react to a track, undo a choice, and build a collection based on your listening preferences.
+- **Search and explore.** Look up artists and songs, browse by genre, era, or language, and optionally import public Deezer playlists.
+- **Music Duels.** Compete across six tournament arenas, complete brackets, and see champions recognized in the **Hall of Fame**.
+- **Taste map and Tune Lab.** Explore your listening preferences and experiment with your music collection.
+- **Challenges and progress.** Track personal discoveries, completed activities, tournament results, and related history in the browser.
+- **Player controls.** Autoplay after the user starts playback, volume adjustment, mute, skip, and responsive listening controls.
+- **20 visual themes.** Personalize the experience with different looks and layouts.
+- **Local persistence and exports.** Favorites, preferences, and tournament history remain in browser storage, with CSV exports for supported data.
 
-The disclaimer is shown once per browser tab session. Favorites, player preferences, and discovery history retain the original application local-storage keys across the embedded and full-screen views. The notice does **not** substitute for rights-holder authorization to deploy third-party music previews.
+## Try AFTERTONE
 
-## The full application
+| Experience | What you'll find |
+| :-- | :-- |
+| [Portfolio homepage](https://aftertone.masynnay.com/) | Project introduction, first-visit notice, design overview, and embedded app |
+| [Full-screen application](https://aftertone.masynnay.com/demo/) | The complete browser interface, without the surrounding portfolio page |
+| **Local Node application** | Original Node backend with direct provider requests and optional locally configured services |
 
-The public interface is restored from the original **AFTERTONE v0.10.1** application. This is not the previously published 12-song fictional demo. It includes:
+The public site uses a browser-side Deezer adapter rather than a Node server. Playback and catalog requests depend on the third-party service remaining accessible. The local application is the primary maintained backend implementation.
 
-- **Real Deezer catalog metadata and album artwork**, on-demand short preview audio from Deezer's CDN, search, related-artist discovery and optional public Deezer playlist imports.
-- **Comfort Zone, New Territory, and Wild Card** discovery with independent candidate selection, personalized paths, browsing by genre, era and language, and artist-seed rotation.
-- **Continuous autoplay** after the user starts playback, as well as playback controls, volume control, mute, skip, Keep/Pass, undo and visual feedback.
-- **Collection, taste map, Tune Lab, Challenges,** and six **Music Duels** tournament arenas with a persistent Hall of Fame.
-- **20 appearance themes**, responsive controls, local progress persistence and CSV exports.
+## Get started
 
-## Deployment modes
+### Run locally
 
-| Mode | Description |
-| --- | --- |
-| **GitHub Pages** (this website) | A portfolio homepage with the actual app in `/demo/`, either embedded in the page or launched full screen. The app uses an in-browser adapter that queries Deezer's JSONP catalog API and loads Deezer preview URLs when available. There are no third-party proxy services and no hosted copies of recordings. Live provider access can vary by region or availability. |
-| **Local Node app** | Original `app/server.mjs` backend, which makes direct Deezer API requests. It is the primary maintained application and includes optional locally configured services. |
+You'll need **Node.js 20 or newer**. Clone or download the repository, then run:
 
-**Provider rights:** Deezer's public API and preview links are not a blanket license for public use in a music game. Deezer has directed similar non-commercial discovery-game projects to seek approval from Deezer for Business. Public music/game deployment needs the appropriate provider authorization; this code alone does not grant it. The public site does not store, rebroadcast, download, or rehost audio.
-
-**Limitations:** GitHub Pages cannot run a Node server. The browser adapter depends on Deezer's JSONP support and externally hosted audio URLs and may fail if Deezer changes their API. No official full-track playback SDK or user login is integrated. Optional synced lyrics depend on LRCLIB CORS and content rights. User-private Jellyfin and other local configured services are only supported by the local server, not public Pages. No key or credential is published.
-
-## Run locally
-
-Node.js 20+ is required. The original local backend remains unchanged:
-
-```sh
+```bash
 npm start
-# visit http://127.0.0.1:4173
 ```
 
-Or run `scripts/launch/START_MAC.command` (Mac) or `scripts/launch/START_WINDOWS.bat` (Windows) after extracting the repository.
+Open **http://127.0.0.1:4173** in your browser.
 
-## Validate and build
+For a convenient launcher, use `scripts/launch/START_MAC.command` on macOS or `scripts/launch/START_WINDOWS.bat` on Windows.
 
-```sh
-npm run check  # original suite + browser adapter contract tests + static build
-npm run build  # static release into dist/
+### Run the portfolio build
+
+```bash
+npm run build
 ```
 
-The GitHub Actions workflow publishes only `dist/` to GitHub Pages. The build copies the informational portfolio page from `site/`, and the real application from `app/public/` plus the browser-safe `app/src/` modules to `dist/demo/`. It does **not** publish the former fictional-track showcase. `.env` files, local account tokens, test fixtures and media are not included in the published assets.
+This generates the static GitHub Pages site in `dist/`. The generated folder is not the source of truth: edit `site/`, `app/public/`, and the relevant browser-safe modules instead.
 
-## Folder guide
+## How it works
 
-- `site/` — polished portfolio landing, first-visit splash, consent-style acknowledgement and embedded live-app frame.
-- `app/public/` — original UI, CSS, themes, controls, game screens, browser API bridge.
-- `app/src/` — original discovery, taste, playlist, Deezer, quiz, tournament, audio metadata modules.
-- `app/server.mjs` — original Node server for local use.
-- `scripts/` — builds, checks, and cross-platform launchers under `scripts/launch/`.
-- `test/` — original test suite plus browser API contract tests.
-- `.github/workflows/` — automated test gate and GitHub Pages deployment.
-- `docs/` — architecture, history, and deployment notes.
+```text
+                       AFTERTONE
+                           |
+                +----------+----------+
+                |                     |
+        GitHub Pages site       Local Node app
+           (site/)              (app/server.mjs)
+                |                     |
+        Browser-safe adapter    Provider requests
+                |                     |
+                +----------+----------+
+                           |
+                 Music discovery UI
+                  (app/public/)
+                           |
+            +--------------+--------------+
+            |              |              |
+        Keep / Pass   Music Duels    Taste & Collection
+            |              |              |
+            +--------------+--------------+
+                           |
+                 Browser local storage
+```
 
-Development checkpoint: [`docs/development/CONTINUE_HERE.md`](docs/development/CONTINUE_HERE.md).
+The interface uses HTML, CSS, and JavaScript modules. The local backend runs on Node.js, while the public GitHub Pages version uses a browser adapter to request Deezer catalog data and supported short previews.
 
-## Repository layout
+The game and discovery history are stored locally in the browser, not in a hosted AFTERTONE account. The embedded and full-screen public interfaces reuse the same saved-data keys.
+
+For implementation details, see the [architecture guide](docs/ARCHITECTURE.md).
+
+## Repository structure
 
 ```text
 aftertone/
-├── .github/workflows/    Automated testing and GitHub Pages publishing
-├── app/                  Real music application (UI, discovery engine, Node server)
-│   ├── public/           Browser UI and assets
-│   ├── src/              Discovery, Deezer, playlists, music duels, state
-│   └── server.mjs        Local Node application backend
-├── site/                 Portfolio homepage, disclaimer and live-app embed
-├── scripts/              Build, verification and cross-platform launchers
-│   └── launch/           Double-click launchers for Mac and Windows
-├── test/                 Automated test suite
-├── docs/                 Architecture, release history and progress checkpoints
-├── .gitignore
-├── LICENSE
-├── package.json
-└── README.md
+├── .github/workflows/    Automated checks and GitHub Pages deployment
+├── app/                  Original music discovery application
+│   ├── public/           User interface, styles, and browser adapter
+│   ├── src/              Discovery, playlists, taste, and tournament logic
+│   └── server.mjs        Local Node server
+├── site/                 Portfolio homepage, disclaimer, and app embed
+├── scripts/              Build, validation, and launch tools
+│   └── launch/           macOS and Windows launchers
+├── test/                 Automated tests and browser adapter checks
+├── docs/                 Screenshots, architecture, and project history
+├── package.json          Development and build commands
+├── LICENSE               MIT license for the project software
+└── README.md             Project overview
 ```
 
-The repository root intentionally contains just the project metadata. All application code is under `app/`, and the deployed site is generated into the ignored `dist/` folder. The root layout is stable; GitHub Pages always deploys only the generated output.
+Application code stays under `app/`, the portfolio under `site/`, and documentation under `docs/`. The GitHub Actions workflow publishes only the generated `dist/` output—not private settings, local media, or server-only source files.
+
+## Develop and test
+
+```bash
+npm test         # Automated tests
+npm run check    # Syntax checks, tests, static build, and site validation
+npm run build    # Generate the static portfolio and browser app
+npm run dev      # Run the local Node server with watch mode
+```
+
+Automated checks cover application logic and the browser adapter. They cannot guarantee that Deezer or another external provider will serve music in a particular environment; live playback should be tested separately.
+
+## Technology
+
+- **Frontend:** HTML, CSS, JavaScript (ES modules)
+- **Local backend:** Node.js 20+
+- **Music discovery:** Deezer catalog metadata and short previews, subject to provider access
+- **Saved progress:** Browser local storage
+- **Static hosting:** GitHub Pages with GitHub Actions
+- **Architecture:** Browser-compatible music discovery modules plus a local server implementation
+
+## Project resources
+
+- [Architecture and technical notes](docs/ARCHITECTURE.md)
+- [Release history](docs/CHANGELOG.md)
+- [Music Duels documentation](docs/MUSIC_DUELS.md)
+- [Portfolio overview](docs/PORTFOLIO.md)
+- [Credits and licensing considerations](docs/CREDITS_AND_LICENSING.md)
+- [Development checkpoint](docs/development/CONTINUE_HERE.md)
+
+## Third-party content and limitations
+
+AFTERTONE is an independent software portfolio project, not an official Deezer product.
+
+The public version uses Deezer's browser-accessible catalog interface and links to short preview audio where available. **API access and preview URLs are not a license to use recorded music in a public game.** Appropriate permission from rights holders or providers may be needed for broader distribution or commercial use.
+
+GitHub Pages cannot host the local Node server. Browser-based provider access can change without notice; optional synced lyrics depend on LRCLIB access and content rights. Locally configured services such as a private Jellyfin library are not available through the public site.
+
+The repository does not include or rehost copyrighted recordings, and no private service credentials are published.
+
+## License
+
+The original AFTERTONE source code is available under the [MIT License](LICENSE). That license applies to the project software, **not** third-party music, recordings, artwork, or provider services.
