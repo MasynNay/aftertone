@@ -12,7 +12,7 @@ function pages(state=createInitialState(),extras={}) {return createViews({state,
 test('streamlined discover keeps an inline preview player but removes clutter and obsolete source selector',()=>{
  const page=pages().renderDiscovery();
  assert.match(page,/id="stage-play"/);
- assert.match(page,/Find your next favorite/);
+ assert.match(page,/Find Your Next Favorite/);
  assert.match(page,/data-action="like"/);
  assert.doesNotMatch(page,/id="source-select"/);
  assert.doesNotMatch(page,/New: real catalog metadata/);

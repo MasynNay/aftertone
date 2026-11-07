@@ -1,3 +1,10 @@
+## Editorial Polish — November 7, 2026
+
+- Standardized headings and navigation to consistent title case across the AFTERTONE portfolio, Discover, Collection, Tune Lab, and Music Duels.
+- Corrected UI copy including **Runners-up**, tournament labels, proper names of the three discovery paths, and button wording. Improved punctuation, the portfolio notice, and the app's browser description.
+- Added three focused naming-consistency regression checks and updated existing test expectations for intentional copy changes.
+- No changes to playback, provider adapters, state keys, routes, saved preferences, or tournament logic.
+
 # v0.10.1 — Portfolio Presentation Refresh (November 7, 2026)
 
 - Redesigned the public homepage to match the direct-launch portfolio flow used by Keystoria, while keeping AFTERTONE's lime/charcoal identity.

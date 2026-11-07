@@ -106,7 +106,7 @@ test('duel page renders live matchup, results, champions cup and preview actions
   assert.match(page,/data-duel-action="create"/);
   assert.match(page,/data-duel-play="deezer:1"/);
   assert.match(page,/data-duel-vote="deezer:2"/);
-  assert.match(page,/Need 2 champions/);
+  assert.match(page,/Need 2 Champions/);
   const completed=playToFinish(t);
   page=renderDuels({tournaments:[completed],selectedId:completed.id,catalog:songs,favorites:[]});
   assert.match(page,/data-duel-action="save-podium"/);

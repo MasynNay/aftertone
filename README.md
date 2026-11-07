@@ -14,7 +14,7 @@ A music discovery experience built around listening, exploring, and discovering 
 
 ---
 
-## Discover music your own way
+## Discover Music Your Own Way
 
 AFTERTONE turns music discovery into something you can interact with. Listen to a short preview, choose **Keep** or **Pass**, and let your choices guide what you hear next. Search for artists, explore unfamiliar genres, save favorites, and challenge your music knowledge in tournament-style **Music Duels**.
 
@@ -22,7 +22,7 @@ This is a portfolio project built around a real music discovery application—no
 
 > **Portfolio and third-party media notice:** The public demo requests third-party catalog information and short audio previews where available. Music-provider availability, browser restrictions, and licensing can affect playback. The project does not host or redistribute commercial recordings, and a working preview is not guaranteed in every region or browser.
 
-## Roadmap and active development
+## Roadmap and Active Development
 
 AFTERTONE is being improved in small, testable releases. The immediate priority is making the published experience more reliable, especially browser loading, Deezer fallback behavior, and responsible third-party media use.
 
@@ -48,7 +48,7 @@ These are browser captures of the **real AFTERTONE interface**—not redesigned 
 
 [![AFTERTONE Music Duels screen showing the arena selector and bracket setup](docs/screenshots/app-music-duels.webp)](docs/screenshots/app-music-duels.webp)
 
-### Portfolio website
+### Portfolio Website
 
 **Desktop homepage** — the Keystoria-inspired portfolio introduction and direct **Explore the Experience** launch.
 
@@ -79,9 +79,9 @@ These are browser captures of the **real AFTERTONE interface**—not redesigned 
 
 The public site uses a browser-side Deezer adapter rather than a Node server. Playback and catalog requests depend on the third-party service remaining accessible. The local application is the primary maintained backend implementation.
 
-## Get started
+## Get Started
 
-### Run locally
+### Run Locally
 
 You'll need **Node.js 20 or newer**. Clone or download the repository, then run:
 
@@ -93,7 +93,7 @@ Open **http://127.0.0.1:4173** in your browser.
 
 For a convenient launcher, use `scripts/launch/START_MAC.command` on macOS or `scripts/launch/START_WINDOWS.bat` on Windows.
 
-### Run the portfolio build
+### Build the Portfolio
 
 ```bash
 npm run build
@@ -101,7 +101,7 @@ npm run build
 
 This generates the static GitHub Pages site in `dist/`. The generated folder is not the source of truth: edit `site/`, `app/public/`, and the relevant browser-safe modules instead.
 
-## How it works
+## How It Works
 
 ```text
                        AFTERTONE
@@ -133,7 +133,7 @@ The game and discovery history are stored locally in the browser, not in a hoste
 
 For implementation details, see the [architecture guide](docs/ARCHITECTURE.md).
 
-## Repository structure
+## Repository Structure
 
 ```text
 aftertone/
@@ -154,7 +154,7 @@ aftertone/
 
 Application code stays under `app/`, the portfolio under `site/`, and documentation under `docs/`. The GitHub Actions workflow publishes only the generated `dist/` output—not private settings, local media, or server-only source files.
 
-## Develop and test
+## Development and Testing
 
 ```bash
 npm test         # Automated tests
@@ -174,7 +174,7 @@ Automated checks cover application logic and the browser adapter. They cannot gu
 - **Static hosting:** GitHub Pages with GitHub Actions
 - **Architecture:** Browser-compatible music discovery modules plus a local server implementation
 
-## Project resources
+## Project Resources
 
 - [Architecture and technical notes](docs/ARCHITECTURE.md)
 - [Current product roadmap](docs/ROADMAP.md)
@@ -185,7 +185,7 @@ Automated checks cover application logic and the browser adapter. They cannot gu
 - [Credits and licensing considerations](docs/CREDITS_AND_LICENSING.md)
 - [Development checkpoint](docs/development/CONTINUE_HERE.md)
 
-## Third-party content and limitations
+## Third-Party Content and Limitations
 
 AFTERTONE is an independent software portfolio project, not an official Deezer product.
 

@@ -88,3 +88,11 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Gallery assets: `docs/screenshots/app-discover.webp`, `app-collection.webp`, and `app-music-duels.webp`. README now displays the app gallery ahead of the portfolio screenshot and includes a clear fixture disclosure.
 - Verified `npm run check`: **221/221 tests passing**, build and 67-import ESM graph checks passing. No files in `app/` changed.
 - Follow-up: when permitted, manually capture genuine Deezer music screens with authorization and replace sample-data screenshots. Keep rights and provenance honest.
+
+
+## Editorial consistency pass — November 7, 2026
+
+- Revised visible presentation copy: navigation, title case for discovery paths and section headings, capitalization of tournament actions, Runners-up pluralization, punctuation, and app metadata.
+- Updated three existing snapshot-like text assertions, and added three focused editorial consistency tests. Full local `npm run check` passed **224/224 tests**, with static build and **67/67 local ESM import links** validated.
+- Scope is intentionally copy-only; preserve routes, controls, source IDs, data keys, Deezer adapter and business logic. README section casing and changelog aligned.
+- Check GitHub Pages build after publishing. Live provider playback is not exercised by CI and must never be described as verified merely because CI passes.

@@ -107,5 +107,5 @@ test('the listening-room invitation encourages discovering artists and has a wor
 test('Music Duels has no oversized trophy header or trophy emoji',()=>{
   const page=renderDuels({tournaments:[],selectedId:null,catalog:[],favorites:[]});
   assert.doesNotMatch(page,/duels-header-emblem|🏆/);
-  assert.match(page,/Make a little/);
+  assert.match(page,/Make a Little/);
 });
