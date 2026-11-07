@@ -8,7 +8,7 @@ A music discovery experience built around listening, exploring, and discovering 
 
 **Real music discovery · Personalized paths · Music Duels · 20 themes**
 
-[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Features](#features) · [Get started](#get-started) · [Roadmap](docs/ROADMAP.md) · [Open issues](https://github.com/MasynNay/aftertone/issues) · [Release notes](docs/CHANGELOG.md)
+[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Screenshots](#screenshots) · [Features](#features) · [Get started](#get-started) · [Roadmap](docs/ROADMAP.md) · [Open issues](https://github.com/MasynNay/aftertone/issues) · [Release notes](docs/CHANGELOG.md)
 
 </div>
 
@@ -32,15 +32,29 @@ Planned work: **v0.10.2** (stability) → **v0.11** (discovery and saved data) �
 
 ## Screenshots
 
-**Desktop portfolio** — the new direct-launch AFTERTONE introduction, inspired by the product-showcase layout of Keystoria.
+### Inside AFTERTONE
 
-![AFTERTONE portfolio homepage on desktop](docs/screenshots/portfolio-landing.webp)
+These are browser captures of the **real AFTERTONE interface**—not redesigned mockups. To create consistent, rights-safe screenshots, the application was rendered with representative **sample tracks and original placeholder artwork**, rather than live Deezer catalog results. They demonstrate the UI and user flows, **not verified provider playback**.
 
-**Mobile portfolio** — responsive homepage with the same direct **Explore the Experience** action.
+**Discover** — choose a listening path, see artwork and track details, adjust volume, and keep or pass a discovery.
 
-![AFTERTONE mobile portfolio homepage](docs/screenshots/portfolio-mobile.webp)
+[![AFTERTONE Discover screen with listening controls, recommendation paths, and sample track data](docs/screenshots/app-discover.webp)](docs/screenshots/app-discover.webp)
 
-These screenshots show the real portfolio homepage, with an illustrative music-interface panel. The actual music discovery application starts at [aftertone.masynnay.com/demo/](https://aftertone.masynnay.com/demo/); music catalog and previews depend on the third-party provider.
+**Collection** — locally saved favorites, searchable track cards, and export controls.
+
+[![AFTERTONE Collection screen showing saved sample tracks and export controls](docs/screenshots/app-collection.webp)](docs/screenshots/app-collection.webp)
+
+**Music Duels** — six tournament arenas and a customizable competition setup.
+
+[![AFTERTONE Music Duels screen showing the arena selector and bracket setup](docs/screenshots/app-music-duels.webp)](docs/screenshots/app-music-duels.webp)
+
+### Portfolio website
+
+**Desktop homepage** — the Keystoria-inspired portfolio introduction and direct **Explore the Experience** launch.
+
+[![AFTERTONE portfolio homepage on desktop](docs/screenshots/portfolio-landing.webp)](docs/screenshots/portfolio-landing.webp)
+
+[View the responsive mobile homepage](docs/screenshots/portfolio-mobile.webp) · [Launch the actual application](https://aftertone.masynnay.com/demo/)
 
 ## Features
 

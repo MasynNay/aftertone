@@ -80,3 +80,11 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Added `test/portfolio-navigation.test.mjs` and updated `scripts/check-site.mjs` to check direct routes, published CSS, no dialog/iframe, app ESM imports and Deezer adapter.
 - **Do not roll back to a modal or embedded player**. User prefers the direct-launch portfolio flow used by Keystoria.
 - Verify `npm run check` and GitHub Actions deploy. Live Deezer playback still needs verification in a real browser and rights review; do not overclaim.
+
+## README application gallery — November 7, 2026
+
+- Rendered the actual `dist/demo/` application UI in Chromium using the published ES module graph, with a **screenshot-only mocked provider** because local/live page navigation was restricted in this environment.
+- Captured actual views for Discover, Collection (five Keep actions), and Music Duels arena selection, with synthetic sample titles and locally authored placeholder album art. Screenshot captures do **not** imply successful Deezer playback or media permission.
+- Gallery assets: `docs/screenshots/app-discover.webp`, `app-collection.webp`, and `app-music-duels.webp`. README now displays the app gallery ahead of the portfolio screenshot and includes a clear fixture disclosure.
+- Verified `npm run check`: **221/221 tests passing**, build and 67-import ESM graph checks passing. No files in `app/` changed.
+- Follow-up: when permitted, manually capture genuine Deezer music screens with authorization and replace sample-data screenshots. Keep rights and provenance honest.

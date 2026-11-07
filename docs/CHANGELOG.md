@@ -3,6 +3,7 @@
 - Redesigned the public homepage to match the direct-launch portfolio flow used by Keystoria, while keeping AFTERTONE's lime/charcoal identity.
 - **Explore the Experience** now opens the original music discovery application immediately at `/demo/`. Removed the forced disclaimer popup and embedded iframe; the independent-project notice now appears inline.
 - Added dedicated homepage regression checks, responsive desktop/mobile previews, and kept the full `app/` source unchanged.
+- Added browser-captured screenshots of the restored Discover, Collection, and Music Duels interfaces to the README, using clearly labeled sample track fixtures and original placeholder artwork instead of claiming live Deezer playback.
 - Published the same original Deezer-aware browser app at `/demo/`; third-party provider playback and permissions are external dependencies and were not revalidated by the portfolio-only redesign.
 
 # v0.10.0 — Music Arenas & Hall of Fame
