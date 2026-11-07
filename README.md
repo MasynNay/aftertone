@@ -1,5 +1,7 @@
 # AFTERTONE
 
+**[Launch the interactive demo](https://masynnay.github.io/aftertone/)** · **Planned custom domain:** [aftertone.masynnay.com](https://aftertone.masynnay.com) *(not configured yet)*
+
 **Music discovery, made playable.** A deployable, no-backend case study of an independently developed discovery-game prototype.
 
 This repository contains the **public-safe showcase**, not the original Deezer-powered local app. The demo uses fictional track names and original sound motifs synthesized with Web Audio. It neither downloads nor reproduces commercial recordings or lyrics, makes no external API requests, requires no account or API key, and does not load external scripts or analytics. All demo decisions are saved in localStorage, with a visible **Reset demo** control.
