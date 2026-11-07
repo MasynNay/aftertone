@@ -62,3 +62,7 @@ files, verification commands, and known limitations.
 - Kept the existing bracket storage key and format. Added `src/tournament-themes.mjs` pure selectors: Open Stage, Favorites Face-Off, Fresh Faces, Mystery Matchups, Pop vs Rock, and 2000s Throwback. Genre-specific events require explicitly verified genres; era-specific events require explicit release-year data.
 - Added passive tournament template cards, explicit eligibility messages, mystery-mode identity masking (including player status), all-time and quarterly rankings, champion collection saves and CSV export. Added unit and render tests for eligibility, old-store compatibility, full tournaments, ranking totals and safety.
 - No music rights were added: Deezer game-use permission and actual browser playback remain outstanding before public release.
+
+
+### November 7, 2026 — Direct-launch portfolio experience
+Replaced mandatory disclaimer dialog and embedded-iframe homepage with an original AFTERTONE portfolio introduction inspired by the Keystoria direct-launch flow. The primary **Explore the Experience** action now navigates straight to the preserved `/demo/` app. The portfolio notice is visible inline; no popup script is loaded. Added homepage regression tests and updated static artifact validation.

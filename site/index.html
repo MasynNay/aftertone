@@ -2,108 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1519">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="description" content="AFTERTONE is an interactive music discovery game prototype. Explore the project, then play the actual AFTERTONE music discovery app in an embedded live demo.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
+  <meta name="description" content="AFTERTONE is an interactive music discovery portfolio project. Discover new sounds, save your favorites and challenge your taste in Music Duels. Explore the project, then launch the real browser app.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="AFTERTONE — A new way to find your sound">
-  <meta property="og:description" content="A music discovery engineering portfolio case study featuring the real playable AFTERTONE app, discovery modes, and music tournaments.">
+  <meta property="og:title" content="AFTERTONE — Music discovery, made playable">
+  <meta property="og:description" content="Real music discovery, three listening paths, local collections and Music Duels. A software engineering portfolio project with a playable browser experience.">
+  <title>AFTERTONE — Find Your Frequency</title>
   <link rel="icon" type="image/svg+xml" href="./assets/mark.svg">
   <link rel="stylesheet" href="./styles.css">
-  <title>AFTERTONE — Music discovery, made playable</title>
-  <script type="module" src="./splash.js"></script>
 </head>
 <body>
-  <a href="#main" class="skip">Skip to content</a>
-  <div class="site-glow" aria-hidden="true"></div>
-  <header class="site-header">
-    <a class="brand" href="#top" aria-label="AFTERTONE — top of page"><img src="./assets/mark.svg" alt="" width="37" height="37"><span>AFTERTONE<span class="brand-period">.</span></span></a>
-    <nav aria-label="Main navigation" class="site-nav">
-      <a href="#experience">Live app</a><a href="#build">Behind the build</a><a href="#journey">The journey</a>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="ambient-glow" aria-hidden="true"></div>
+  <header class="site-header wrap">
+    <a class="brand" href="#top" aria-label="AFTERTONE home">
+      <img src="./assets/mark.svg" width="44" height="44" alt="">
+      <span>AFTERTONE<span class="brand-dot">.</span><small>FIND YOUR FREQUENCY</small></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#modes">Experiences</a>
+      <a href="#engineering">Behind the build</a>
+      <a href="https://github.com/MasynNay/aftertone/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener noreferrer">Roadmap</a>
+      <a class="nav-launch" href="./demo/">Open app <span aria-hidden="true">↗</span></a>
     </nav>
-    <a class="nav-github" href="https://github.com/MasynNay/aftertone" target="_blank" rel="noopener noreferrer">Developer GitHub <span aria-hidden="true">↗</span></a>
   </header>
-
   <main id="main">
-    <section id="top" class="hero wrap" aria-labelledby="hero-heading">
+    <section class="hero wrap" id="top" aria-labelledby="hero-heading">
       <div class="hero-copy">
-        <div class="eyebrow"><span class="eyebrow-dot"></span> A PRODUCT DESIGN & ENGINEERING CASE STUDY</div>
-        <h1 id="hero-heading">Don’t just<br>find music.<br><em>Feel the find.</em></h1>
-        <p class="lede">AFTERTONE turns music discovery into something you play. Swipe through new sounds, follow your taste into unexpected places, and crown your favorites in head-to-head tournaments.</p>
-        <div class="hero-actions"><a class="button button-lime" href="#experience">Try the actual app <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="#build">Explore the engineering <span aria-hidden="true">↓</span></a></div>
-        <div class="hero-meta"><span><span class="mini-pulse" aria-hidden="true">◉</span> Real discovery experience</span><span>No account required</span><span>Interactive portfolio project</span></div>
+        <div class="eyebrow"><span class="spark" aria-hidden="true">✳</span> AN INTERACTIVE MUSIC DISCOVERY PROJECT <span class="pill">PORTFOLIO BUILD</span></div>
+        <h1 id="hero-heading">FIND YOUR<br><em>FREQUENCY.</em></h1>
+        <p class="intro">Discover more than a new song. Explore unfamiliar sounds, follow your own taste, save the music worth keeping, and turn listening into a game with <strong>AFTERTONE.</strong></p>
+        <div class="hero-buttons">
+          <a class="button button-primary" id="explore-experience" href="./demo/">Explore the Experience <span aria-hidden="true">↗</span></a>
+          <a class="button button-secondary" href="#modes">See what you can do <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="hero-facts" aria-label="Project highlights">
+          <span><strong>03</strong> discovery paths</span>
+          <span><strong>06</strong> tournament arenas</span>
+          <span><strong>20</strong> visual themes</span>
+        </div>
       </div>
-      <div class="hero-art" aria-label="Decorative illustration of a soundwave surrounded by orbiting vinyl records" role="img">
-        <div class="hero-art-grid" aria-hidden="true"></div><div class="hero-orbit orbit-outer" aria-hidden="true"></div><div class="hero-orbit orbit-inner" aria-hidden="true"></div>
-        <div class="vinyl vinyl-one" aria-hidden="true"><div></div></div><div class="vinyl vinyl-two" aria-hidden="true"><div></div></div>
-        <div class="center-record" aria-hidden="true"><div class="center-record-inner"><span>AT.</span></div></div>
-        <div class="floating-label label-top"><span class="label-mini-icon">✳</span> FIND YOUR FREQUENCY</div>
-        <div class="floating-label label-bottom"><span class="equalizer-mini">▂▅▃▇▅</span> DISCOVER SOMETHING NEW</div>
-        <div class="hero-art-caption">NOT ANOTHER ALGORITHM. YOUR NEXT ADVENTURE.</div>
+      <div class="hero-showcase" role="img" aria-label="Illustration of AFTERTONE's three music discovery routes and music player concept. Open the application to interact with real tracks.">
+        <div class="showcase-top"><span>01 / IN THE MIX</span><span><i class="status-dot"></i> EXPERIENCE PREVIEW</span></div>
+        <div class="showcase-window">
+          <div class="window-top"><span class="window-brand"><span class="signal-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span> aftertone<span class="brand-dot">.</span></span><span class="window-chip">YOUR SPACE / DISCOVER</span></div>
+          <div class="window-content">
+            <div class="window-sidebar" aria-hidden="true"><span class="sidebar-active">◉</span><span>♡</span><span>⬡</span><span>✦</span><span>♛</span></div>
+            <div class="window-stage">
+              <div class="stage-label">DISCOVER YOUR NEXT SOUND</div>
+              <div class="album-art"><div class="record-ring ring-a"></div><div class="record-ring ring-b"></div><div class="record-center"><span>AT.</span></div><span class="orbit-star star-one">✳</span><span class="orbit-star star-two">✦</span></div>
+              <div class="waveform" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="stage-bottom"><span>EXPLORE</span><span class="stage-pulse">●</span><span>LISTEN</span><span class="stage-pulse">●</span><span>DECIDE</span></div>
+            </div>
+          </div>
+          <div class="window-modes"><span>COMFORT ZONE</span><span>NEW TERRITORY</span><span>WILD CARD</span></div>
+        </div>
+        <div class="showcase-bottom"><span>AN ILLUSTRATIVE LOOK AT THE DISCOVERY EXPERIENCE</span><span>LISTEN · KEEP · DUEL</span></div>
       </div>
     </section>
 
-    <section class="intro-stripe" aria-label="Project highlights"><div class="wrap intro-stripe-inner"><span><strong>03</strong> discovery paths</span><span class="slash"></span><span><strong>06</strong> tournament arenas</span><span class="slash"></span><span><strong>20</strong> app color themes</span><span class="slash"></span><span><strong>217</strong> application checks</span></div></section>
+    <div class="marquee" aria-hidden="true"><div>LISTEN <b>✳</b> EXPLORE <b>✳</b> DISCOVER <b>✳</b> KEEP <b>✳</b> PASS <b>✳</b> DUEL <b>✳</b> FIND YOUR FREQUENCY <b>✳</b></div></div>
 
-    <section class="experience section-pad wrap" id="experience" aria-labelledby="experience-heading">
-      <div class="section-heading">
-        <div><span class="kicker">01 / THE LIVE EXPERIENCE</span>
-          <h2 id="experience-heading">The actual <em>AFTERTONE.</em></h2>
-          <p>This is the real music-discovery application, embedded directly in the portfolio. Search real artists, explore recommendations, save favorites, and try Music Duels. Not a simulated player or a separate twelve-song demo.</p>
-        </div>
-        <div class="section-side-note"><span class="note-orbit">✳</span> INTERACTIVE APPLICATION</div>
+    <section class="section wrap" id="modes" aria-labelledby="modes-heading">
+      <div class="section-heading"><div><p class="eyebrow">01 / FIND YOUR ROUTE</p><h2 id="modes-heading">FOUR WAYS<br><em>TO EXPLORE.</em></h2></div><p>Take the familiar route, venture outside your comfort zone, or leave it to chance. When a track stands out, put it to the test.</p></div>
+      <div class="mode-grid">
+        <article class="mode-card mode-comfort"><span class="mode-index">01 / FAMILIAR</span><span class="mode-symbol" aria-hidden="true">◉</span><h3>Comfort Zone</h3><p>Follow familiar artists, moods and preferences to find more of what already sounds like you.</p><span class="mode-footer">YOUR SOUND, EXPANDED <b aria-hidden="true">↗</b></span></article>
+        <article class="mode-card mode-territory"><span class="mode-index">02 / CURIOUS</span><span class="mode-symbol" aria-hidden="true">✦</span><h3>New Territory</h3><p>Wander into artists and sounds that haven't made their way into your rotation yet.</p><span class="mode-footer">BEYOND YOUR USUAL <b aria-hidden="true">↗</b></span></article>
+        <article class="mode-card mode-wild"><span class="mode-index">03 / UNEXPECTED</span><span class="mode-symbol" aria-hidden="true">✳</span><h3>Wild Card</h3><p>Skip the expectations. Take an unexpected turn and see where the next preview lands.</p><span class="mode-footer">LEAVE ROOM FOR SURPRISE <b aria-hidden="true">↗</b></span></article>
+        <article class="mode-card mode-duels"><span class="mode-index">04 / COMPETE</span><span class="mode-symbol" aria-hidden="true">♛</span><h3>Music Duels</h3><p>Build a bracket, pick your winners, and see which songs earn a spot in your Hall of Fame.</p><span class="mode-footer">LET THE BEST TRACK WIN <b aria-hidden="true">↗</b></span></article>
       </div>
-      <div class="live-demo-shell" id="demo">
-        <div class="live-demo-toolbar">
-          <div class="live-demo-brand"><img src="./assets/mark.svg" alt="" width="28" height="28"><strong>AFTERTONE</strong><span class="live-tag">LIVE APP</span></div>
-          <a href="./demo/" target="_blank" rel="noopener" class="button button-lime live-open">Open full screen <span aria-hidden="true">↗</span></a>
-        </div>
-        <iframe id="live-aftertone" src="./demo/" title="AFTERTONE live music discovery application" loading="lazy" allow="autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      <div class="section-cta"><a class="inline-link" href="./demo/">All four experiences are waiting in the full app <span aria-hidden="true">↗</span></a></div>
+    </section>
+
+    <section class="spotlight wrap" aria-labelledby="spotlight-heading">
+      <div class="spotlight-art" role="img" aria-label="Illustration of listening, choosing Keep or Pass, and building a personal collection">
+        <div class="spotlight-small-label">02 / THE LITTLE DETAILS</div>
+        <div class="listen-card"><span>01 / LISTEN</span><div class="mini-equalizer" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><strong>PLAY A PREVIEW</strong><small>FIND SOMETHING NEW</small></div>
+        <div class="listen-actions"><div class="pass-token"><span aria-hidden="true">↶</span> PASS</div><div class="keep-token"><span aria-hidden="true">♡</span> KEEP</div></div>
+        <div class="card-foot"><span>YOUR PICKS SHAPE THE NEXT DISCOVERY</span><span>↗</span></div>
       </div>
-      <div class="live-demo-notes">
-        <p><strong>Tip:</strong> Choose a discovery mode, search for a favorite artist, or open Music Duels. Playback starts after you press Play; some browsers restrict automatic audio until a user interaction. For the most comfortable experience, use <a href="./demo/" target="_blank" rel="noopener">the full-screen app ↗</a>.</p>
-        <p><strong>Portfolio notice:</strong> This is an independent technical prototype. Artist information, covers, and audio previews come from third-party services when available. AFTERTONE is not affiliated with, endorsed by, or licensed by Deezer. Availability can change, and this demonstration does not grant rights to third-party media.</p>
+      <div class="spotlight-copy"><p class="eyebrow">02 / EVERY LISTEN COUNTS</p><h2 id="spotlight-heading">MAKE IT<br><em>YOUR SOUND.</em></h2><p>AFTERTONE is built around small, meaningful decisions. Search for an artist, hear a preview, choose Keep or Pass, and let what you enjoy influence the next discovery. Autoplay and volume controls make it easy to stay in the flow.</p><div class="feature-pills"><span>REAL CATALOG SEARCH</span><span>AUTOPLAY CONTROLS</span><span>LOCAL FAVORITES</span></div><a class="inline-link" href="./demo/">Open music discovery <span aria-hidden="true">↗</span></a></div>
+    </section>
+
+    <section class="section engineering wrap" id="engineering" aria-labelledby="engineering-heading"><div class="section-heading"><div><p class="eyebrow">03 / BEHIND THE BUILD</p><h2 id="engineering-heading">MORE THAN<br><em>A PRETTY PLAYER.</em></h2></div><p>A real music discovery application, with separation between the catalog, recommendations, the game experience, and your saved preferences.</p></div>
+      <div class="tech-grid">
+        <article><span class="tech-number">01 / DISCOVERY</span><h3>Personalized listening paths</h3><p>Different rules for Comfort Zone, New Territory and Wild Card. A listener's explicit searches don't silently overwrite their taste profile.</p></article>
+        <article><span class="tech-number">02 / MUSIC</span><h3>Provider-aware playback</h3><p>Search and short previews depend on third-party access and availability, with a dedicated local Node implementation and browser adapter.</p></article>
+        <article><span class="tech-number">03 / PROGRESSION</span><h3>Made to come back to</h3><p>Keep/Pass decisions, local collections, tournament history, and a Hall of Fame give each listening session a destination.</p></article>
+        <article><span class="tech-number">04 / MAINTENANCE</span><h3>Designed to keep improving</h3><p>Automated tests, release notes, an issue backlog, and an active roadmap help guide updates and catch regressions.</p></article>
       </div>
     </section>
 
-    <section id="build" class="build section-pad" aria-labelledby="build-heading"><div class="wrap"><div class="section-heading"><div><span class="kicker">02 / WHAT'S UNDER THE HOOD</span><h2 id="build-heading">Built for the <em>hard parts.</em></h2><p>More than a visual concept: AFTERTONE has separate systems for music retrieval, recommendation decisions, listening state, game rules, and persistence.</p></div></div>
-      <div class="feature-grid"><article class="feature-card feature-one"><span class="feature-icon">✳</span><span class="feature-num">01 / DISCOVERY</span><h3>Recommendations with a reason.</h3><p>Three listening routes use different candidate and ranking policies. Explicit searches don't silently become permanent taste preferences.</p><div class="mini-route-chart"><div><span>COMFORT</span><i style="--bar:78%"></i></div><div><span>TERRITORY</span><i style="--bar:58%"></i></div><div><span>WILD CARD</span><i style="--bar:92%"></i></div></div></article>
-        <article class="feature-card"><span class="feature-icon">♛</span><span class="feature-num">02 / GAMEPLAY</span><h3>A reason to come back.</h3><p>Music Duels includes knockout brackets, bronze playoffs, thematic arenas, saved champions, and an evolving Hall of Fame.</p><div class="bracket-motif"><div><span>01</span><span>02</span><span>03</span><span>04</span></div><i></i><strong>CHAMPION</strong></div></article>
-        <article class="feature-card"><span class="feature-icon">♡</span><span class="feature-num">03 / OWNERSHIP</span><h3>Favorites that outlast a session.</h3><p>Keep/Pass decisions, undo, personal collections, listening history, and tournaments are stored locally with backward-compatible state handling.</p><div class="feature-tag-row"><span>LOCAL FIRST</span><span>UNDO SUPPORT</span><span>EXPORTS</span></div></article>
-        <article class="feature-card"><span class="feature-icon">⟲</span><span class="feature-num">04 / RELIABILITY</span><h3>Tested like a product.</h3><p>Automated checks exercise recommendation edge cases, catalog pagination, player state, tournament progression, and saved-data compatibility.</p><div class="test-summary"><strong>217</strong><span>automated checks in the restored v0.10.1 build</span></div></article>
-      </div>
-      <div class="architecture"><span class="arch-label">A CLEAN SEPARATION OF CONCERNS</span><div class="arch-flow"><div><b>Catalog</b><small>Metadata & availability</small></div><span aria-hidden="true">→</span><div><b>Discovery</b><small>Mode rules & rotation</small></div><span aria-hidden="true">→</span><div><b>Experience</b><small>Player, swipes & duels</small></div><span aria-hidden="true">→</span><div><b>Local State</b><small>Saved history & favorites</small></div></div></div>
-    </div></section>
+    <section class="project-note wrap" aria-labelledby="note-heading"><div class="notice-icon" aria-hidden="true">i</div><div><p class="eyebrow">INDEPENDENT SOFTWARE PORTFOLIO</p><h2 id="note-heading">A working project, not a commercial streaming service.</h2><p>AFTERTONE is an independent demonstration of product design and software engineering. It is not affiliated with or endorsed by Deezer. Music metadata, artwork and short audio previews may be supplied by third parties, remain the property of their respective rights holders, and may be unavailable depending on provider or browser conditions. A portfolio notice does not grant rights to use third-party media. Favorites and game progress are stored in your browser; no account is required.</p></div></section>
 
-    <section id="journey" class="journey section-pad wrap" aria-labelledby="journey-heading"><div class="section-heading"><div><span class="kicker">03 / THE PRODUCT JOURNEY</span><h2 id="journey-heading">Built by listening <em>to feedback.</em></h2><p>The strongest changes came from discovering where the original prototype didn't feel good enough—and rethinking the experience instead of adding another setting.</p></div></div><div class="timeline">
-      <article><div class="timeline-number">01</div><div><span>THE FIRST SPARK</span><h3>Swipe, keep, explore.</h3><p>Started with anonymous short previews, simple decisions and a taste map. Learned quickly that limited catalogs and mystery metadata made discovery frustrating.</p></div></article>
-      <article><div class="timeline-number">02</div><div><span>THE REAL CHALLENGE</span><h3>Separate discovery from playback.</h3><p>Explored multiple providers, then designed clearer boundaries between canonical song information, playback availability, catalog permissions and what a local prototype can do.</p></div></article>
-      <article><div class="timeline-number">03</div><div><span>WHAT MADE IT A GAME</span><h3>Tournaments, not thumbs.</h3><p>Introduced Music Duels, tournament themes, saved podiums and champion brackets to give each session a destination and a sense of progression.</p></div></article>
-      <article><div class="timeline-number">04</div><div><span>WHAT'S NEXT</span><h3>Polish, validate, present.</h3><p>Restored the actual music-discovery application to the portfolio with a browser catalog adapter. The local Node server remains available, while public provider rights and browser compatibility still require care.</p></div></article>
-    </div></section>
-
-    <section class="closing"><div class="wrap closing-inner"><span class="kicker">A DESIGN & ENGINEERING PROJECT</span><h2>Great products aren't just built.<br><em>They're refined.</em></h2><p>AFTERTONE is a case study in turning a simple interaction into a working product—complete with awkward constraints, iterative fixes, and a game worth playing.</p><div><a class="button button-lime" href="#experience">Try the live app ↗</a><a class="button button-ghost" href="https://github.com/MasynNay/aftertone/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener noreferrer">View roadmap ↗</a><a class="button button-ghost" href="https://github.com/MasynNay/aftertone" target="_blank" rel="noopener noreferrer">Developer GitHub ↗</a></div></div></section>
+    <section class="launch-section" id="launch"><div class="wrap launch-inner"><p class="eyebrow">04 / YOUR NEXT DISCOVERY</p><h2>GREAT MUSIC IS<br><em>WORTH FINDING.</em></h2><p>Explore the real AFTERTONE browser app: discovery routes, short previews where available, personal collections, and Music Duels.</p><div class="launch-actions"><a class="button button-primary" href="./demo/">Explore the Experience <span aria-hidden="true">↗</span></a><a class="button button-secondary" href="https://github.com/MasynNay/aftertone" target="_blank" rel="noopener noreferrer">View the source <span aria-hidden="true">↗</span></a></div></div></section>
   </main>
-  <footer class="footer wrap"><a href="#top" class="brand footer-brand"><img src="./assets/mark.svg" alt="" width="30" height="30"><span>AFTERTONE<span class="brand-period">.</span></span></a><p>Independent portfolio prototype. Third-party media belongs to its respective rights holders; previews depend on provider availability.</p><span>Designed and built as an independent project · 2026</span></footer>
-  <dialog id="portfolio-welcome" class="portfolio-welcome" aria-labelledby="welcome-heading" aria-describedby="welcome-description">
-    <div class="welcome-inner">
-      <div class="welcome-kicker"><span class="welcome-kicker-dot" aria-hidden="true"></span> AN INDEPENDENT PORTFOLIO PROJECT</div>
-      <img src="./assets/mark.svg" alt="" width="56" height="56" class="welcome-logo">
-      <h2 id="welcome-heading">Welcome to <em>AFTERTONE.</em></h2>
-      <p id="welcome-description" class="welcome-lede">Experience the real music discovery app, or explore the project and engineering behind it.</p>
-      <div class="welcome-disclaimer">
-        <strong>Independent portfolio demonstration</strong>
-        <p>AFTERTONE is a personal portfolio demonstration, not a commercial music service or an official Deezer product. Music metadata, artwork, and short previews may be supplied by third parties and remain the property of their respective rights holders. Previews may be unavailable, and this notice does not replace any permissions required for public use.</p>
-        <p>Favorites and progress are stored in your browser. No account is required.</p>
-      </div>
-      <div class="welcome-actions">
-        <a href="./demo/" id="launch-from-welcome" class="button button-lime">Enter AFTERTONE <span aria-hidden="true">↗</span></a>
-        <button type="button" id="explore-project" class="button button-ghost">Explore the portfolio <span aria-hidden="true">↓</span></button>
-      </div>
-      <p class="welcome-footnote">Shown once per tab session. Play the app immediately or explore how it was built.</p>
-    </div>
-  </dialog>
+  <footer class="site-footer wrap"><a class="brand footer-brand" href="#top"><img src="./assets/mark.svg" width="34" height="34" alt=""><span>AFTERTONE<span class="brand-dot">.</span></span></a><p>AN INDEPENDENT MUSIC DISCOVERY PROJECT · 2026</p><a href="https://github.com/MasynNay/aftertone/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener noreferrer">VIEW THE ROADMAP ↗</a></footer>
 </body>
 </html>

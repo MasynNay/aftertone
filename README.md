@@ -18,7 +18,7 @@ A music discovery experience built around listening, exploring, and discovering 
 
 AFTERTONE turns music discovery into something you can interact with. Listen to a short preview, choose **Keep** or **Pass**, and let your choices guide what you hear next. Search for artists, explore unfamiliar genres, save favorites, and challenge your music knowledge in tournament-style **Music Duels**.
 
-This is a portfolio project built around a real music discovery application—not a static mockup or a fictional 12-song demo. The [portfolio homepage](https://aftertone.masynnay.com/) introduces the project and embeds the application; you can also [open the app full screen](https://aftertone.masynnay.com/demo/).
+This is a portfolio project built around a real music discovery application—not a static mockup or a fictional 12-song demo. The [portfolio homepage](https://aftertone.masynnay.com/) presents the project and its engineering. Select **Explore the Experience** to launch the [original browser app](https://aftertone.masynnay.com/demo/) directly. There is no popup or embedded mockup.
 
 > **Portfolio and third-party media notice:** The public demo requests third-party catalog information and short audio previews where available. Music-provider availability, browser restrictions, and licensing can affect playback. The project does not host or redistribute commercial recordings, and a working preview is not guaranteed in every region or browser.
 
@@ -32,15 +32,15 @@ Planned work: **v0.10.2** (stability) → **v0.11** (discovery and saved data) �
 
 ## Screenshots
 
-**Portfolio homepage** — the introduction to AFTERTONE, its features, and the embedded music discovery experience.
+**Desktop portfolio** — the new direct-launch AFTERTONE introduction, inspired by the product-showcase layout of Keystoria.
 
-![AFTERTONE portfolio homepage](docs/screenshots/portfolio-landing.webp)
+![AFTERTONE portfolio homepage on desktop](docs/screenshots/portfolio-landing.webp)
 
-**First-visit notice** — explains the independent portfolio nature of the project and its use of third-party media.
+**Mobile portfolio** — responsive homepage with the same direct **Explore the Experience** action.
 
-![AFTERTONE portfolio disclaimer](docs/screenshots/portfolio-disclaimer.webp)
+![AFTERTONE mobile portfolio homepage](docs/screenshots/portfolio-mobile.webp)
 
-The full application is available [inside the portfolio page](https://aftertone.masynnay.com/#experience) or through the [full-screen demo](https://aftertone.masynnay.com/demo/).
+These screenshots show the real portfolio homepage, with an illustrative music-interface panel. The actual music discovery application starts at [aftertone.masynnay.com/demo/](https://aftertone.masynnay.com/demo/); music catalog and previews depend on the third-party provider.
 
 ## Features
 
@@ -59,7 +59,7 @@ The full application is available [inside the portfolio page](https://aftertone.
 
 | Experience | What you'll find |
 | :-- | :-- |
-| [Portfolio homepage](https://aftertone.masynnay.com/) | Project introduction, first-visit notice, design overview, and embedded app |
+| [Portfolio homepage](https://aftertone.masynnay.com/) | Product showcase, feature cards, engineering notes and inline portfolio notice; **Explore the Experience** opens the app |
 | [Full-screen application](https://aftertone.masynnay.com/demo/) | The complete browser interface, without the surrounding portfolio page |
 | **Local Node application** | Original Node backend with direct provider requests and optional locally configured services |
 
@@ -115,7 +115,7 @@ This generates the static GitHub Pages site in `dist/`. The generated folder is 
 
 The interface uses HTML, CSS, and JavaScript modules. The local backend runs on Node.js, while the public GitHub Pages version uses a browser adapter to request Deezer catalog data and supported short previews.
 
-The game and discovery history are stored locally in the browser, not in a hosted AFTERTONE account. The embedded and full-screen public interfaces reuse the same saved-data keys.
+The game and discovery history are stored locally in the browser, not in a hosted AFTERTONE account. The launched browser application preserves its original saved-data keys; the portfolio homepage does not access or modify that storage.
 
 For implementation details, see the [architecture guide](docs/ARCHITECTURE.md).
 
@@ -128,7 +128,7 @@ aftertone/
 │   ├── public/           User interface, styles, and browser adapter
 │   ├── src/              Discovery, playlists, taste, and tournament logic
 │   └── server.mjs        Local Node server
-├── site/                 Portfolio homepage, disclaimer, and app embed
+├── site/                 Standalone portfolio homepage (no popup or iframe)
 ├── scripts/              Build, validation, and launch tools
 │   └── launch/           macOS and Windows launchers
 ├── test/                 Automated tests and browser adapter checks

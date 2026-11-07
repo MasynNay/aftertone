@@ -70,10 +70,13 @@ Repair:
 
 Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `https://aftertone.masynnay.com/` and `https://aftertone.masynnay.com/demo/`. The real provider's Deezer access still depends on Deezer JSONP/CDN availability.
 
-## Roadmap and issue-tracker milestone — November 7, 2026
 
-- Created `docs/ROADMAP.md` as the single current source of truth: v0.10.2 stability, v0.11 discovery/data/Duels, v0.12 accessibility/presentation, with conditional v1.0 readiness.
-- Opened GitHub issues #1–#8 with explicit acceptance criteria. First priority: end-to-end browser smoke checks to prevent the blank-app and missing-CSS regressions. Second: Deezer outage recovery. Third: provider permission review.
-- Updated README to prominently link roadmap and issue backlog. Added historical note to `docs/NEXT_STEPS.md` without erasing early prototype ideas.
-- Roadmap review rhythm: monthly live smoke check, release-based updates, quarterly provider/architecture review; avoid activity for its own sake.
-- Reminder: current documented app release is v0.10.1. The roadmap/issue commit makes no new functionality claim; provider-backed browser audio still needs genuine in-browser verification.
+## Keystoria-style portfolio homepage redesign — November 7, 2026
+
+- User requested no mandatory portfolio disclaimer popup and an introductory showcase like `keystoria.masynnay.com`, with **Explore the Experience** directly launching the original app.
+- Rebuilt `site/index.html` and `site/styles.css` as a standalone portfolio experience: Keystoria-inspired hero, four experience cards, listening-interaction spotlight, engineering cards, inline third-party rights notice and direct-launch CTA. AFTERTONE's original lime/charcoal visual identity retained.
+- The homepage's illustrative UI preview is labeled as an illustration, not a real screenshot or live player. The actual unchanged application remains at `/demo/`.
+- Removed the obsolete `site/splash.js` and build copy; no HTML dialog, iframe, or JavaScript remains on the portfolio homepage.
+- Added `test/portfolio-navigation.test.mjs` and updated `scripts/check-site.mjs` to check direct routes, published CSS, no dialog/iframe, app ESM imports and Deezer adapter.
+- **Do not roll back to a modal or embedded player**. User prefers the direct-launch portfolio flow used by Keystoria.
+- Verify `npm run check` and GitHub Actions deploy. Live Deezer playback still needs verification in a real browser and rights review; do not overclaim.

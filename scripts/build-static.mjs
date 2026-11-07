@@ -7,12 +7,11 @@ import {resolve} from 'node:path';
 const root=resolve(import.meta.dirname,'..');
 const dist=resolve(root,'dist');
 rmSync(dist,{recursive:true,force:true});mkdirSync(dist,{recursive:true});
-// Restore the original product-and-engineering portfolio landing page.
+// Publish a standalone portfolio homepage; no modal, iframe, or client script.
 copyFileSync(resolve(root,'site/index.html'),resolve(dist,'index.html'));
 copyFileSync(resolve(root,'site/styles.css'),resolve(dist,'styles.css'));
-copyFileSync(resolve(root,'site/splash.js'),resolve(dist,'splash.js'));
 cpSync(resolve(root,'site/assets'),resolve(dist,'assets'),{recursive:true});
-// Publish the *full* application as an embedded, separately addressable demo.
+// Publish the *full* AFTERTONE application under /demo/ with no changes to application logic.
 const demo=resolve(dist,'demo');mkdirSync(demo,{recursive:true});
 cpSync(resolve(root,'app/public'),demo,{recursive:true});
 cpSync(resolve(root,'app/src'),resolve(demo,'src'),{recursive:true});
@@ -30,4 +29,4 @@ for (const file of ['index.html', ...['main.js','api-browser.js','views.js','due
 writeFileSync(resolve(demo,'.nojekyll'),'');
 writeFileSync(resolve(dist,'.nojekyll'),'');
 writeFileSync(resolve(dist,'CNAME'),'aftertone.masynnay.com\n');
-console.log('Built portfolio landing + untouched full AFTERTONE embedded at dist/demo/');
+console.log('Built standalone portfolio homepage and real AFTERTONE app at dist/demo/');

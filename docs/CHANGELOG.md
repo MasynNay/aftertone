@@ -1,3 +1,10 @@
+# v0.10.1 — Portfolio Presentation Refresh (November 7, 2026)
+
+- Redesigned the public homepage to match the direct-launch portfolio flow used by Keystoria, while keeping AFTERTONE's lime/charcoal identity.
+- **Explore the Experience** now opens the original music discovery application immediately at `/demo/`. Removed the forced disclaimer popup and embedded iframe; the independent-project notice now appears inline.
+- Added dedicated homepage regression checks, responsive desktop/mobile previews, and kept the full `app/` source unchanged.
+- Published the same original Deezer-aware browser app at `/demo/`; third-party provider playback and permissions are external dependencies and were not revalidated by the portfolio-only redesign.
+
 # v0.10.0 — Music Arenas & Hall of Fame
 
 - Added six Music Duels arena presets with distinct, testable entry criteria. Pop vs Rock is balanced and uses verified genre metadata; 2000s Throwback requires genuine release-year metadata. No genre/year guessing.
