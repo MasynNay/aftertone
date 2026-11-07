@@ -69,3 +69,11 @@ Repair:
 - Local Node checks after repair: 217/217 pass; static build passes; import graph validates 40 modules and 67 local imports. Chromium `page.set_content()` visual rendering verifies 1440x900 full-screen modal and styled landing; complete live navigation and Deezer playback are blocked from sandbox network access and must not be represented as verified.
 
 Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `https://aftertone.masynnay.com/` and `https://aftertone.masynnay.com/demo/`. The real provider's Deezer access still depends on Deezer JSONP/CDN availability.
+
+## Roadmap and issue-tracker milestone — November 7, 2026
+
+- Created `docs/ROADMAP.md` as the single current source of truth: v0.10.2 stability, v0.11 discovery/data/Duels, v0.12 accessibility/presentation, with conditional v1.0 readiness.
+- Opened GitHub issues #1–#8 with explicit acceptance criteria. First priority: end-to-end browser smoke checks to prevent the blank-app and missing-CSS regressions. Second: Deezer outage recovery. Third: provider permission review.
+- Updated README to prominently link roadmap and issue backlog. Added historical note to `docs/NEXT_STEPS.md` without erasing early prototype ideas.
+- Roadmap review rhythm: monthly live smoke check, release-based updates, quarterly provider/architecture review; avoid activity for its own sake.
+- Reminder: current documented app release is v0.10.1. The roadmap/issue commit makes no new functionality claim; provider-backed browser audio still needs genuine in-browser verification.

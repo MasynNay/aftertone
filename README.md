@@ -8,7 +8,7 @@ A music discovery experience built around listening, exploring, and discovering 
 
 **Real music discovery · Personalized paths · Music Duels · 20 themes**
 
-[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Features](#features) · [Get started](#get-started) · [Release notes](docs/CHANGELOG.md)
+[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Features](#features) · [Get started](#get-started) · [Roadmap](docs/ROADMAP.md) · [Open issues](https://github.com/MasynNay/aftertone/issues) · [Release notes](docs/CHANGELOG.md)
 
 </div>
 
@@ -21,6 +21,14 @@ AFTERTONE turns music discovery into something you can interact with. Listen to 
 This is a portfolio project built around a real music discovery application—not a static mockup or a fictional 12-song demo. The [portfolio homepage](https://aftertone.masynnay.com/) introduces the project and embeds the application; you can also [open the app full screen](https://aftertone.masynnay.com/demo/).
 
 > **Portfolio and third-party media notice:** The public demo requests third-party catalog information and short audio previews where available. Music-provider availability, browser restrictions, and licensing can affect playback. The project does not host or redistribute commercial recordings, and a working preview is not guaranteed in every region or browser.
+
+## Roadmap and active development
+
+AFTERTONE is being improved in small, testable releases. The immediate priority is making the published experience more reliable, especially browser loading, Deezer fallback behavior, and responsible third-party media use.
+
+**[View the development roadmap](docs/ROADMAP.md)** · **[Browse the open GitHub issues](https://github.com/MasynNay/aftertone/issues)**
+
+Planned work: **v0.10.2** (stability) → **v0.11** (discovery and saved data) → **v0.12** (accessibility and portfolio polish). Release targets are milestones, not deadlines.
 
 ## Screenshots
 
@@ -155,6 +163,8 @@ Automated checks cover application logic and the browser adapter. They cannot gu
 ## Project resources
 
 - [Architecture and technical notes](docs/ARCHITECTURE.md)
+- [Current product roadmap](docs/ROADMAP.md)
+- [Open GitHub development issues](https://github.com/MasynNay/aftertone/issues)
 - [Release history](docs/CHANGELOG.md)
 - [Music Duels documentation](docs/MUSIC_DUELS.md)
 - [Portfolio overview](docs/PORTFOLIO.md)

@@ -1,3 +1,5 @@
+> **Historical planning notes.** These v0.2–v0.4 ideas predate the restored v0.10.1 application and are not the current release plan. See the [active roadmap](ROADMAP.md) and [open issues](https://github.com/MasynNay/aftertone/issues) for current priorities.
+
 # Product roadmap and engineering notes
 
 ## V0.2 — Personal discovery loops
