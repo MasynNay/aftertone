@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizeVolume, updateVolumeSetting, toggleMuteSetting, actualVolume, DEFAULT_VOLUME } from '../src/volume.mjs';
-import { createInitialState } from '../src/taste.mjs';
-import { sanitizeState, loadState, saveState } from '../src/persistence.mjs';
-import { createViews } from '../public/views.js';
-import { createTournament } from '../src/duels.mjs';
-import { renderDuels } from '../public/duels-view.js';
+import { normalizeVolume, updateVolumeSetting, toggleMuteSetting, actualVolume, DEFAULT_VOLUME } from '../app/src/volume.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
+import { sanitizeState, loadState, saveState } from '../app/src/persistence.mjs';
+import { createViews } from '../app/public/views.js';
+import { createTournament } from '../app/src/duels.mjs';
+import { renderDuels } from '../app/public/duels-view.js';
 
 const tracks = Array.from({length:4},(_,i)=>({id:`deezer:${i+1}`,source:'deezer',title:`Song ${i+1}`,artist:`Artist ${i+1}`,genre:'pop',mood:'Fresh',artwork:null}));
 function discovery(state) {
@@ -83,7 +83,7 @@ test('Music Duels share the same saved volume and do not depend on the discovery
 });
 
 test('the single browser player is adjusted without remounting and slider gestures do not swipe',()=>{
-  const code=readFileSync(new URL('../public/main.js',import.meta.url),'utf8');
+  const code=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(code,/audio\.volume = level \/ 100/);
   assert.match(code,/audio\.muted = !state\.sound \|\| level === 0/);
   assert.match(code,/main\.addEventListener\('input'/);

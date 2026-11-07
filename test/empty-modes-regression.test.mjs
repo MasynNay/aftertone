@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { selectAvailablePath, belongsToDiscoveryFeed } from '../src/discovery/queue.mjs';
-import { planDiscoveryRequest } from '../src/discovery/mode-engine.mjs';
-import { fetchDeezerPage } from '../src/deezer.mjs';
-import { createViews } from '../public/views.js';
-import { createInitialState } from '../src/taste.mjs';
-import { renderDuels } from '../public/duels-view.js';
+import { selectAvailablePath, belongsToDiscoveryFeed } from '../app/src/discovery/queue.mjs';
+import { planDiscoveryRequest } from '../app/src/discovery/mode-engine.mjs';
+import { fetchDeezerPage } from '../app/src/deezer.mjs';
+import { createViews } from '../app/public/views.js';
+import { createInitialState } from '../app/src/taste.mjs';
+import { renderDuels } from '../app/public/duels-view.js';
 
 const track=(id,artist)=>({id:`deezer:${id}`,artist,title:'Single',source:'deezer',genre:'unknown'});
 const heard=[{id:'deezer:101',action:'like',artist:'Harry Styles'}];
@@ -39,7 +39,7 @@ test('Wild Card remains unfamiliar when novel performers exist, but never strand
 test('already heard preferred artists cannot block unplayed music',async()=>{
   // The main selector must filter history first, BEFORE it applies the strict
   // preference pool. This was an additional cause of the empty-track bug.
-  const source=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const source=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(source,/const heard=new Set\(state\.history\.map\(event=>event\.id\)\)/);
   assert.match(source,/!heard\.has\(track\.id\) && !unvotedPreviews\.has\(track\.id\)/);
   assert.match(source,/matchesFeed\(track,genre\)/);
@@ -99,7 +99,7 @@ test('the listening-room invitation encourages discovering artists and has a wor
     collectionQuery:'',collectionSort:'recent'}).renderDiscovery();
   assert.match(page,/The more different artists you/);
   assert.match(page,/data-action="focus-music-search"/);
-  const js=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const js=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(js,/case 'focus-music-search'/);
   assert.match(js,/input\.focus\(\{preventScroll:true\}\)/);
 });

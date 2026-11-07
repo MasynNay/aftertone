@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from '../server.mjs';
-import { fetchAudiusPage, mapAudiusGenre, normalizeAudiusTrack, parseAudiusCursor, resolveAudiusAudio } from '../src/audius.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createInitialState, recordChoice } from '../src/taste.mjs';
-import { encodeChallenge, decodeChallenge } from '../src/challenge.mjs';
+import { createServer } from '../app/server.mjs';
+import { fetchAudiusPage, mapAudiusGenre, normalizeAudiusTrack, parseAudiusCursor, resolveAudiusAudio } from '../app/src/audius.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createInitialState, recordChoice } from '../app/src/taste.mjs';
+import { encodeChallenge, decodeChallenge } from '../app/src/challenge.mjs';
 
 const makeTrack = (i, genre = 'Pop') => ({
   id: `jD78_${i}`, title: `A beautiful song ${i}`, genre, duration: 183,

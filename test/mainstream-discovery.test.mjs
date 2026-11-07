@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchYouTubePage, YOUTUBE_SEARCH_LANES, normalizeYouTubeVideo } from '../src/youtube.mjs';
-import { createInitialState } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createViews } from '../public/views.js';
-import { likelyMusicRecording } from '../src/recording-quality.mjs';
+import { fetchYouTubePage, YOUTUBE_SEARCH_LANES, normalizeYouTubeVideo } from '../app/src/youtube.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createViews } from '../app/public/views.js';
+import { likelyMusicRecording } from '../app/src/recording-quality.mjs';
 
 const key='A'.repeat(39);
 const videos=[

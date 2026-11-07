@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCSV, parsePlaylist, buildSeedProfile, buildSeedLanes, trackIdentity } from '../src/playlist-import.mjs';
-import { createInitialState, selectNext } from '../src/taste.mjs';
-import { createViews } from '../public/views.js';
-import { parseDeezerRelated, fetchRelatedArtists } from '../src/related-artists.mjs';
+import { parseCSV, parsePlaylist, buildSeedProfile, buildSeedLanes, trackIdentity } from '../app/src/playlist-import.mjs';
+import { createInitialState, selectNext } from '../app/src/taste.mjs';
+import { createViews } from '../app/public/views.js';
+import { parseDeezerRelated, fetchRelatedArtists } from '../app/src/related-artists.mjs';
 
 test('imports Spotify-style CSV with BOM, quoted commas and multiple artists', () => {
   const csv = '\uFEFFTrack URI,Track Name,Artist Name(s),Album Name\r\nspotify:track:x,"How Long","Charlie Puth",Voicenotes\r\nspotify:track:y,"Birds, Pt. 1","Imagine Dragons","Origins"\r\n';
@@ -90,7 +90,7 @@ test('UI presents fresh discovery first, import optional and an explicit exit', 
 });
 
 test('YouTube playlist seed rejects channels impersonating the requested artist', async () => {
-  const { fetchYouTubePage } = await import('../src/youtube.mjs');
+  const { fetchYouTubePage } = await import('../app/src/youtube.mjs');
   const key = 'A'.repeat(39);
   const fake = {id:{videoId:'A1234567890'},snippet:{title:'Muse - Starlight (Official Music Video)',channelTitle:'Random Cover Channel',thumbnails:{high:{url:'https://i.ytimg.com/vi/A1234567890/hqdefault.jpg'}}}};
   const official = {id:{videoId:'B1234567890'},snippet:{title:'Muse - Uprising (Official Video)',channelTitle:'MuseVEVO',thumbnails:{high:{url:'https://i.ytimg.com/vi/B1234567890/hqdefault.jpg'}}}};
@@ -107,7 +107,7 @@ test('YouTube playlist seed rejects channels impersonating the requested artist'
 
 test('fresh discovery is the hard-coded startup choice, even if a saved playlist exists', async () => {
   const {readFile} = await import('node:fs/promises');
-  const main = await readFile(new URL('../public/main.js', import.meta.url),'utf8');
+  const main = await readFile(new URL('../app/public/main.js', import.meta.url),'utf8');
   assert.match(main,/let seedActive = false/);
   assert.match(main,/let importedPlaylist = readPlaylist\(\)/);
   assert.match(main,/case 'fresh-discovery': return startFreshDiscovery\(\)/);

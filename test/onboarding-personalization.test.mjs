@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { parseFavoriteArtists, artistSeedProfile, fromActiveFeed, likedArtistLanes } from '../src/discovery-personalization.mjs';
-import { computeTaste, createInitialState, recordChoice, selectNext } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createViews } from '../public/views.js';
+import { parseFavoriteArtists, artistSeedProfile, fromActiveFeed, likedArtistLanes } from '../app/src/discovery-personalization.mjs';
+import { computeTaste, createInitialState, recordChoice, selectNext } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createViews } from '../app/public/views.js';
 
 test('first-run artist entry trims, deduplicates, caps, and never treats Spotify URLs as artist names', () => {
   const names=parseFavoriteArtists('Harry Styles, Kacey Musgraves\nParamore;harry styles\nhttps://example.com');
@@ -45,7 +45,7 @@ test('the same artist is not forced forever: exploration and artist-streak penal
 });
 
 test('first-run choices are optional and can be reopened later from Discover', async () => {
-  const main=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const main=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(main,/if \(!shown\) openModal\('onboarding'\)/);
   assert.match(main,/action === 'onboarding-fresh'/); // case handled as an action condition below
   assert.match(main,/data-modal="onboarding-artists"/);

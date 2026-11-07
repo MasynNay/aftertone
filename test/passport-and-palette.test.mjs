@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { getPassportProgress } from '../src/discovery/passport.mjs';
-import { createViews } from '../public/views.js';
-import { createInitialState, recordChoice, restoreLastChoice } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { THEMES } from '../src/themes.mjs';
+import { getPassportProgress } from '../app/src/discovery/passport.mjs';
+import { createViews } from '../app/public/views.js';
+import { createInitialState, recordChoice, restoreLastChoice } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { THEMES } from '../app/src/themes.mjs';
 
 const track = {
   id: 'deezer:12345', title: 'Somewhere', artist: 'Singer One',
@@ -77,9 +77,9 @@ test('Passport has four real interactive goals and they are computed from the sa
 });
 
 test('Theme popup lives in top navbar and all 20 palettes appear in its generated menu',()=>{
- const markup=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const app=readFileSync(new URL('../public/main.js',import.meta.url),'utf8');
- const css=readFileSync(new URL('../public/styles.css',import.meta.url),'utf8');
+ const markup=readFileSync(new URL('../app/public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../app/public/styles.css',import.meta.url),'utf8');
  assert.equal(THEMES.length,20);
  assert.match(markup,/<div class="topbar-actions">[^]*id="theme-menu-toggle"[^]*id="theme-menu"/);
  assert.match(markup,/aria-expanded="false"/);

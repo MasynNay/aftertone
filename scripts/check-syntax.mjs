@@ -3,7 +3,7 @@ import {readdir} from 'node:fs/promises';
 import {resolve,relative,extname} from 'node:path';
 import {spawnSync} from 'node:child_process';
 const ROOT=resolve(import.meta.dirname,'..');
-const targets=['server.mjs','src','public','scripts','test'];
+const targets=['app','site','scripts','test'];
 const files=[];
 async function walk(path) {
   for(const entry of await readdir(resolve(ROOT,path),{withFileTypes:true})) {

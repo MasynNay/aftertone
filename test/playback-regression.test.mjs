@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from '../server.mjs';
-import { resolveAudiusAudio, normalizeAudiusTrack } from '../src/audius.mjs';
-import { fetchJamendoById } from '../src/jamendo.mjs';
-import { createViews } from '../public/views.js';
-import { createInitialState } from '../src/taste.mjs';
+import { createServer } from '../app/server.mjs';
+import { resolveAudiusAudio, normalizeAudiusTrack } from '../app/src/audius.mjs';
+import { fetchJamendoById } from '../app/src/jamendo.mjs';
+import { createViews } from '../app/public/views.js';
+import { createInitialState } from '../app/src/taste.mjs';
 
 const sourceTrack = { id: 'Bad1d_22', title: 'Charlie_Puth_-_How_Long', user: { name: 'Random Cover Account' },
   genre: 'Pop', is_streamable: true, is_available: true, is_stream_gated: false };

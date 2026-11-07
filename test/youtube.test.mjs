@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { configuredYouTubeKey, fetchYouTubePage, isYouTubeId, normalizeYouTubeVideo, youtubeEmbedUrl, YOUTUBE_SEARCH_LANES, parseYouTubeCursor } from '../src/youtube.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createInitialState } from '../src/taste.mjs';
-import { createViews } from '../public/views.js';
-import { createServer } from '../server.mjs';
+import { configuredYouTubeKey, fetchYouTubePage, isYouTubeId, normalizeYouTubeVideo, youtubeEmbedUrl, YOUTUBE_SEARCH_LANES, parseYouTubeCursor } from '../app/src/youtube.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
+import { createViews } from '../app/public/views.js';
+import { createServer } from '../app/server.mjs';
 
 const id = 'abCDe12FG_h';
 const item = { id: { videoId: id }, snippet: { title: 'Taylor Swift - A Lovely Track (Official Video)', channelTitle: 'TaylorSwiftVEVO',

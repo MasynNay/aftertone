@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { STARTER_TRACKS, GENRES } from '../src/catalog.mjs';
-import { createInitialState, recordChoice } from '../src/taste.mjs';
-import { createViews } from '../public/views.js';
-import { html, urlSafe } from '../public/view-utils.js';
+import { STARTER_TRACKS, GENRES } from '../app/src/catalog.mjs';
+import { createInitialState, recordChoice } from '../app/src/taste.mjs';
+import { createViews } from '../app/public/views.js';
+import { html, urlSafe } from '../app/public/view-utils.js';
 
 function pages(state = createInitialState(), current = STARTER_TRACKS[0]) {
   return createViews({ state, catalog: STARTER_TRACKS, current, allGenres: GENRES, challengeIds: [], challengeResponses: [], catalogWarning: '', catalogLive: false, collectionQuery: '', collectionSort: 'recent' });

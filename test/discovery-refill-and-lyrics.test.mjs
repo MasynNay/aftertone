@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {shouldRefill,REFILL_INTERVAL_MS,REFILL_TARGET} from '../src/discovery/auto-refill.mjs';
-import {parseLrc,lineAt,lookupLyrics} from '../src/lyrics.mjs';
+import {shouldRefill,REFILL_INTERVAL_MS,REFILL_TARGET} from '../app/src/discovery/auto-refill.mjs';
+import {parseLrc,lineAt,lookupLyrics} from '../app/src/lyrics.mjs';
 test('refill checks every three seconds but stops at a bounded ready queue',()=>{
  assert.equal(REFILL_INTERVAL_MS,3000);
  assert.equal(shouldRefill({ready:REFILL_TARGET-1,loaded:200}),true);
@@ -25,8 +25,8 @@ test('lyrics only match exact artist/title and never claim a synced line for wro
  assert.equal(result.lines.length,0);
 });
 
-import {normalizeDeezerTrack} from '../src/deezer.mjs';
-import {computeTaste} from '../src/taste.mjs';
+import {normalizeDeezerTrack} from '../app/src/deezer.mjs';
+import {computeTaste} from '../app/src/taste.mjs';
 test('unlabeled Deezer charts do not pretend every artist is Pop',()=>{
  const song=normalizeDeezerTrack({id:1980,title:'Example Song',readable:true,duration:205,preview:'https://cdn-preview.dzcdn.net/audio.mp3',artist:{name:'Jazz Artist'},album:{}});
  assert.equal(song.genre,'unknown');
@@ -34,7 +34,7 @@ test('unlabeled Deezer charts do not pretend every artist is Pop',()=>{
  assert.deepEqual(taste.genres,[]);
 });
 
-import {createServer} from '../server.mjs';
+import {createServer} from '../app/server.mjs';
 test('local lyrics endpoint uses exact artist metadata and never bundles lines',async()=>{
   const urls=[];
   const fake=async url=>{

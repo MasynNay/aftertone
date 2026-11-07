@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createViews } from '../public/views.js';
-import { createInitialState, recordChoice } from '../src/taste.mjs';
-import { normalizeDeezerTrack } from '../src/deezer.mjs';
+import { createViews } from '../app/public/views.js';
+import { createInitialState, recordChoice } from '../app/src/taste.mjs';
+import { normalizeDeezerTrack } from '../app/src/deezer.mjs';
 
 const row=(id,title,artist)=>normalizeDeezerTrack({id,title,duration:198,readable:true,preview:`https://cdnt-preview.dzcdn.net/api/1/1/${id}.mp3`,artist:{name:artist},album:{cover_medium:'https://e-cdns-images.dzcdn.net/x.jpg'}});
 const tracks=[row(12345,'bad guy','Billie Eilish'),row(12346,'Levitating','Dua Lipa'),row(12347,'Perfect','Ed Sheeran'),row(12348,'How Long','Charlie Puth')];
@@ -27,7 +27,7 @@ test('sidebar settings contain genre, language and optional import controls',()=
 });
 
 test('quick keep records decision immediately and never enters recognition modal',()=>{
- const code=readFileSync(new URL('../public/main.js', import.meta.url),'utf8');
+ const code=readFileSync(new URL('../app/public/main.js', import.meta.url),'utf8');
  assert.match(code,/else recordDecision\(selected, 'like'\)/);
  assert.doesNotMatch(code,/else openModal\('choice'/);
  assert.match(code,/const quizSession =|let quizSession =/);

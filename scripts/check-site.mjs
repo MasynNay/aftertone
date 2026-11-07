@@ -1,0 +1,25 @@
+/** Verify portfolio build keeps the real product and its import graph in place. */
+import {readFileSync,existsSync} from 'node:fs';
+import {resolve} from 'node:path';
+import assert from 'node:assert/strict';
+const root=resolve(import.meta.dirname,'..');
+const read=(name)=>readFileSync(resolve(root,'dist',name),'utf8');
+const intro=read('index.html');
+const splash=read('splash.js');
+const app=read('demo/index.html');
+const main=read('demo/main.js');
+const api=read('demo/api-browser.js');
+assert.match(intro,/id="portfolio-welcome"/, 'First-visit disclaimer must exist');
+assert.match(intro,/src="\.\/demo\/"/, 'Landing page must embed actual app');
+assert.match(intro,/href="\.\/demo\/"/, 'Direct fullscreen launch is required');
+assert.match(intro,/not a commercial music service/, 'Third-party provider disclaimer is required');
+assert.match(splash,/sessionStorage/, 'Splash dismissal must not change app localStorage');
+assert.match(app,/id="main-nav"/, 'Live app must be the real original navigation');
+assert.match(app,/id="player"/, 'Real player is required');
+assert.match(main,/\.\/src\/taste\.mjs/, 'Source imports must be rewritten for /demo/');
+assert.match(api,/\.\/src\/static-adapter\.mjs/, 'Browser adapter import must resolve');
+assert.ok(existsSync(resolve(root,'dist/demo/src/taste.mjs')));
+assert.ok(existsSync(resolve(root,'dist/CNAME')));
+assert.equal(read('CNAME').trim(),'aftertone.masynnay.com');
+assert.doesNotMatch(intro,/fictional tracks|original synthesized sounds/, 'Do not reintroduce fake demo');
+console.log('Portfolio splash, real embedded app, browser adapter, and custom-domain static output verified');

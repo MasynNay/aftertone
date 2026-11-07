@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {
   planDiscoveryRequest, filterPoolForPath, chooseWildcardGenre,
   familiarArtistKeys, explainDiscovery, DISCOVERY_SCHEDULES, PATH_DESCRIPTIONS,
-} from '../src/discovery/mode-engine.mjs';
+} from '../app/src/discovery/mode-engine.mjs';
 
 const seeds=[{artist:'Harry Styles'},{artist:'Kacey Musgraves'}];
 const related=[{artist:'Niall Horan',because:'Harry Styles'},{artist:'Maren Morris',because:'Kacey Musgraves'}];
@@ -63,13 +63,13 @@ test('Wild Card excludes saved performers, starters AND related-artist neighbors
 });
 
 test('a search bypasses hard path exclusions and is isolated in its own feed',async()=>{
-  const main=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const main=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(main,/selectRouteQueue\(\{pool:available,feedIds:feed.ids/);
   assert.match(main,/const key = `\$\{genre\}:\$\{state.source\}:\$\{searchQuery\}/);
 });
 
 test('artist-lane lookups do not turn into broad artist-name search requests',async()=>{
-  const main=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const main=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(main,/if \(requestSearch\) query\.set\('q', requestSearch\)/);
   assert.match(main,/if \(lane\) query\.set\('seed_artist', lane\.artist\)/);
   assert.doesNotMatch(main,/if \(searchQuery \|\| lane\) query\.set\('q'/);
@@ -89,7 +89,7 @@ test('disliked/familiar artist keys normalize unicode consistently',()=>{
 });
 
 test('Music Duels uses the same monochrome glyph structure as the other sidebar items',async()=>{
-  const page=await readFile(new URL('../public/index.html',import.meta.url),'utf8');
+  const page=await readFile(new URL('../app/public/index.html',import.meta.url),'utf8');
   assert.match(page, /data-view="duels"><span class="nav-icon"[^>]*>♕<\/span> Music Duels/);
   assert.doesNotMatch(page,/data-view="duels"[^\n]*<svg/);
 });

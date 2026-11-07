@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchDeezerPage, normalizeDeezerTrack } from '../src/deezer.mjs';
-import { createServer } from '../server.mjs';
-import { createInitialState, recordChoice } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createViews } from '../public/views.js';
+import { fetchDeezerPage, normalizeDeezerTrack } from '../app/src/deezer.mjs';
+import { createServer } from '../app/server.mjs';
+import { createInitialState, recordChoice } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createViews } from '../app/public/views.js';
 
 const row=(id,title='bad guy',artist='Billie Eilish')=>({id,title,title_short:title,readable:true,
   artist:{name:artist,id:7}, album:{cover_big:`https://e-cdns-images.dzcdn.net/images/cover/${id}/500x500.jpg`},

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fetchChartHitsPage, sanitizeChartEntry, parseChartCursor, sameSongTitle} from '../src/chart-hits.mjs';
-import {createServer} from '../server.mjs';
-import {createInitialState} from '../src/taste.mjs';
-import {sanitizeState} from '../src/persistence.mjs';
-import {createViews} from '../public/views.js';
+import {fetchChartHitsPage, sanitizeChartEntry, parseChartCursor, sameSongTitle} from '../app/src/chart-hits.mjs';
+import {createServer} from '../app/server.mjs';
+import {createInitialState} from '../app/src/taste.mjs';
+import {sanitizeState} from '../app/src/persistence.mjs';
+import {createViews} from '../app/public/views.js';
 
 const YOUTUBE_KEY='A'.repeat(39);
 const id='abcdefghI_J';

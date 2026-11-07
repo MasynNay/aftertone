@@ -3,7 +3,7 @@
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {apiFetch,deezerJSONP} from '../src/static-adapter.mjs';
+import {apiFetch,deezerJSONP} from '../app/src/static-adapter.mjs';
 
 const rows=Array.from({length:25},(_,i)=>({
   id:100+i,title:`Demo song ${i+1}`,artist:{id:1,name:'Example Artist'},

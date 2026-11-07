@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createInitialState } from '../src/taste.mjs';
-import { createViews } from '../public/views.js';
-import { normalizeDeezerTrack } from '../src/deezer.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
+import { createViews } from '../app/public/views.js';
+import { normalizeDeezerTrack } from '../app/src/deezer.mjs';
 
 const track = normalizeDeezerTrack({ id: 12345, title:'bad guy', title_short:'bad guy', readable:true, duration:194, rank:900000,preview:'https://cdnt-preview.dzcdn.net/api/1/1/12345.mp3', artist:{name:'Billie Eilish'}, album:{cover_big:'https://e-cdns-images.dzcdn.net/a.jpg'} });
 function view(blind=false, current=track) {

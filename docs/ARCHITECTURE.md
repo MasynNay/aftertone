@@ -8,13 +8,13 @@ The app is deliberately split into four concerns: *the music catalog*, *recommen
 
 ```text
 aftertone/
-├── public/
+├── app/public/
 │   ├── index.html            Browser shell and shared audio element
 │   ├── main.js               UI event handlers, session orchestration
 │   ├── views.js              Pure-ish HTML template functions
 │   ├── styles.css            Layout and responsive rules
 │   └── themes.css            20 theme palettes
-├── src/
+├── app/src/
 │   ├── deezer.mjs            Deezer metadata, preview resolution, pages
 │   ├── discovery/
 │   │   ├── related-deezer.mjs  Artist graph lookup + bounded TTL cache
@@ -26,7 +26,7 @@ aftertone/
 │   ├── taste.mjs             Song choice ranking and taste scoring
 │   ├── persistence.mjs       Versioned browser storage sanitization
 │   └── related-artists.mjs   Compatible server adapter to artist graph
-├── server.mjs                HTTP endpoints, safe static serving
+├── app/server.mjs                HTTP endpoints, safe static serving
 ├── test/                     Automated regression and contract checks
 ├── scripts/check-syntax.mjs  Validates all JS files (dependency-free)
 └── docs/                     Design, attribution, implementation notes

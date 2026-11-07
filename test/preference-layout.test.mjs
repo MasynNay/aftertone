@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createViews } from '../public/views.js';
-import { STARTER_TRACKS, GENRES } from '../src/catalog.mjs';
-import { createInitialState } from '../src/taste.mjs';
+import { createViews } from '../app/public/views.js';
+import { STARTER_TRACKS, GENRES } from '../app/src/catalog.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
 
 const page = (settings = {}) => createViews({
   state: { ...createInitialState(), ...settings },
@@ -26,7 +26,7 @@ test('language selection is controlled and no recording-type toggle exists', () 
   assert.match(markup,/for="language-select"/);
 });
 test('preferences controls have two columns and mobile stack style', () => {
-  const css = readFileSync(new URL('../public/styles.css', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../app/public/styles.css', import.meta.url), 'utf8');
   assert.match(css,/\.sidebar-preferences/);
   assert.match(css,/body\.mobile-filters-open/);
 });

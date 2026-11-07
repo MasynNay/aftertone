@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createTournament,voteDuel,nextDuelMatch,duelProgress,availableChampions,podiumTracks,podiumCsv,loadDuelStore,saveDuelStore,DUEL_STORAGE_KEY} from '../src/duels.mjs';
-import {renderDuels} from '../public/duels-view.js';
+import {createTournament,voteDuel,nextDuelMatch,duelProgress,availableChampions,podiumTracks,podiumCsv,loadDuelStore,saveDuelStore,DUEL_STORAGE_KEY} from '../app/src/duels.mjs';
+import {renderDuels} from '../app/public/duels-view.js';
 
 const songs=Array.from({length:16},(_,i)=>({id:`deezer:${i+1}`,title:`Track ${i+1}`,artist:`Artist ${i+1}`,source:'deezer',artwork:null,genre:'pop'}));
 const create = (size,kind='open',id='duel_t12345')=>createTournament({id,name:'Friday Night',kind,tracks:songs.slice(0,size),createdAt:100});
@@ -115,8 +115,8 @@ test('duel page renders live matchup, results, champions cup and preview actions
 });
 
 test('navigation includes Duels and player controls use the shared audio engine',()=>{
-  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
-  const js=readFileSync(new URL('../public/main.js',import.meta.url),'utf8');
+  const html=readFileSync(new URL('../app/public/index.html',import.meta.url),'utf8');
+  const js=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(html,/data-view="duels"/);
   assert.match(js,/case 'duels': main.innerHTML = renderDuels/);
   assert.match(js,/duelPreview.*data-duel-play/);

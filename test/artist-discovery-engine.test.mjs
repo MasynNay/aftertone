@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { planArtistRequest, chooseListeningLane, splitSeedLanes, artistKey, DISCOVERY_MIXES } from '../src/discovery/rotation.mjs';
-import { fetchDeezerRelatedArtists, parseDeezerRelated } from '../src/discovery/related-deezer.mjs';
-import { selectNext, createInitialState } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createViews } from '../public/views.js';
-import { createServer } from '../server.mjs';
+import { planArtistRequest, chooseListeningLane, splitSeedLanes, artistKey, DISCOVERY_MIXES } from '../app/src/discovery/rotation.mjs';
+import { fetchDeezerRelatedArtists, parseDeezerRelated } from '../app/src/discovery/related-deezer.mjs';
+import { selectNext, createInitialState } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createViews } from '../app/public/views.js';
+import { createServer } from '../app/server.mjs';
 
 const seeds=['Harry Styles','Taylor Swift','Dua Lipa','Kacey Musgraves','Paramore'].map(artist=>({artist}));
 const related=['Niall Horan','Conan Gray','Gracie Abrams','Maggie Rogers','The 1975','Halsey'].map(artist=>({artist,reason:'Recommended related performer'}));

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parsePlaylistLink, importPlaylistLink} from '../src/playlist-links.mjs';
-import {createServer} from '../server.mjs';
-import {createViews} from '../public/views.js';
-import {createInitialState} from '../src/taste.mjs';
-import {chooseListeningLane,DISCOVERY_MIXES} from '../src/discovery/rotation.mjs';
+import {parsePlaylistLink, importPlaylistLink} from '../app/src/playlist-links.mjs';
+import {createServer} from '../app/server.mjs';
+import {createViews} from '../app/public/views.js';
+import {createInitialState} from '../app/src/taste.mjs';
+import {chooseListeningLane,DISCOVERY_MIXES} from '../app/src/discovery/rotation.mjs';
 
 test('playlist link parser only accepts HTTPS Deezer and Spotify playlist paths',()=>{
   assert.deepEqual(parsePlaylistLink('https://www.deezer.com/en/playlist/12345678?utm_source=share'),{provider:'deezer',id:'12345678'});

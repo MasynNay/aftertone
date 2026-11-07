@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchFeaturedPage, FEATURED_VIDEOS } from '../src/featured-hits.mjs';
-import { createServer } from '../server.mjs';
-import { createInitialState } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createViews } from '../public/views.js';
+import { fetchFeaturedPage, FEATURED_VIDEOS } from '../app/src/featured-hits.mjs';
+import { createServer } from '../app/server.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createViews } from '../app/public/views.js';
 
 test('curated starter links belong to uniquely identified YouTube videos and retain canonical artist/title artwork', () => {
   assert.ok(FEATURED_VIDEOS.length >= 20);

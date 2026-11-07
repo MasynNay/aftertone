@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {createTournament, voteDuel, nextDuelMatch, hallOfFame, hallOfFameCsv, availableHallSeasons, loadDuelStore, saveDuelStore} from '../src/duels.mjs';
-import {TOURNAMENT_THEMES, pickThemedEntries, tournamentAvailability, songYear, isMysteryTournament} from '../src/tournament-themes.mjs';
-import {renderDuels} from '../public/duels-view.js';
+import {createTournament, voteDuel, nextDuelMatch, hallOfFame, hallOfFameCsv, availableHallSeasons, loadDuelStore, saveDuelStore} from '../app/src/duels.mjs';
+import {TOURNAMENT_THEMES, pickThemedEntries, tournamentAvailability, songYear, isMysteryTournament} from '../app/src/tournament-themes.mjs';
+import {renderDuels} from '../app/public/duels-view.js';
 
 const songs=Array.from({length:32},(_,i)=>({id:`deezer:${i+1}`,source:'deezer',artist:`Artist ${i+1}`,title:`Track ${i+1}`,genre:i%2?'rock':'pop',genreVerified:true,releaseYear:i<12?2005:null,artwork:null}));
 const random=()=>.25;
@@ -99,7 +99,7 @@ test('existing v1 tournament archives load with no themeId and new themed archiv
 });
 
 test('theme and Hall of Fame controls are wired to the browser controller',()=>{
-  const main=readFileSync(new URL('../public/main.js',import.meta.url),'utf8');
+  const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(main,/data-duel-theme/);
   assert.match(main,/pickThemedEntries/);
   assert.match(main,/duel-season/);

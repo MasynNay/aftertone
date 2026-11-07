@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { likelyMusicRecording, trackLanguage, matchesLanguage, candidateOriginalFromUpload } from '../src/recording-quality.mjs';
-import { normalizeAudiusTrack, fetchAudiusPage } from '../src/audius.mjs';
-import { fetchJamendoPage } from '../src/jamendo.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createInitialState } from '../src/taste.mjs';
-import { createViews } from '../public/views.js';
-import { createServer } from '../server.mjs';
+import { likelyMusicRecording, trackLanguage, matchesLanguage, candidateOriginalFromUpload } from '../app/src/recording-quality.mjs';
+import { normalizeAudiusTrack, fetchAudiusPage } from '../app/src/audius.mjs';
+import { fetchJamendoPage } from '../app/src/jamendo.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createInitialState } from '../app/src/taste.mjs';
+import { createViews } from '../app/public/views.js';
+import { createServer } from '../app/server.mjs';
 
 const real = { id:'aS4_1111', title:'Little Lights', user:{name:'My Real Artist'}, duration:194, genre:'Pop', tags:'lang:en, pop', is_streamable:true, is_available:true };
 

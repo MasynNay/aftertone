@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createInitialState } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { validDeezerPreview, resolveDeezerPreview, normalizeDeezerTrack } from '../src/deezer.mjs';
-import { createServer } from '../server.mjs';
-import { createViews } from '../public/views.js';
+import { createInitialState } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { validDeezerPreview, resolveDeezerPreview, normalizeDeezerTrack } from '../app/src/deezer.mjs';
+import { createServer } from '../app/server.mjs';
+import { createViews } from '../app/public/views.js';
 
 const preview='https://cdnt-preview.dzcdn.net/api/1/1/12345.mp3?exp=1';
 test('Old recording checkbox preference disappears during migration and is never re-saved',()=>{
@@ -15,7 +15,7 @@ test('Old recording checkbox preference disappears during migration and is never
   assert.equal(Object.hasOwn(createInitialState(),'originalsOnly'),false);
   const controls=createViews({state:now,catalog:[],current:null,allGenres:['all'],challengeIds:[],challengeResponses:[],feed:{}}).renderSidebarPreferences();
   assert.doesNotMatch(controls,/original recordings only|original tracks only|toggle-originals/i);
-  const js=readFileSync(new URL('../public/main.js',import.meta.url),'utf8');
+  const js=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.doesNotMatch(js,/state\.originalsOnly|toggle-originals|originals:/);
 });
 test('Only Deezer CDN HTTPS preview links may be played, not arbitrary user URLs',()=>{
@@ -49,7 +49,7 @@ test('Search excludes tracks without a usable provider preview instead of showin
 });
 
 test('Continuous listening may advance Deezer songs without opening a provider iframe',()=>{
- const js=readFileSync(new URL('../public/main.js',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
  assert.match(js,/function maybeResumeContinuous\(\)/);
  assert.match(js,/if \(current\.source === 'youtube'\)/);
  assert.doesNotMatch(js,/\['youtube','deezer'\]\.includes\(current\.source\)/);

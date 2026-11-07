@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { fetchDeezerPage } from '../src/deezer.mjs';
-import { selectRouteQueue, isActiveRequest } from '../src/discovery/route-session.mjs';
-import { planDiscoveryRequest } from '../src/discovery/mode-engine.mjs';
-import { createServer } from '../server.mjs';
+import { fetchDeezerPage } from '../app/src/deezer.mjs';
+import { selectRouteQueue, isActiveRequest } from '../app/src/discovery/route-session.mjs';
+import { planDiscoveryRequest } from '../app/src/discovery/mode-engine.mjs';
+import { createServer } from '../app/server.mjs';
 
 const t=(id,artist='Harry Styles',title='Satellite')=>({id,title,artist:{name:artist},readable:true,duration:213,rank:500000,
   album:{cover_big:'https://cdn.example.com/album.jpg'},preview:`https://cdnt-preview.dzcdn.net/${id}.mp3`});
@@ -120,7 +120,7 @@ test('a stale outgoing mode cannot overwrite the active mode’s card',()=>{
 });
 
 test('UI changes mode before choosing a new card, and the new feed is primed first',async()=>{
-  const app=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const app=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(app,/if\(feed\.primed\) chooseNext\(\);/);
   assert.match(app,/if\(!feed\.primed \|\| !availableCount\(state\.genre\)\) void loadMore/);
   assert.match(app,/isActiveRequest\(feed,getFeed\(genre\)\)/);
@@ -142,7 +142,7 @@ test('HTTP discovery supports no-key exact artist search through the new catalog
 });
 
 test('switching discovery paths exits an active artist search rather than reusing its song results',async()=>{
-  const app=await readFile(new URL('../public/main.js',import.meta.url),'utf8');
+  const app=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   const block=app.slice(app.indexOf('function changeDiscoveryPath('),app.indexOf('function goTo(',app.indexOf('function changeDiscoveryPath(')));
   assert.match(block,/const wasSearching=Boolean\(searchQuery\)/);
   assert.match(block,/searchQuery=''; searchDraft='';/);

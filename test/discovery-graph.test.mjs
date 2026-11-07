@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeRelatedArtists, interleaveArtistBranches } from '../src/discovery/graph.mjs';
-import { selectNext } from '../src/taste.mjs';
-import { DISCOVERY_MIXES, chooseListeningLane } from '../src/discovery/rotation.mjs';
+import { mergeRelatedArtists, interleaveArtistBranches } from '../app/src/discovery/graph.mjs';
+import { selectNext } from '../app/src/taste.mjs';
+import { DISCOVERY_MIXES, chooseListeningLane } from '../app/src/discovery/rotation.mjs';
 
 const neighbors=(parent,count)=>Array.from({length:count},(_,i)=>({artist:`${parent} Neighbor ${i+1}`,because:parent}));
 

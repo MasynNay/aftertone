@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { STARTER_TRACKS, getStarterTrack } from '../src/catalog.mjs';
-import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreLastChoice } from '../src/taste.mjs';
-import { makeRecognitionQuiz } from '../src/quiz.mjs';
-import { encodeChallenge, decodeChallenge } from '../src/challenge.mjs';
-import { sanitizeState, loadState, saveState } from '../src/persistence.mjs';
-import { resolveCommonsAudio } from '../src/commons.mjs';
-import { fetchJamendoCatalog } from '../src/jamendo.mjs';
-import { createServer } from '../server.mjs';
+import { STARTER_TRACKS, getStarterTrack } from '../app/src/catalog.mjs';
+import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreLastChoice } from '../app/src/taste.mjs';
+import { makeRecognitionQuiz } from '../app/src/quiz.mjs';
+import { encodeChallenge, decodeChallenge } from '../app/src/challenge.mjs';
+import { sanitizeState, loadState, saveState } from '../app/src/persistence.mjs';
+import { resolveCommonsAudio } from '../app/src/commons.mjs';
+import { fetchJamendoCatalog } from '../app/src/jamendo.mjs';
+import { createServer } from '../app/server.mjs';
 
 const first = STARTER_TRACKS[0];
 const second = STARTER_TRACKS.find((track) => track.genre !== first.genre);
@@ -122,7 +122,7 @@ test('HTTP server delivers frontend and catalog without dependencies', async () 
     const address = `http://127.0.0.1:${server.address().port}`;
     const [health, catalog, page, script, denied] = await Promise.all([
       fetch(`${address}/api/health`), fetch(`${address}/api/catalog`),
-      fetch(address), fetch(`${address}/src/taste.mjs`), fetch(`${address}/src/../server.mjs`),
+      fetch(address), fetch(`${address}/src/taste.mjs`), fetch(`${address}/src/../app/server.mjs`),
     ]);
     assert.equal(health.status, 200);
     assert.equal((await health.json()).status, 'ok');

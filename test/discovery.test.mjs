@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fetchCommonsDiscovery, normalizeCommonsFile, parseCursor, SEARCH_LANES } from '../src/live-commons.mjs';
-import { fetchJamendoPage, fetchJamendoById } from '../src/jamendo.mjs';
-import { THEMES, THEME_IDS } from '../src/themes.mjs';
-import { createInitialState, recordChoice } from '../src/taste.mjs';
-import { sanitizeState } from '../src/persistence.mjs';
-import { createServer } from '../server.mjs';
+import { fetchCommonsDiscovery, normalizeCommonsFile, parseCursor, SEARCH_LANES } from '../app/src/live-commons.mjs';
+import { fetchJamendoPage, fetchJamendoById } from '../app/src/jamendo.mjs';
+import { THEMES, THEME_IDS } from '../app/src/themes.mjs';
+import { createInitialState, recordChoice } from '../app/src/taste.mjs';
+import { sanitizeState } from '../app/src/persistence.mjs';
+import { createServer } from '../app/server.mjs';
 
 const popFile = (n) => ({ pageid: n, title: `File:Bright_Pop_Song_${n}.mp3`, imageinfo: [{
   url: `https://upload.wikimedia.org/wikipedia/commons/3/38/pop${n}.mp3`,
