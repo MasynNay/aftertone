@@ -26,3 +26,11 @@ The first GitHub Pages version called "v1.0.1" was an independent, 12-track fict
 - Live Deezer availability and audio playback have **not** been network verified in this sandbox. Do not misrepresent simulated tests as live validation.
 - Optional lyrics may require an authorized lyrics integration and a CORS-permitting endpoint.
 - User should not need to redo Cloudflare CNAME (`aftertone` → `masynnay.github.io`), since this preserves the existing GitHub Pages domain.
+
+## Verified published milestone — November 7, 2026
+
+- Restored original app was published in GitHub Pages run 42407689597, completed successfully.
+- Local tests: 235 passing; static module imports: 41 checked, zero missing; local server smoke check: passed.
+- Deezer browser playback remains unverified in this restricted sandbox (Chromium navigation blocked, outbound DNS unavailable). Do not claim it is live-tested.
+- Next external smoke test: hard-refresh aftertone.masynnay.com, search artist, play real preview, volume, autoplay, Keep, Music Duels.
+- Public use of Deezer previews for a music game may require Deezer's authorization.

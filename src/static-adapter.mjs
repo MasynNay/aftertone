@@ -71,7 +71,7 @@ const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:
 async function routeApi(url){
   const p=url.searchParams;
   try{
-    if(url.pathname==='/api/health')return json({status:'ok',name:'AFTERTONE',version:'0.10.0',mode:'static-deezer'});
+    if(url.pathname==='/api/health')return json({status:'ok',name:'AFTERTONE',version:'0.10.1',mode:'static-deezer'});
     if(url.pathname==='/api/catalog')return json({tracks:STARTER_TRACKS,count:STARTER_TRACKS.length,live:true,genres:GENRES,provider:'deezer',providers:['deezer'],expandable:true,youtubeConfigured:false,featuredCount:0,note:'Live Deezer catalog metadata; on-demand preview audio from Deezer. No music files are hosted by AFTERTONE.'});
     if(url.pathname==='/api/discover'){
       if((p.get('source')||'deezer')!=='deezer')return json({error:'Only Deezer discovery is configured on this public site.'},400);
