@@ -1,7 +1,9 @@
-dist/
 node_modules/
 .env
 .env.*
-*.log
+!.env.example
 .DS_Store
 coverage/
+*.log
+.vscode/
+.idea/

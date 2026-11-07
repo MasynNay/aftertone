@@ -1,82 +1,59 @@
 # AFTERTONE
 
-**[Launch the interactive demo](https://masynnay.github.io/aftertone/)** · **Planned custom domain:** [aftertone.masynnay.com](https://aftertone.masynnay.com) *(not configured yet)*
+**The real music discovery app, not a synthetic-track showcase.**
 
-**Music discovery, made playable.** A deployable, no-backend case study of an independently developed discovery-game prototype.
+[**Launch AFTERTONE ↗**](https://aftertone.masynnay.com) · [GitHub Pages deployment](https://masynnay.github.io/aftertone/) · [Release notes](docs/CHANGELOG.md)
 
-This repository contains the **public-safe showcase**, not the original Deezer-powered local app. The demo uses fictional track names and original sound motifs synthesized with Web Audio. It neither downloads nor reproduces commercial recordings or lyrics, makes no external API requests, requires no account or API key, and does not load external scripts or analytics. All demo decisions are saved in localStorage, with a visible **Reset demo** control.
+AFTERTONE makes discovering music interactive: hear a short excerpt, swipe **Keep** or **Pass**, use personalized discovery routes, build a local collection, and compete in fully featured Music Duels. Everything persists privately in your browser.
 
-## Try it locally
+## The full application
 
-```bash
-npm run check
-npm run preview
+The public interface is restored from the original **AFTERTONE v0.10.0** application. This is not the previously published 12-song fictional demo. It includes:
+
+- **Real Deezer catalog metadata and album artwork**, on-demand short preview audio from Deezer's CDN, search, related-artist discovery and optional public Deezer playlist imports.
+- **Comfort Zone, New Territory, and Wild Card** discovery with independent candidate selection, personalized paths, browsing by genre, era and language, and artist-seed rotation.
+- **Continuous autoplay** after the user starts playback, as well as playback controls, volume control, mute, skip, Keep/Pass, undo and visual feedback.
+- **Collection, taste map, Tune Lab, Challenges,** and six **Music Duels** tournament arenas with a persistent Hall of Fame.
+- **20 appearance themes**, responsive controls, local progress persistence and CSV exports.
+
+## Deployment modes
+
+| Mode | Description |
+| --- | --- |
+| **GitHub Pages** (this website) | Complete original interface. An in-browser adapter queries Deezer's public JSONP catalog API, then loads original Deezer 30-second previews on demand. There are no third-party proxy services and no hosted copies of recordings. Live provider access can vary by region or availability. |
+| **Local Node app** | Original `/server.mjs` backend, which makes direct Deezer API requests. It is the primary maintained application and includes optional locally configured services. |
+
+**Provider rights:** Deezer's public API and preview links are not a blanket license for public use in a music game. Deezer has directed similar non-commercial discovery-game projects to seek approval from Deezer for Business. Public music/game deployment needs the appropriate provider authorization; this code alone does not grant it. The public site does not store, rebroadcast, download, or rehost audio.
+
+**Limitations:** GitHub Pages cannot run a Node server. The browser adapter depends on Deezer's JSONP support and externally hosted audio URLs and may fail if Deezer changes their API. No official full-track playback SDK or user login is integrated. Optional synced lyrics depend on LRCLIB CORS and content rights. User-private Jellyfin and other local configured services are only supported by the local server, not public Pages. No key or credential is published.
+
+## Run locally
+
+Node.js 20+ is required. The original local backend remains unchanged:
+
+```sh
+npm start
+# visit http://127.0.0.1:4173
 ```
 
-Then open http://127.0.0.1:4174. Requires Node.js 20+ for the build, tests and local preview server. On macOS you can instead double-click `START_PORTFOLIO_MAC.command` after making it executable. Opening the HTML directly as a `file://` URL may not work because browser ES modules require a web origin.
+Or use `START_MAC.command` / `START_WINDOWS.bat` after extracting the repository.
 
-## What visitors can try
+## Validate and build
 
-- Three different recommendation paths: **Comfort Zone**, **New Territory**, and **Wild Card**. These use separate candidate eligibility rules, not just three labels.
-- Eight-second original Web Audio synthesizer previews with persistent volume, an explicit autoplay next-song toggle, skip without a vote, keyboard shortcuts, blind mode, Pass, Keep and Undo.
-- Collection storage in this browser with JSON/CSV downloads, plus a 4-song bracket with semifinals, bronze matchup, final, archived podiums and a demo Hall of Fame.
-- Responsive presentation with keyboard focus, reduced-motion support and descriptive control labels.
-
-**This is a portfolio demonstration.** The full local application includes a much larger catalog, 20 app themes, a playlist importer, 22-second remote audio previews, larger tournament arenas and 211 automated checks as of v0.10.0. That prototype remains local and is not being publicly deployed until relevant music and lyrics permissions are addressed. The public demo does not claim a commercial music catalog or live provider authorization.
-
-## Deploy to GitHub Pages
-
-1. Create an empty public GitHub repository named **`aftertone`** under **`MasynNay`**. Do not add a generated README or license.
-2. Add the **contents of this folder** to the repository root and push to `main`.
-3. In GitHub, open **Settings → Pages → Build and deployment → Source → GitHub Actions**.
-4. The included workflow checks the site, builds `dist/`, and deploys only public-safe static files. Once Actions finishes, the default public address will be `https://masynnay.github.io/aftertone/`.
-5. Optional recommended custom domain: set `aftertone.masynnay.com` in repository Settings → Pages, then in Cloudflare add a **DNS only** CNAME named `aftertone` with target `masynnay.github.io`; enable HTTPS after domain verification. See `docs/CUSTOM_DOMAIN.md`.
-
-**Do not copy your local application's `.env` file, API keys, provider downloads or copyrighted media into this public repository.** The build intentionally excludes test data, local application source, and documentation from the published Pages artifact.
-
-To build without deploying:
-
-```bash
-npm run build
+```sh
+npm run check  # original suite + browser adapter contract tests + static build
+npm run build  # static release into dist/
 ```
 
-Only `dist/` should be hosted. It contains `index.html`, `assets/`, `src/demo-engine.mjs`, and `.nojekyll`.
+The GitHub Actions workflow publishes only `dist/` to GitHub Pages. That directory is rebuilt from `public/` and the browser-safe `src/` modules, not from the former fictional-track showcase. `.env` files, local account tokens, test fixtures and media are not included in the published assets.
 
-## Code layout
+## Folder guide
 
-```
-index.html                     Semantic case-study content and demo shell
-assets/styles.css              Responsive visual system
-assets/mark.svg                Original SVG brand mark
-assets/app.js                  Browser UI, accessible actions and session state
-assets/audio.js                Short original synth motif player
-src/demo-engine.mjs            Pure discovery path and tournament logic
-test/engine.test.mjs           Dependency-free Node test suite
-scripts/build.mjs              Safe static build, copies only public assets
-scripts/preview.mjs            Dependency-free local preview server
-START_PORTFOLIO_MAC.command     Optional Mac launcher
-.github/workflows/pages.yml    Automated tests and GitHub Pages deployment
-docs/                         Architecture, rights and publishing notes
-CONTINUE_HERE.md               Durable development checkpoint
-```
+- `public/` — original UI, CSS, themes, controls, game screens, browser API bridge.
+- `src/` — original discovery, taste, playlist, Deezer, quiz, tournament, audio metadata modules.
+- `server.mjs` — original Node server for local use.
+- `scripts/` — checks and GitHub Pages build.
+- `test/` — original test suite plus browser API contract tests.
+- `docs/` — architecture, history, and deployment notes.
 
-## Technical design choices
-
-- Vanilla HTML, CSS and JavaScript keep the static demo auditable and free of build dependencies.
-- Recommendation decisions and bracket transitions are pure functions that can be tested independently of the UI.
-- Session state is stored under `aftertone:portfolio-demo:v1`, separate from the local app's storage keys.
-- Sound motifs are generated at the moment of interaction from a fixed note sequence; no sample files or third-party audio are served.
-- The demo does not use `fetch()`, remote fonts, analytics or tracking scripts.
-
-## Limitations
-
-This is a demonstration of design and technical architecture, **not** an independently licensed commercial music service. Recommendation sample size is intentionally small (12 fictional tracks) and the demo sounds are synthesized, not actual published music. Web Audio requires a user gesture and may be unavailable in some browsers. Detailed provider integrations belong to the separate local prototype.
-
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md), [DEPLOYMENT.md](docs/DEPLOYMENT.md), and [RIGHTS_AND_PRIVACY.md](docs/RIGHTS_AND_PRIVACY.md).
-
-## Playback continuity
-
-- **Autoplay: On** is the default, matching the earlier continuous listening experience. A visitor must first press **Play preview** because browsers require an intentional interaction before starting sound. After that, the next fictional track starts automatically when each 8-second motif ends. **Keep**, **Pass**, **Skip** and switching discovery routes also continue playback while the session is active.
-- Turning **Autoplay: Off** stops automatic advancement and stops after the current audio preview. Manual Skip remains possible. Pause stops the continuous session. The volume and autoplay preference are saved in this browser.
-- **S** skips without voting; **Space** plays/pauses. Export JSON and CSV from Collection at any time.
-- All original local v0.10 features remain in the separate untouched full source package. Static GitHub Pages cannot safely replace server-backed catalog and music playback without approved provider terms and a hosting backend; it is not accurate to claim that those source integrations execute on Pages.
+Development checkpoint: [`CONTINUE_HERE.md`](CONTINUE_HERE.md).

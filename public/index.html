@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0c0e15" />
+  <meta name="description" content="Find your next favorite song with artwork and short music previews. Explore mainstream song metadata with short Deezer previews. Swipe, save favorites, and play a blind recognition game when you want." />
+  <title>AFTERTONE — Discover your sound</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/themes.css" />
+  <script type="module" src="/main.js"></script>
+</head>
+<body data-theme="night">
+  <div id="app" class="shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="/" aria-label="AFTERTONE Home" data-nav="discover">
+        <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>aftertone<span class="brand-period">.</span></span>
+      </a>
+      <div class="sidebar-label">YOUR SPACE</div>
+      <nav class="primary-nav" id="main-nav">
+        <button class="nav-link active" data-view="discover"><span class="nav-icon">◉</span> Discover <span class="nav-key">01</span></button>
+        <button class="nav-link" data-view="collection"><span class="nav-icon">♡</span> Collection <span class="nav-count" id="sidebar-saves">0</span></button>
+        <button class="nav-link" data-view="taste"><span class="nav-icon">⬡</span> Taste map</button>
+        <button class="nav-link" data-view="quiz"><span class="nav-icon">✦</span> Tune Lab</button>
+        <button class="nav-link" data-view="duels"><span class="nav-icon" aria-hidden="true">♕</span> Music Duels</button>
+        <button class="nav-link" data-view="challenges"><span class="nav-icon">↗</span> Challenges</button>
+      </nav>
+      <section id="sidebar-preferences" class="sidebar-preferences" aria-label="Discovery settings"></section>
+      <div class="sidebar-grow"></div>
+      <div class="sidebar-bottom">
+        <div class="sidebar-profile"><div class="avatar">A<span>✦</span></div><div><strong>Listener 001</strong><small>Local, private profile</small></div><span class="profile-pulse"></span></div>
+      </div>
+    </aside>
+    <div class="main-column">
+      <header class="topbar">
+        <div class="topbar-crumb"><span class="crumb-muted">YOUR SPACE</span><span class="crumb-divider">/</span><strong id="current-view-label">DISCOVER</strong></div>
+        <div class="topbar-actions"><button type="button" id="mobile-refine-toggle" aria-expanded="false">☷ Filters</button><span class="private-pill"><span class="tiny-pulse"></span>Saved on this device</span><div class="theme-picker" id="theme-picker"><button id="theme-menu-toggle" class="icon-button theme-moon-button" type="button" aria-label="Choose appearance theme" title="Choose appearance theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-menu"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/></svg></button><div id="theme-menu" class="theme-menu" hidden><div class="theme-menu-heading"><strong>Pick your atmosphere</strong><small>20 themes · applies instantly</small></div><div id="theme-menu-grid" class="theme-menu-grid" role="group" aria-label="Appearance themes"></div></div></div><button id="sound-toggle" class="icon-button" aria-label="Mute music" title="Mute or unmute">♫</button><button id="help-button" class="icon-button help-button" aria-label="How to play" title="How to play">?</button></div>
+      </header>
+      <main id="main-content" tabindex="-1" aria-live="polite"></main>
+      <footer class="app-footer"><span>AFTERTONE <span class="footer-dot">✳</span> MUSIC DISCOVERY, YOUR WAY</span><span>MADE FOR CURIOUS EARS · v0.10.1</span></footer>
+    </div>
+  </div>
+  <div id="modal-root" class="modal-root" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <audio id="player" preload="none"></audio>
+</body>
+</html>
