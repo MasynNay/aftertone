@@ -96,3 +96,10 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Updated three existing snapshot-like text assertions, and added three focused editorial consistency tests. Full local `npm run check` passed **224/224 tests**, with static build and **67/67 local ESM import links** validated.
 - Scope is intentionally copy-only; preserve routes, controls, source IDs, data keys, Deezer adapter and business logic. README section casing and changelog aligned.
 - Check GitHub Pages build after publishing. Live provider playback is not exercised by CI and must never be described as verified merely because CI passes.
+
+## JSONP concurrent abort isolation — November 9, 2026 (PR pending)
+
+- Found a request-lifecycle defect in `app/src/static-adapter.mjs`: identical in-flight JSONP requests shared one Promise but only the first caller's abort signal was wired. Canceling one listener could cancel another, while canceling a later listener had no effect. This can disrupt simultaneous discovery actions.
+- Branch `fix/jsonp-request-isolation` removes shared in-flight Promise reuse so every caller owns its script, callback, timeout and abort handler. Added `test/jsonp-isolation.test.mjs` to assert concurrent identical requests are isolated and cleaned up.
+- GitHub Actions `pages.yml` now runs `npm run check` on PRs, with deployment disabled for PR events. Main branch deployment behavior remains unchanged.
+- Validation status: code and test committed; GitHub PR checks must run before merging. No live Deezer playback, browser navigation or music permissions have been verified by this change. Issue #2 remains open for broader recovery behavior.
