@@ -1,5 +1,7 @@
 <div align="center">
 
+<a href="https://aftertone.masynnay.com/"><img src="site/assets/mark.svg" alt="AFTERTONE music waveform icon" width="100" height="100"></a>
+
 # AFTERTONE
 
 **Find your next favorite song.**
