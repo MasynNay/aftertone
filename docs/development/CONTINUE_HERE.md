@@ -103,3 +103,9 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Branch `fix/jsonp-request-isolation` removes shared in-flight Promise reuse so every caller owns its script, callback, timeout and abort handler. Added `test/jsonp-isolation.test.mjs` to assert concurrent identical requests are isolated and cleaned up.
 - GitHub Actions `pages.yml` now runs `npm run check` on PRs, with deployment disabled for PR events. Main branch deployment behavior remains unchanged.
 - Validation status: code and test committed; GitHub PR checks must run before merging. No live Deezer playback, browser navigation or music permissions have been verified by this change. Issue #2 remains open for broader recovery behavior.
+
+## JSONP failure recovery regression — November 11, 2026 (PR #9)
+
+- Added `test/jsonp-failure-recovery.test.mjs` on PR #9 to cover simulated script network failures, callback/script cleanup, successful subsequent requests, timeout cleanup and harmless late error events. These tests exercise the browser adapter's failure path without contacting Deezer.
+- Commit `b0d3394a3ef5c0d8fbb64ba10f37945bc6d9d95b`. Run `npm run check` in GitHub Actions and inspect the PR checks before merging. Neither mock tests nor CI establish live preview playback or media rights.
+- Issue #2 remains open: user-visible retry/skip/autoplay behavior and real browser verification are not yet covered.
