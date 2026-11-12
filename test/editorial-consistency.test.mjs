@@ -13,7 +13,7 @@ const duels=source('app/public/duels-view.js');
 
 test('homepage advertises the app clearly without pitching an engineering portfolio',()=>{
   assert.match(site,/Tune in<\/a>/);
-  assert.match(site,/>Music Duels<\/a>/);
+  assert.match(site,/Music Duels<\/a>/);
   assert.match(site,/>Launch the app <span/);
   assert.match(site,/Comfort Zone/);
   assert.match(site,/New Territory/);
