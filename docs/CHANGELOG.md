@@ -1,3 +1,12 @@
+## v0.11 preview — Safe Progress Backup and Restore (November 11, 2026)
+
+- Added **Backup Progress** and **Restore Backup** in Collection (even when no tracks have been saved), without changing the existing song-list JSON and CSV exports.
+- Versioned JSON file includes saved tracks, Keep/Pass history, visual and listening preferences, Music Duels tournaments, Tune Lab score, and selected favorite artists. No music files are exported.
+- Restore validates format, size, track identities, tournament structures and other fields, previews the counts, asks before replacing current data, and attempts rollback on browser-storage failures.
+- Six Node regression tests and a Chromium end-to-end round-trip test cover export, import, malformed files, and rollback. Existing music discovery and playback logic are unchanged.
+- This first backup format does **not** include optional imported playlist files or lyric timing offsets. These remain in the browser and must be recreated after moving to a new browser. Details: [Backup guide](BACKUP_RESTORE.md).
+- Implementation: [PR #12](https://github.com/MasynNay/aftertone/pull/12). The rest of v0.11 remains on the [roadmap](ROADMAP.md).
+
 ## v0.10.2 stability milestone — Deezer recovery (November 11, 2026)
 
 - Added **Retry Preview** and **Skip Without Voting** after unavailable audio. Retrying requests a fresh link; skipping is neutral and does not alter favorites or listening history.

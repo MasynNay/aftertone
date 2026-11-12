@@ -123,3 +123,13 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Main UI offers Retry Preview and Skip Without Voting after a failed recording; retry invalidates cached previews and skip does not record a decision or change favorites/history. Catalog failures include Retry Discovery.
 - Node regression tests cover per-request cancellation isolation and script timeout/network cleanup. Chromium PR run `43138292719` passed, including deliberately blocked audio and neutral-skip validation.
 - Issue #2 remains open for actual provider/region validation. Issue #3 remains open for required third-party media permissions. CI success is not proof of live Deezer playback.
+
+
+## v0.11 data durability milestone — November 11, 2026
+
+- Merged PR #12 as `4f3af6775aee17ecabbc531010249967b6592090`: backup/restore from Collection in the original full AFTERTONE app.
+- New `app/src/progress-backup.mjs` exports versioned JSON for sanitized local session, duel archives, Tune Lab results and artist seed choices. No audio, Deezer tokens, or copyrighted recordings are bundled. Size cap: 4 MB.
+- Restore validates input fully first, confirms destructive replacement, backs up prior storage keys, performs writes, and attempts rollback on failure; full app reload rehydrates imported data.
+- Node tests cover valid round trips, corrupted/oversized/unsupported backups, transactional rollback, and Collection UI. Browser smoke test downloads and imports the real file with a deliberately damaged test session and verifies recovery. PR #12 CI passed.
+- Not yet included: optional imported playlist files, lyric timing offsets, additional migration formats. Keep roadmap issue #5 open until those omissions are addressed and cross-browser manual restore is checked.
+- Never conflate mocked Deezer browser tests with proof of live provider authorization or playback.
