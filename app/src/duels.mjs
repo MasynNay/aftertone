@@ -11,6 +11,7 @@
 import { tournamentTheme, songYear } from './tournament-themes.mjs';
 
 export const DUEL_STORAGE_KEY = 'aftertone:duels:v1';
+export const DUEL_SELECTION_KEY = 'aftertone:duels:selection:v1';
 export const DUEL_MAX_ARCHIVES = 40;
 export const DUEL_SIZES = Object.freeze([4, 8, 16]);
 const ALLOWED_SOURCES = new Set(['deezer', 'audius', 'jamendo', 'commons', 'jellyfin']);
@@ -145,6 +146,23 @@ export function saveDuelStore(storage, tournaments) {
     storage.setItem(DUEL_STORAGE_KEY, JSON.stringify({version:1,tournaments:tournaments.slice(-DUEL_MAX_ARCHIVES)}));
     return true;
   } catch { return false; }
+}
+
+/** Remember an explicitly opened bracket across reloads. The newest unfinished
+ * tournament is selected by default only when no prior selection was saved.
+ * Closing a bracket stays closed even after refreshing.
+ */
+export function loadDuelSelection(storage,tournaments=[]) {
+  try {
+    const saved=storage.getItem(DUEL_SELECTION_KEY);
+    if(saved==='closed')return null;
+    if(saved && tournaments.some(event=>event.id===saved))return saved;
+  }catch { /* Browser storage may be unavailable. */ }
+  return [...tournaments].reverse().find(event=>event.status==='active')?.id || null;
+}
+export function saveDuelSelection(storage,id) {
+  try {storage.setItem(DUEL_SELECTION_KEY,id||'closed');return true;}
+  catch {return false;}
 }
 
 /** CSV export is playlist-ready metadata, not an unauthorized audio download. */

@@ -2720,3 +2720,11 @@ h1 em {
 .discovery-empty-state .empty-actions {margin-top:10px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px;}
 .discovery-empty-state .empty-actions button {min-height:40px;}
 @media(max-width:650px){.first-listen-guide ol{grid-template-columns:1fr;gap:12px}.first-listen-intro{align-items:flex-start;flex-direction:column}.discovery-empty-state .empty-actions{width:100%;}.discovery-empty-state .empty-actions button{flex:1 1 150px;}}
+
+/* Arena availability follows the selected bracket size and current song pool. */
+.duel-availability-row {display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-top:12px;}
+.duel-availability-row #duel-eligibility {flex:1 1 260px;margin:0;}
+.duel-availability-row>[data-duel-action="discover-more"] {min-height:40px;}
+.duel-availability-row>[hidden] {display:none!important;}
+.duel-arena-option em[data-duel-status][data-ready="true"] {color:var(--accent);}
+.duel-arena-option em[data-duel-status][data-ready="false"] {color:var(--muted);}

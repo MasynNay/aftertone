@@ -4,7 +4,7 @@
  * tournament state transitions stay in src/duels.mjs.
  */
 import { availableChampions, availableHallSeasons, duelProgress, hallOfFame, nextDuelMatch, podiumTracks } from '../src/duels.mjs';
-import { TOURNAMENT_THEMES, isMysteryTournament, tournamentAvailability, tournamentTheme } from '../src/tournament-themes.mjs';
+import { TOURNAMENT_THEMES, isMysteryTournament, tournamentAvailability, tournamentTheme, tournamentStatusLabel } from '../src/tournament-themes.mjs';
 import { html, urlSafe } from './view-utils.js';
 
 const medals=['🥇','🥈','🥉'];
@@ -48,10 +48,10 @@ function hallPanel(tournaments,season) {
     <div class="duel-finish-actions"><button class="secondary-button" data-duel-action="export-hall" ${ranking.length?'':'disabled'}>↧ Export Leaderboard CSV</button><button class="secondary-button" data-duel-action="save-champions" ${hallOfFame(tournaments).some(t=>t.gold)?'':'disabled'}>♡ Save Champions to Collection</button></div>
   </section>`;
 }
-function themePicker(tracks,favorites) {
+function themePicker(tracks,favorites,size=8) {
   return `<div class="duel-arena-picker" role="group" aria-label="Tournament themes">${TOURNAMENT_THEMES.map(theme=>{
-    const available=tournamentAvailability({themeId:theme.id,tracks,favoriteIds:favorites,size:4});
-    return `<button type="button" class="duel-arena-option ${theme.id==='open'?'selected':''}" data-duel-theme="${theme.id}" aria-pressed="${theme.id==='open'}"><span>${html(theme.name)}</span><small>${html(theme.tagline)}</small><em>${available.ready?'Ready to Play':'Build Your Catalog'}</em></button>`;
+    const available=tournamentAvailability({themeId:theme.id,tracks,favoriteIds:favorites,size});
+    return `<button type="button" class="duel-arena-option ${theme.id==='open'?'selected':''}" data-duel-theme="${theme.id}" aria-pressed="${theme.id==='open'}"><span>${html(theme.name)}</span><small>${html(theme.tagline)}</small><em data-duel-status data-ready="${available.ready}">${html(tournamentStatusLabel(available,theme.id,size))}</em></button>`;
   }).join('')}</div>`;
 }
 export function renderDuels({tournaments=[],selectedId=null,catalog=[],favorites=[],savedTracks=[],volume=35,sound=true,hallSeason='all'}) {
@@ -71,8 +71,8 @@ export function renderDuels({tournaments=[],selectedId=null,catalog=[],favorites
       ${themePicker(playable,favorites)}
       <input type="hidden" id="duel-theme-choice" value="open"/>
       <div class="duel-setup-form"><label>Tournament Name<input type="text" id="duel-name" maxlength="65" placeholder="Friday Night Favorites" value=""/></label><label>Contestants<select id="duel-size"><option value="4">4 songs · Quick Cup</option><option value="8" selected>8 songs · Main Event</option><option value="16">16 songs · Marathon</option></select></label><label>Song Pool<select id="duel-pool"><option value="all">Discovery songs (${countLabel(playable.length)})</option><option value="favorites">My favorites (${countLabel(saved.length)})</option></select></label><button class="accent-button" data-duel-action="create">✦ Start Bracket</button></div>
-      <p id="duel-eligibility" class="duel-hint" role="status" aria-live="polite">${html(tournamentAvailability({themeId:'open',tracks:playable,favoriteIds:favorites,size:8}).message)}</p>
-      <p class="duel-hint">Matchups use the same short Deezer previews as Discover. Your votes don't change your taste profile; you choose when to save winners.</p>
+      <div class="duel-availability-row"><p id="duel-eligibility" class="duel-hint" role="status" aria-live="polite">${html(tournamentAvailability({themeId:'open',tracks:playable,favoriteIds:favorites,size:8}).message)}</p><button type="button" class="secondary-button" data-duel-action="discover-more">Find More Songs ↗</button></div>
+      <p class="duel-hint">Not enough songs? Visit Discover and Keep favorites, then come back. Genre and decade cups need verified catalog metadata. Matchups use the same short Deezer previews as Discover; votes don't change your taste profile.</p>
     </section>
     <section class="duel-cup-setup"><div><span class="eyebrow">02 / THE CHAMPIONS CUP</span><h2>Champions Face Champions.</h2><p>${champions.length>=2?`${champions.length} different tournament winners are ready. A two-song showdown is possible now; complete more cups to build a larger final.`:`Finish ${2-champions.length} more tournament${2-champions.length===1?'':'s'} with a new winner to unlock your first Champions Cup.`}</p></div><button data-duel-action="create-cup" class="secondary-button" ${champions.length>=2?'':'disabled'}>⚡ ${champions.length>=2?'Launch Champions Cup':'Need 2 Champions'}</button></section>
     ${selected?`<section class="duel-active-event" id="duel-active-event"><div class="duel-event-top"><div><span class="eyebrow">${html(selectedTheme.toUpperCase())} / ${selected.status==='complete'?'COMPLETED':'IN PROGRESS'}</span><h2>${html(selected.name)}</h2><p>${selected.entries.length} contenders · ${duelProgress(selected).done} of ${duelProgress(selected).total} matchups decided</p></div><button class="secondary-button" data-duel-action="dismiss">Close Bracket</button></div>
