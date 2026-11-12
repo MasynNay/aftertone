@@ -16,7 +16,6 @@ import {lookupLyrics} from './lyrics.mjs';
 import {STARTER_TRACKS,GENRES} from './catalog.mjs';
 
 const HOST='https://api.deezer.com';
-const liveRequests=new Map();
 let requestSerial=0;
 const TIMEOUT_MS=10000;
 
@@ -32,9 +31,8 @@ export function deezerJSONP(input,{signal,timeoutMs=TIMEOUT_MS}={}){
   if(signal?.aborted) return Promise.reject(new DOMException('Request canceled','AbortError'));
   const callback=`__aftertoneDeezer_${++requestSerial}`;
   u.searchParams.set('output','jsonp');u.searchParams.set('callback',callback);
-  // De-duplicate identical requests without retaining signed previews long term.
-  const key=u.pathname+'?'+[...u.searchParams].filter(([k])=>!['callback','output'].includes(k)).map(([k,v])=>`${k}=${v}`).join('&');
-  if(liveRequests.has(key)) return liveRequests.get(key);
+  // Each caller owns its own callback, timeout and abort lifecycle.
+  // Sharing a Promise lets one listener abort another identical request.
   const promise=new Promise((resolve,reject)=>{
     const script=document.createElement('script');
     let completed=false,timer;
@@ -57,8 +55,6 @@ export function deezerJSONP(input,{signal,timeoutMs=TIMEOUT_MS}={}){
     script.src=u.href;
     document.head.append(script);
   });
-  liveRequests.set(key,promise);
-  promise.finally(()=>{if(liveRequests.get(key)===promise)liveRequests.delete(key);}).catch(()=>{});
   return promise;
 }
 

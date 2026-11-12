@@ -559,6 +559,25 @@ function maybeResumeContinuous() {
   if (activeAudioId === current.id && !audio.paused) return;
   void togglePlayback(current, true);
 }
+/** Retry the same preview using a freshly resolved URL, without changing taste data. */
+function retryFailedPreview() {
+  if (!current || view !== 'discover' || failedAudioId !== current.id) return;
+  resolved.delete(current.id);
+  failedSources.delete(current.id);
+  deezerRefreshedOnce.delete(current.id);
+  stopAudio();
+  void togglePlayback(current, false);
+}
+/** A failed preview is not a vote. Leave collection and history unchanged. */
+function skipUnavailablePreview() {
+  if (!current || view !== 'discover' || challengeIds.length) return;
+  unvotedPreviews.add(current.id);
+  continuousListening=false;
+  stopAudio();
+  chooseNext();
+  render();
+  maybeTopUp();
+}
 function advancePreview() {
   if (advancingPreview || !current || view !== 'discover' || modal || !continuousListening) return;
   advancingPreview = true;
@@ -629,7 +648,7 @@ async function togglePlayback(track, automatic = false) {
     if (failedSources.size >= 320) failedSources.delete(failedSources.values().next().value);
     failedSources.add(track.id);
     failedAudioId = track.id;
-    toast(`${SOURCE_LABEL[track.source] || 'This source'} could not play this recording. Skipping unavailable audio.`);
+    toast(`${SOURCE_LABEL[track.source] || 'This source'} could not play this recording. Try again or skip without voting.`);
     if (automatic && continuousListening && generation === audioGeneration) {
       consecutivePlaybackFailures++;
       if (consecutivePlaybackFailures >= 3) { continuousListening = false; toast('Several tracks could not play. Continuous listening stopped.'); }
@@ -673,6 +692,11 @@ function updatePlaybackView() {
     const status = $('#audio-status');
     if (status) status.textContent = isLoadingAudio ? 'Finding the recording…' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? 'Stream unavailable — try another song or source' : 'Press play to sample this track';
   }
+  // Recoverable failure controls belong to the discovery card, never the saved collection.
+  const recovery=$('#preview-recovery');
+  if(recovery && current) recovery.hidden = isLoadingAudio || failedAudioId !== current.id;
+  const skipRecovery=$('#preview-skip');
+  if(skipRecovery) skipRecovery.hidden=Boolean(challengeIds.length);
   // Tournament previews have their own, quiet status bar. Never accidentally
   // start continuous radio playback while the user is evaluating contenders.
   const duelStatus=$('#duel-now-playing');
@@ -744,6 +768,7 @@ audio.addEventListener('error', async () => {
     }
   }
   if (activeAudioId === activeId && !isLoadingAudio) {
+    if(failedAudioId===activeId) return; // A failed media element can emit more than one error.
     failedAudioId = activeId;
     failedSources.add(activeId);
     toast(`${SOURCE_LABEL[track?.source] || 'Music provider'} could not deliver this audio.`);
@@ -1450,6 +1475,8 @@ document.addEventListener('click', async (event) => {
   const id = action.dataset.id;
   switch (action.dataset.action) {
     case 'play-current': return togglePlayback(current);
+    case 'retry-preview': return retryFailedPreview();
+    case 'skip-unavailable': return skipUnavailablePreview();
     case 'focus-music-search': {
       if(view!=='discover') goTo('discover');
       document.body.classList.add('mobile-filters-open');

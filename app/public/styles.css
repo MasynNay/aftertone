@@ -2691,3 +2691,10 @@ h1 em {
 @media(max-width:1100px) {.duel-arena-picker {grid-template-columns:repeat(2,minmax(0,1fr));}.duel-hall-leaders {grid-template-columns:minmax(0,1fr);}.duel-hall-leader {grid-template-columns:22px 56px minmax(0,1fr) auto;}.duel-hall-leader .duel-cover {width:56px;}.duel-hall-leader>b {grid-column:auto;}}
 @media(max-width:650px) {.duel-arena-picker {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}.duel-arena-option {min-height:126px;padding:12px;}.duel-arena-option.selected {padding:11px;}.duel-hall {padding:18px;}.duel-hall-heading {align-items:stretch;flex-direction:column;}.duel-hall-heading label {min-width:0;max-width:210px;}.duel-hall-table th,.duel-hall-table td {padding:10px 8px;}.duel-hall-leader {grid-template-columns:22px 48px minmax(0,1fr);}.duel-hall-leader .duel-cover {width:48px;}.duel-hall-leader>b {grid-column:1/-1;}}
 @media(prefers-reduced-motion:reduce) {.duel-arena-option {transition:none;}.duel-arena-option:hover {transform:none;}}
+
+/* Preview failures should be recoverable without implying a Pass or Keep. */
+.preview-recovery {margin:12px 0 2px;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:12px;line-height:1.55;}
+.preview-recovery[hidden],.preview-recovery-actions [hidden] {display:none!important;}
+.preview-recovery p {margin:0 0 10px;}
+.preview-recovery-actions {display:flex;flex-wrap:wrap;gap:8px;}
+.preview-recovery-actions button {min-height:36px;}

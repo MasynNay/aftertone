@@ -113,6 +113,15 @@ def browser_case(browser, base, width, height):
                 "App stylesheet failed to load")
         screenshot(page, f"discover-{label}")
         if width > 600:
+            # No external CDN is contacted: a blocked fixture preview must
+            # expose Retry and Skip instead of trapping the listener.
+            page.locator("#stage-play").click()
+            page.locator("#preview-recovery").wait_for(state="visible", timeout=TIMEOUT)
+            before = page.locator(".journey-metrics div:first-child strong").inner_text()
+            page.locator('[data-action="skip-unavailable"]').click()
+            page.locator("#listening-card").wait_for(state="attached", timeout=TIMEOUT)
+            after = page.locator(".journey-metrics div:first-child strong").inner_text()
+            require(before == after, "Skipping unavailable audio changed listening history")
             close = page.locator('#modal-root button[data-modal="close"]')
             if close.count():
                 close.first.click(timeout=TIMEOUT)
