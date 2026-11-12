@@ -41,7 +41,7 @@ test('backup round trip preserves favorites, history, volume, themes, music duel
   const exported=createProgressBackup(from,'2026-11-11T00:00:00.000Z');
   const parsed=JSON.parse(exported);
   assert.equal(parsed.format,BACKUP_FORMAT);
-  assert.equal(parsed.version,1);
+  assert.equal(parsed.version,BACKUP_VERSION);
   assert.equal(parsed.tournaments.length,1);
   assert.equal(parsed.artists.length,2);
   assert.equal(parsed.playlist.tracks.length,2);
