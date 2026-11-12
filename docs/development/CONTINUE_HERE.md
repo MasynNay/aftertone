@@ -142,3 +142,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Validate complete file before writes, include optional keys in the transaction, and delete old playlist on v2 import when backup playlist is null. Rollback includes removal/overwrite of optional keys.
 - Added unit tests for old-file import compatibility, malicious/oversized entries, optional-key roundtrips, and rollback after later writes. Browser smoke test now verifies both fields survive real file download/upload.
 - Need green PR test/build, merge, and successful live Pages run before calling shipped; manual browser/provider verification remains separate.
+
+
+## Progress backup format v2 merged — November 11, 2026
+
+- PR #13 `https://github.com/MasynNay/aftertone/pull/13` merged as `3c7a85fac9c162409c287c49adde873da1df6c36`.
+- Local backup exports now include imported playlist song/artist pairs and lyric timing adjustments, with v1 backup compatibility preserving optional destination keys.
+- Untrusted playlist/offset values are bounded and validated before the six-key restore transaction; late-write rollback is tested and v2 can intentionally clear an absent playlist.
+- PR GitHub Actions run `43141248271`: **240/240** Node tests and desktop/mobile Chromium browser check passed, including actual backup export/import of optional fields with a test fixture.
+- Monitor the final main-branch Pages workflow after merging. Issue #5 remains open for manual Firefox/Chrome restore checks and future state-schema migrations. Rights/provider playback verification is independent.

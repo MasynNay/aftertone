@@ -2,7 +2,7 @@
 
 **Project:** [AFTERTONE](https://aftertone.masynnay.com/) · **Full-screen app:** [Launch the app](https://aftertone.masynnay.com/demo/) · **Backlog:** [Open issues](https://github.com/MasynNay/aftertone/issues) · **Releases:** [Changelog](CHANGELOG.md)
 
-**Last reviewed:** November 7, 2026  
+**Last reviewed:** November 11, 2026  
 **Current release:** v0.10.1  
 **Approach:** Ship small, verified improvements. Version targets indicate order of work, **not promised release dates**.
 
@@ -29,7 +29,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 ### v0.11 — More rewarding discovery
 
 - [ ] [#4: First-run guidance and useful empty states](https://github.com/MasynNay/aftertone/issues/4). Improve discoverability of Comfort Zone, New Territory and Wild Card.
-- [ ] [#5: Safe browser-data backup/restore and migration checks](https://github.com/MasynNay/aftertone/issues/5). **Core shipped:** [PR #12](https://github.com/MasynNay/aftertone/pull/12). **Extension under test:** export/import of optional playlists and lyric timing data, with backward-compatible v1 backup reading and rollback. Manual Firefox/Chrome verification and future schema migration checks remain.
+- [ ] [#5: Safe browser-data backup/restore and migration checks](https://github.com/MasynNay/aftertone/issues/5). **Core shipped:** [PR #12](https://github.com/MasynNay/aftertone/pull/12). **Extension shipped:** [PR #13](https://github.com/MasynNay/aftertone/pull/13) adds imported playlist metadata, lyric timing adjustments, backward-compatible v1 restore and late-write rollback to format v2. Manual Firefox/Chrome restoration and future schema migrations remain open.
 - [ ] [#6: Music Duels reliability across arenas and refreshes](https://github.com/MasynNay/aftertone/issues/6). Cover sparse track pools, brackets, persistence, and the Hall of Fame.
 
 **Exit criteria:** New listeners understand the first run; saved data survives upgrades; tournament states are tested and recoverable.
