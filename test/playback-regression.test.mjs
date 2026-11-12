@@ -85,7 +85,7 @@ test('Empty catalog search explains limits and provides clear-search action', ()
     challengeIds:[],challengeResponses:[],catalogWarning:'',catalogLive:true,collectionQuery:'',collectionSort:'recent',
     searchQuery:'Charlie Puth',sourceLabel:'Audius',feed:{loading:false,hasMore:false,available:0},
     availableSources:['mix','audius']}).renderDiscovery();
-  assert.match(markup,/No matching recordings/);
-  assert.match(markup,/Deezer search results/);
+  assert.match(markup,/No recordings matched/);
+  assert.match(markup,/Try a broader search or listening path/);
   assert.match(markup,/data-action="clear-search"/);
 });
