@@ -106,3 +106,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Deezer JSONP is mocked with fictional track fixtures and all other external network is blocked. **Do not claim this verifies live provider playback, data rights, or availability.** Issue #1 remains open for manual Firefox/Chrome/Deezer checks.
 - Another PR (#9, JSONP cancellation isolation) remains open and was intentionally not modified/merged here. Check its workflow changes for conflicts before a later merge.
 - Continue next with #2 provider outage behavior and #3 rights review; never swap the full app back to a synthetic showcase.
+
+
+## Provider recovery PR — November 11, 2026
+
+- Started a v0.10.2 provider-recovery patch from the current main branch. Incorporated the tested JSONP per-request isolation from prior PR #9 without overwriting the newer Chromium deployment workflow.
+- Added user-facing Retry Preview and Skip Without Voting controls after failed audio. Retry invalidates cached resolved preview and clears failed-track status before fetching again; Skip advances neutrally and preserves favorites/history.
+- Added Retry Discovery when catalog failures are visible; prevented repeated media error callbacks from incrementing autoplay failures repeatedly.
+- Chromium smoke test now forces a blocked fixture CDN and checks recovery controls appear and Skip leaves journey count unchanged. All simulated results are test-only and do not establish real Deezer playback or media rights.
+- Do not merge if GitHub Actions browser or Node tests fail. Track provider licensing separately in issue #3.
