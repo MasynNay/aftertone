@@ -1840,6 +1840,10 @@ async function init() {
       state.discoveryMix = landingPath;
       persist();
     }
+    // The free-app homepage can open Music Duels directly without changing
+    // the saved listening path or permanently overriding any user preference.
+    const landingView = new URLSearchParams(window.location.search).get('view');
+    if (landingView === 'duels') view = 'duels';
     chooseNext();
     render();
     if (!challengeIds.length) {
@@ -1848,7 +1852,7 @@ async function init() {
       // Show the introduction once, without requiring an account or playlist.
       let shown = false;
       try { shown = Boolean(localStorage.getItem(INTRO_STORAGE_KEY)); } catch {}
-      if (!shown) openModal('onboarding');
+      if (!shown && view === 'discover') openModal('onboarding');
     }
   } catch (error) {
     main.innerHTML = `<div class="empty-state"><div class="empty-icon">↯</div><h2>Couldn't open the listening room.</h2><p>Start the app with <code>npm start</code> and open the local URL shown in your terminal. ${html(error.message)}</p><button class="accent-button" onclick="location.reload()">Retry ↻</button></div>`;
