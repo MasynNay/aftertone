@@ -159,3 +159,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Empty search/error views offer Retry Search, Clear Search, Broaden Filters, an alternate listening path, and Search for an Artist as appropriate. Broadening resets genre/language/era but preserves decisions, favorites, and seeded artists; the destructive Replay Heard Songs option was removed from the empty card.
 - Added targeted Node UI tests and a real Chromium assertion that the first-session steps render on desktop and mobile. Do not merge if CI fails.
 - Real Deezer playback and rights remain unverified. Check PR and Pages deployment before describing as shipped.
+
+
+## First-listen guidance and empty-state recovery merged — November 11, 2026
+
+- PR #14 `https://github.com/MasynNay/aftertone/pull/14` merged as `c3073b862f03bb49d6dc9312de1d5ba07db53977`. PR GitHub Actions run `43142580900` passed **245/245** Node tests plus desktop and mobile Chromium smoke checks.
+- First-session guide now appears inline for listeners with zero decisions: choose path, press play, Keep/Pass. No extra homepage popup or change to the original app's onboarding flow.
+- Empty catalog/search UI provides retry, clear search, broaden genre/language/era filters, another path and artist search without resetting history/favorites. Deleted the destructive Replay Heard Songs option from this recovery area (the separately confirmed reset function remains available elsewhere).
+- Added `docs/FIRST_LISTEN.md`, deterministic regression tests, and Chromium first-run guide checks. Keep issue #4 open for manual keyboard and Firefox UX checks.
+- Deezer API and real preview availability/permissions are not established by mocked test fixtures. Monitor the public GitHub Pages run before describing deployment as finished.

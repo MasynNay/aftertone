@@ -180,6 +180,7 @@ Automated checks cover application logic and the browser adapter. They cannot gu
 
 - [Architecture and technical notes](docs/ARCHITECTURE.md)
 - [Real-browser deployment checks](docs/BROWSER_TESTING.md)
+- [First-listen and empty-search guide](docs/FIRST_LISTEN.md)
 - [Backup and restore user progress](docs/BACKUP_RESTORE.md)
 - [Current product roadmap](docs/ROADMAP.md)
 - [Open GitHub development issues](https://github.com/MasynNay/aftertone/issues)

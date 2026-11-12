@@ -13,7 +13,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 | Target | Priority | Focus | Status |
 | --- | --- | --- | --- |
 | **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser and preview fixes shipped |
-| **v0.11 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | In progress · backup formats v1/v2 supported |
+| **v0.11 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | In progress · backups and first-session UX shipped |
 | **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | Planned |
 | **v1.0 — Responsible public readiness** | Gate | Only after cross-browser reliability, provider rights, privacy, and licensing are resolved | Conditional |
 
@@ -28,7 +28,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 ### v0.11 — More rewarding discovery
 
-- [ ] [#4: First-run guidance and useful empty states](https://github.com/MasynNay/aftertone/issues/4). **Change under test:** inline first-listen steps, non-destructive empty-search recovery, broaden filters, and route switching. Keep issue open until shipped and manual accessibility checks.
+- [ ] [#4: First-run guidance and useful empty states](https://github.com/MasynNay/aftertone/issues/4). **First milestone shipped:** [PR #14](https://github.com/MasynNay/aftertone/pull/14) adds inline first-listen steps, non-destructive empty-search recovery, broaden filters and route switching. Manual keyboard/Firefox checks remain open.
 - [ ] [#5: Safe browser-data backup/restore and migration checks](https://github.com/MasynNay/aftertone/issues/5). **Core shipped:** [PR #12](https://github.com/MasynNay/aftertone/pull/12). **Extension shipped:** [PR #13](https://github.com/MasynNay/aftertone/pull/13) adds imported playlist metadata, lyric timing adjustments, backward-compatible v1 restore and late-write rollback to format v2. Manual Firefox/Chrome restoration and future schema migrations remain open.
 - [ ] [#6: Music Duels reliability across arenas and refreshes](https://github.com/MasynNay/aftertone/issues/6). Cover sparse track pools, brackets, persistence, and the Hall of Fame.
 
