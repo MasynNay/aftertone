@@ -96,3 +96,13 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Updated three existing snapshot-like text assertions, and added three focused editorial consistency tests. Full local `npm run check` passed **224/224 tests**, with static build and **67/67 local ESM import links** validated.
 - Scope is intentionally copy-only; preserve routes, controls, source IDs, data keys, Deezer adapter and business logic. README section casing and changelog aligned.
 - Check GitHub Pages build after publishing. Live provider playback is not exercised by CI and must never be described as verified merely because CI passes.
+
+
+## v0.10.2 automated browser gate shipped — November 11, 2026
+
+- PR #10 (https://github.com/MasynNay/aftertone/pull/10), squash commit `2a76b48023ae34795c7a71f2a6255be6352f1df7`, was merged into main. Main workflow run `43136162194` passed both browser and deployment jobs.
+- New `scripts/browser-smoke.py` serves actual `dist/` locally in CI with Playwright Chromium on Ubuntu 24.04: desktop (1440×900) and mobile (390×844). It tests homepage styling, direct app launch, discovery screen, Collection, Music Duels, local HTTP errors and uncaught JS exceptions.
+- CI always runs `npm run check` (224/224 tests on this head) before browser testing. If the browser check fails, Pages is not uploaded/deployed. PR checks do not deploy.
+- Deezer JSONP is mocked with fictional track fixtures and all other external network is blocked. **Do not claim this verifies live provider playback, data rights, or availability.** Issue #1 remains open for manual Firefox/Chrome/Deezer checks.
+- Another PR (#9, JSONP cancellation isolation) remains open and was intentionally not modified/merged here. Check its workflow changes for conflicts before a later merge.
+- Continue next with #2 provider outage behavior and #3 rights review; never swap the full app back to a synthetic showcase.

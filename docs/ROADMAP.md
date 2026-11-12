@@ -20,6 +20,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 ### v0.10.2 — Trust & stability (next up)
 
 - [ ] [#1: Automated real-browser smoke tests for landing and full app](https://github.com/MasynNay/aftertone/issues/1). Catch broken CSS, import paths and blank app views before deployment.
+  - **Automated portion shipped (November 11, 2026):** [PR #10](https://github.com/MasynNay/aftertone/pull/10) now gates deployments on desktop/mobile Chromium tests of the built site. Remains open for manual Firefox/Chrome provider verification.
 - [ ] [#2: Recover gracefully from Deezer catalog/preview failures](https://github.com/MasynNay/aftertone/issues/2). Retry, skip, and safe autoplay behavior; don't pretend that an inaccessible track can play.
 - [ ] [#3: Review third-party music and artwork permissions](https://github.com/MasynNay/aftertone/issues/3). Document authorization or provide a rights-cleared public fallback; a portfolio disclaimer alone does not establish usage rights.
 

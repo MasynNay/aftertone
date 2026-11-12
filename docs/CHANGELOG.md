@@ -1,3 +1,11 @@
+## v0.10.2 stability milestone — Browser deployment guard (November 11, 2026)
+
+- Added real Chromium checks against the **generated GitHub Pages build** at desktop and mobile sizes, exercising the portfolio's **Explore the Experience** button, application boot, Discover, Collection, and Music Duels.
+- The tests fail on local asset 404s, uncaught JavaScript errors, missing application UI, broken styles, and mobile portfolio overflow. Debug screenshots are retained on failures.
+- Pull requests now run the same checks without deploying; only a passing main-branch workflow can publish. This addresses the earlier broken-CSS and blank-app regressions.
+- Mocked fictional metadata keeps browser testing independent of third-party provider availability. No Deezer playback or media authorization is claimed by these tests.
+- Verified [PR #10](https://github.com/MasynNay/aftertone/pull/10) and [main Pages deployment](https://github.com/MasynNay/aftertone/actions/runs/43136162194) completed successfully. Roadmap issue #1 remains open for manual provider/browser checks.
+
 ## Editorial Polish — November 7, 2026
 
 - Standardized headings and navigation to consistent title case across the AFTERTONE portfolio, Discover, Collection, Tune Lab, and Music Duels.
