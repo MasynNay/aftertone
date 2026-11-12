@@ -71,7 +71,7 @@ test('invalid JSON, wrong versions, oversized files and corrupt track IDs do not
     JSON.stringify({...JSON.parse(backup),artists:['same','same']}),
     JSON.stringify({...JSON.parse(backup),tournaments:[{id:'duel_bad',entries:[]}]}),
     JSON.stringify({...JSON.parse(backup),playlist:{tracks:[{artist:'A',title:'Valid'},{artist:'A',title:'Valid'}]}}),
-    JSON.stringify({...JSON.parse(backup),playlist:{tracks:[{artist:'<invalid>',title:'Valid'}]}}),
+    JSON.stringify({...JSON.parse(backup),playlist:{tracks:[{artist:'https://invalid.example',title:'Valid'}]}}),
     JSON.stringify({...JSON.parse(backup),playlist:{tracks:[{artist:'A',title:42}]}}),
     JSON.stringify({...JSON.parse(backup),lyricOffsets:{'bad-id':30}}),
     JSON.stringify({...JSON.parse(backup),lyricOffsets:{'deezer:200':-10}}),
