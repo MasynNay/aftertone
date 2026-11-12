@@ -85,3 +85,10 @@ export function pickThemedEntries({themeId='open',tracks=[],favoriteIds=[],size=
   }
   return diversified(availability.eligible,size,random);
 }
+
+/** Size-aware arena card indicator; no 4-song readiness promise for a 16-song cup. */
+export function tournamentStatusLabel(available,themeId,size) {
+  if(available.ready)return `Ready for ${size} · ${available.eligible.length} eligible`;
+  if(themeId==='pop-rock')return `Pop ${available.groups.pop}/${size/2} · Rock ${available.groups.rock}/${size/2}`;
+  return `${available.eligible.length}/${size} eligible`;
+}
