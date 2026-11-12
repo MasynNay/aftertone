@@ -1,3 +1,11 @@
+## v0.11 preview — First-Listen Guidance and Search Recovery (November 11, 2026)
+
+- Added an inline, three-step first-listen guide: choose Comfort Zone, New Territory, or Wild Card; press Play; then Keep or Pass. No new popup and no changes to the existing welcome flow.
+- Empty searches and unavailable catalogs now offer explicit retry, clear-search, broaden-filter, alternate-path and artist-search options without requiring the listener to erase history.
+- Broaden Filters resets genre, language and era only. Favorites, choices, imported playlists and Music Duels remain saved.
+- Added regression tests for user guidance and empty states plus a Chromium first-visit screen assertion.
+- No Deezer request, audio preview, autoplay, theme or taste algorithm changes. Real provider availability and permissions remain unresolved.
+
 ## v0.11 saved-data improvement — Complete progress backup formats (November 11, 2026)
 
 - New AFTERTONE progress backups use **format v2**, adding imported playlist artist/song entries and per-track lyric timing adjustments to the existing saved favorites, listening history, theme, volume, Duels, and quiz data.

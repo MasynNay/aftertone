@@ -28,7 +28,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 ### v0.11 — More rewarding discovery
 
-- [ ] [#4: First-run guidance and useful empty states](https://github.com/MasynNay/aftertone/issues/4). Improve discoverability of Comfort Zone, New Territory and Wild Card.
+- [ ] [#4: First-run guidance and useful empty states](https://github.com/MasynNay/aftertone/issues/4). **Change under test:** inline first-listen steps, non-destructive empty-search recovery, broaden filters, and route switching. Keep issue open until shipped and manual accessibility checks.
 - [ ] [#5: Safe browser-data backup/restore and migration checks](https://github.com/MasynNay/aftertone/issues/5). **Core shipped:** [PR #12](https://github.com/MasynNay/aftertone/pull/12). **Extension shipped:** [PR #13](https://github.com/MasynNay/aftertone/pull/13) adds imported playlist metadata, lyric timing adjustments, backward-compatible v1 restore and late-write rollback to format v2. Manual Firefox/Chrome restoration and future schema migrations remain open.
 - [ ] [#6: Music Duels reliability across arenas and refreshes](https://github.com/MasynNay/aftertone/issues/6). Cover sparse track pools, brackets, persistence, and the Hall of Fame.
 
