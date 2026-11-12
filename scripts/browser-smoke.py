@@ -196,6 +196,71 @@ def browser_case(browser, base, width, height):
             page.locator("#main-content .duels-page .duel-arena-picker").wait_for(
                 state="attached", timeout=TIMEOUT)
             screenshot(page, f"duels-{label}")
+            # Six cards must reflect the *chosen* size and song pool.
+            require(page.locator("[data-duel-status]").count() == 6,
+                    "Missing one or more tournament arena readiness labels")
+            page.locator("#duel-size").select_option("16")
+            page.locator("#duel-pool").select_option("favorites")
+            require(page.locator('[data-duel-action="create"]').is_disabled(),
+                    "Insufficient favorites must not create a bracket")
+            require("0/16 eligible" in page.locator('[data-duel-theme="open"] [data-duel-status]').inner_text(),
+                    "Arena badge must count favorites for selected bracket size")
+            require(page.locator('[data-duel-action="discover-more"]').is_visible(),
+                    "Sparse song pools need an actionable recovery path")
+            page.locator("#duel-pool").select_option("all")
+            page.locator("#duel-size").select_option("4")
+            page.locator('[data-duel-theme="open"]').click()
+            page.locator('[data-duel-action="create"]').wait_for(state="visible",timeout=TIMEOUT)
+            require(page.locator('[data-duel-action="create"]').is_enabled(),
+                    "Fixture catalog should support a four-song Open Stage bracket")
+            page.locator('[data-duel-action="create"]').click()
+            page.locator('#duel-active-event [data-duel-vote]').first.wait_for(
+                state="visible",timeout=TIMEOUT)
+            selected = page.evaluate("localStorage.getItem('aftertone:duels:selection:v1')")
+            require(selected and selected.startswith("duel_"),"Opened bracket was not saved")
+            page.locator('#duel-active-event [data-duel-vote]').first.click()
+            require("1 of 4" in page.locator("#duel-active-event").inner_text(),
+                    "First match vote was not recorded")
+            page.reload(wait_until="load",timeout=TIMEOUT)
+            close_modal = page.locator('#modal-root button[data-modal="close"]')
+            if close_modal.count():
+                close_modal.first.click(timeout=TIMEOUT)
+            page.locator('#main-nav button[data-view="duels"]').click()
+            page.locator("#duel-active-event").wait_for(state="visible",timeout=TIMEOUT)
+            require("1 of 4" in page.locator("#duel-active-event").inner_text(),
+                    "Partly completed bracket was not resumed after reload")
+            require(page.evaluate("localStorage.getItem('aftertone:duels:selection:v1')") == selected,
+                    "Selected tournament changed after reload")
+            # Finish the semifinals, bronze match, and grand final in the real UI.
+            for number in range(3):
+                page.locator('#duel-active-event [data-duel-vote]').first.click()
+            page.locator("#duel-active-event .duel-podium").wait_for(
+                state="visible",timeout=TIMEOUT)
+            require(page.locator("#duel-active-event .duel-podium-tile").count() == 3,
+                    "Finished cup must display gold, silver and bronze")
+            require("4 of 4" in page.locator("#duel-active-event").inner_text(),
+                    "Match count did not reflect the completed tournament")
+            require(page.locator(".duel-hall-leader").count() >= 1,
+                    "Completed cup did not enter Hall of Fame")
+            with page.expect_download(timeout=TIMEOUT) as hall_download:
+                page.locator('[data-duel-action="export-hall"]').click()
+            hall = Path(hall_download.value.path()).read_text(encoding="utf-8")
+            require("Track Name" in hall and "Fixture Melody" in hall,
+                    "Hall of Fame export must contain podium metadata")
+            screenshot(page,f"music-duels-complete-{label}")
+            # Close stays closed on reload, and History can reopen the podium.
+            page.locator('[data-duel-action="dismiss"]').click()
+            page.reload(wait_until="load",timeout=TIMEOUT)
+            close_modal = page.locator('#modal-root button[data-modal="close"]')
+            if close_modal.count():
+                close_modal.first.click(timeout=TIMEOUT)
+            page.locator('#main-nav button[data-view="duels"]').click()
+            require(page.locator("#duel-active-event").count() == 0,
+                    "Explicit Close Bracket was not respected after reload")
+            page.locator('[data-duel-action="open"]').first.click()
+            page.locator("#duel-active-event .duel-podium").wait_for(
+                state="visible",timeout=TIMEOUT)
+
         require(not errors, "Browser errors:\n" + "\n".join(errors))
         print(f"PASS {label}: homepage, styling, real app boot, discovery, navigation")
     except Exception:
