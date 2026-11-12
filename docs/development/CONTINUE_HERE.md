@@ -177,3 +177,13 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - New localStorage `aftertone:duels:selection:v1` restores an opened bracket on refresh and preserves explicit Close; the existing archive key remains unchanged. Creation, deletion and voting update UI state only after save succeeds.
 - `test/duels-reliability.test.mjs`: 6 arenas x 3 sizes, reload after every vote, bronze before final, podium and Hall CSV, mystery reveal, poor/unknown metadata, unavailable pools and selection behavior. Chromium test follows a real UI create/vote/reload/resume/complete/export/close/reopen path using fictional fixture tracks.
 - Added updated `docs/MUSIC_DUELS.md` practical verification walkthrough and kept README screenshot. Mark issue #6 done after confirming the main deployment. Manual live Deezer playback and provider rights still require separate verification (#2/#3).
+
+
+## Verified v0.11.0 release stopping point — November 11, 2026 (America/Denver)
+
+- User requested to stop for the night and publish a genuine recent GitHub release, rather than begin more feature work.
+- Main was `05b673b05f46f20e3626583b4c636ecc7d159875` at release preparation, with a successful Pages workflow `43144676750`, zero open pull requests, and no existing GitHub Releases.
+- Prepared v0.11.0 source-only release: package version, README, roadmap, changelog and `docs/releases/v0.11.0.md`; includes first-listen guidance, Deezer recovery, full progress backup formats, Music Duels six-arena reliability, and 251 passing Node tests plus Chromium end-to-end evidence.
+- Added a GitHub Actions release publisher triggered **only by a successful main-branch Pages workflow**; it verifies the deployed SHA is still current, requires matching versioned release notes, and uses `gh release create` once. GitHub tag and release should point to the verified deployed commit. If it fails, inspect Actions before claiming a formal release was published.
+- No runtime application behavior changed for versioning. No new feature branches. This is a deliberate evening checkpoint.
+- NEXT: validate GitHub Releases shows `v0.11.0`, verify the release tag SHA and successful Pages + release workflow, then leave stable; later prioritize v0.12 accessibility/mobile polish and unresolved real Deezer/media rights review (roadmap #1–#3).

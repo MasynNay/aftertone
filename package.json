@@ -1,6 +1,6 @@
 {
   "name": "aftertone",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "AFTERTONE full discovery app, local Node backend and GitHub Pages browser Deezer adapter",

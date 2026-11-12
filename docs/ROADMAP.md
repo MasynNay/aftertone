@@ -3,7 +3,7 @@
 **Project:** [AFTERTONE](https://aftertone.masynnay.com/) · **Full-screen app:** [Launch the app](https://aftertone.masynnay.com/demo/) · **Backlog:** [Open issues](https://github.com/MasynNay/aftertone/issues) · **Releases:** [Changelog](CHANGELOG.md)
 
 **Last reviewed:** November 11, 2026  
-**Current release:** v0.10.1  
+**Current release:** v0.11.0  
 **Approach:** Ship small, verified improvements. Version targets indicate order of work, **not promised release dates**.
 
 AFTERTONE is an independent music-discovery portfolio application: real catalog search where available, personalized discovery modes, short previews, Keep/Pass, collection, autoplay, themes, and six Music Duels arenas. The public version runs on GitHub Pages with a browser-side provider adapter; the local Node server remains in `app/server.mjs`.
@@ -13,8 +13,8 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 | Target | Priority | Focus | Status |
 | --- | --- | --- | --- |
 | **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser and preview fixes shipped |
-| **v0.11 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | In progress · backup, discovery and Music Duels milestones shipped |
-| **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | Planned |
+| **v0.11.0 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | **Released** · [v0.11.0](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0); independent manual checks remain open |
+| **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | Next milestone |
 | **v1.0 — Responsible public readiness** | Gate | Only after cross-browser reliability, provider rights, privacy, and licensing are resolved | Conditional |
 
 ### v0.10.2 — Trust & stability (next up)

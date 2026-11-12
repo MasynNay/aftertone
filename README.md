@@ -10,7 +10,7 @@ A music discovery experience built around listening, exploring, and discovering 
 
 **Real music discovery · Personalized paths · Music Duels · 20 themes**
 
-[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Screenshots](#screenshots) · [Features](#features) · [Get started](#get-started) · [Roadmap](docs/ROADMAP.md) · [Open issues](https://github.com/MasynNay/aftertone/issues) · [Release notes](docs/CHANGELOG.md)
+[Live portfolio](https://aftertone.masynnay.com/) · [Open the app](https://aftertone.masynnay.com/demo/) · [Screenshots](#screenshots) · [Features](#features) · [Get started](#get-started) · [Roadmap](docs/ROADMAP.md) · [Open issues](https://github.com/MasynNay/aftertone/issues) · [Latest release](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0) · [Changelog](docs/CHANGELOG.md)
 
 </div>
 
@@ -30,7 +30,7 @@ AFTERTONE is being improved in small, testable releases. The immediate priority 
 
 **[View the development roadmap](docs/ROADMAP.md)** · **[Browse the open GitHub issues](https://github.com/MasynNay/aftertone/issues)**
 
-Current work: **v0.10.2** stability checks → **v0.11** discovery and reliable data portability → **v0.12** accessibility and portfolio polish. Milestones aren't deadlines. [Backup and Restore guide](docs/BACKUP_RESTORE.md).
+**Current release: [v0.11.0](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0)** — verified portfolio preview featuring recoverable discovery, versioned progress backups, and resumable Music Duels. Next: **v0.12** accessibility and mobile refinements. Outstanding Deezer playback/permissions checks remain documented in the [roadmap](docs/ROADMAP.md). [Backup and Restore guide](docs/BACKUP_RESTORE.md).
 
 ## Screenshots
 

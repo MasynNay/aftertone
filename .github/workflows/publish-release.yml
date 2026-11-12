@@ -1,0 +1,58 @@
+name: Publish verified AFTERTONE releases
+
+on:
+  workflow_run:
+    workflows: ["Verify and deploy AFTERTONE"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out exact verified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Confirm the verified deployment is current
+        env:
+          DEPLOYED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          current="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | cut -f1)"
+          if [ "${current}" != "${DEPLOYED_SHA}" ]; then
+            echo "A newer main commit exists; skipping this superseded release run."
+            exit 0
+          fi
+          echo "CURRENT_VERIFIED_COMMIT=${DEPLOYED_SHA}" >> "$GITHUB_ENV"
+      - name: Create GitHub release once for a documented version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CURRENT_VERIFIED_COMMIT:-}" ]; then
+            echo "Skipping stale verified commit."
+            exit 0
+          fi
+          version="$(node -p "JSON.parse(require('node:fs').readFileSync('package.json','utf8')).version")"
+          tag="v${version}"
+          notes="docs/releases/${tag}.md"
+          if [ ! -s "${notes}" ]; then
+            echo "No versioned release notes for ${tag}; not publishing."
+            exit 0
+          fi
+          if gh release view "${tag}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${tag} already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create "${tag}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${CURRENT_VERIFIED_COMMIT}" \
+            --title "AFTERTONE ${tag} — Discovery, Durability & Music Duels" \
+            --notes-file "${notes}" \
+            --latest

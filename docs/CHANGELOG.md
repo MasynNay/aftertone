@@ -1,3 +1,14 @@
+## v0.11.0 — Verified Portfolio Release (November 11, 2026)
+
+**Release:** [v0.11.0](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0) · [Full release notes](releases/v0.11.0.md)
+
+- Consolidates the working public music discovery application, standalone portfolio landing, first-listen guidance, reliable empty-state recovery, and Deezer preview failure controls.
+- Delivers versioned metadata-only progress backup and restore (format v2, with v1 import compatibility), preserving saved tracks, decisions, theme/listening preferences, Music Duels, optional playlists, and lyric timing adjustments.
+- Completes all six Music Duels arena reliability checks with honest eligibility counts, resumable brackets, defensive local saving, Hall of Fame CSV, and bronze/final podiums.
+- Gates deployment on **251 passing automated tests** and actual desktop/mobile Chromium navigation and tournament workflow tests (with fictional provider fixtures).
+- The original music player and application are preserved. **No live Deezer playback, content licensing, regional availability, or rights-holder authorization is asserted by automated tests.**
+- Release handoff records the next focus: accessibility/mobile QA, real-provider verification, and issue triage. No additional runtime functionality was added by the version/tag publishing commit.
+
 ## v0.11 reliability milestone — Music Duels Arenas and Bracket Resume (November 11, 2026)
 
 - All **six Music Duels arenas** now display eligible track counts for the actual 4, 8 or 16 entrants selected and for the Discovery/Favorites song pool. Unavailable themes no longer claim that a smaller bracket is ready.
