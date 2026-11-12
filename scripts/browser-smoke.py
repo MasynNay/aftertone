@@ -5,6 +5,8 @@ Third-party Deezer requests are mocked with fictional track data. This checks
 our deployed UI, not provider availability or media playback permissions.
 """
 import json
+import os
+import base64
 import re
 import sys
 import threading
@@ -101,6 +103,12 @@ def browser_case(browser, base, width, height):
             require(page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"),
                     "Mobile homepage overflow detected")
         screenshot(page, f"portfolio-{label}")
+        if os.environ.get("AFTERTONE_VISUAL_REVIEW") == "1":
+            preview = page.screenshot(type="jpeg", quality=63, full_page=False)
+            print("AFTERTONE_VISUAL_" + str(width) + "=" + base64.b64encode(preview).decode(), flush=True)
+            print("AFTERTONE_LAYOUT_" + str(width) + "=" + json.dumps(page.evaluate(
+                "() => ({scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,heading:document.querySelector('h1')?.innerText})"
+            )), flush=True)
 
         page.locator("#explore-experience").click()
         page.wait_for_url("**/demo/", timeout=TIMEOUT)
