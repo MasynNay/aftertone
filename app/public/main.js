@@ -2,6 +2,7 @@ import {apiFetch} from './api-browser.js';
 import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
+import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, restoreProgressBackup } from '/src/progress-backup.mjs';
 import { encodeChallenge, decodeChallenge } from '/src/challenge.mjs';
 import { createViews } from './views.js';
 import { html, urlSafe, tag } from './view-utils.js';
@@ -1391,6 +1392,39 @@ function exportLibrary(type = 'json') {
   toast('Export created.');
 }
 
+/** The backup file contains only metadata and local choices, never audio. */
+function downloadProgressBackup() {
+  try {
+    const payload=createProgressBackup(localStorage);
+    const blob=new Blob([payload],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement('a');
+    anchor.href=url;
+    anchor.download='aftertone-progress-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('Progress backup downloaded. Keep the file somewhere safe.');
+  } catch(error) {
+    toast(error.message || 'Could not create a progress backup.');
+  }
+}
+async function importProgressBackupFile(file) {
+  try {
+    if(file.size>BACKUP_MAX_BYTES)throw new Error('Backup must be smaller than 4 MB.');
+    const content=await file.text();
+    const preview=inspectProgressBackup(content).summary;
+    const message='Restore '+preview.favorites+' saved tracks, '+preview.decisions+
+      ' listening choices, and '+preview.tournaments+' tournaments?\n\n'+
+      'This replaces your current AFTERTONE progress. Export a backup of your current progress first.';
+    if(!window.confirm(message))return;
+    restoreProgressBackup(localStorage,content);
+    stopAudio();
+    window.location.reload(); // Rehydrate the existing app from the validated saved state.
+  } catch(error) {
+    toast(error.message || 'Could not restore backup. No changes were made.');
+  }
+}
+
 // Native artwork can expire or be blocked by the host. Never show a broken image.
 // Removing it reveals the styled, honest "no artwork" fallback underneath.
 document.addEventListener('error', (event) => {
@@ -1536,6 +1570,8 @@ document.addEventListener('click', async (event) => {
     case 'remove-favorite': state = removeFavorite(state, id); persist(); render(); return toast('Removed from collection.');
     case 'export-json': return exportLibrary('json');
     case 'export-csv': return exportLibrary('csv');
+    case 'backup-progress': return downloadProgressBackup();
+    case 'restore-progress': return $('#progress-backup-file')?.click();
     case 'share-challenge': return shareChallenge();
     case 'try-challenge': return playSampleChallenge();
     case 'exit-challenge': challengeIds = []; challengeResponses = []; history.replaceState(null, '', location.pathname); chooseNext(); return render();
@@ -1566,6 +1602,12 @@ main.addEventListener('error', (event) => {
 }, true);
 
 document.addEventListener('change', (event) => {
+  if(event.target.id==='progress-backup-file') {
+    const file=event.target.files?.[0];
+    event.target.value=''; // Allow selecting the same file after a failed attempt.
+    if(file)void importProgressBackupFile(file);
+    return;
+  }
   if(view==='duels' && ['duel-size','duel-pool'].includes(event.target.id)) {
     refreshDuelAvailability();return;
   }

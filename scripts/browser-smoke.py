@@ -135,6 +135,35 @@ def browser_case(browser, base, width, height):
             heading = page.locator("#main-content .page-head h1")
             heading.wait_for(state="visible", timeout=TIMEOUT)
             require("collection" in heading.inner_text().lower(), "Collection failed to render")
+            # A backup must be downloadable even when no tracks are saved.
+            page.locator('[data-action="backup-progress"]').wait_for(state="visible", timeout=TIMEOUT)
+            with page.expect_download(timeout=TIMEOUT) as download_event:
+                page.locator('[data-action="backup-progress"]').click()
+            backup = download_event.value
+            require(backup.suggested_filename.startswith("aftertone-progress-"), "Backup filename missing")
+            payload = json.loads(Path(backup.path()).read_text(encoding="utf-8"))
+            require(payload.get("format") == "aftertone-progress", "Backup file schema missing")
+            require("tournaments" in payload and "session" in payload, "Backup omitted saved state")
+            require(page.locator('[data-action="restore-progress"]').count() == 1,
+                    "Restore backup control missing")
+            # End-to-end restore: corrupt the existing session *after* exporting,
+            # then import the good backup through the actual file input.
+            page.evaluate("localStorage.setItem('aftertone:session:v1', 'broken-test-session')")
+            page.once("dialog", lambda dialog: dialog.accept())
+            page.locator("#progress-backup-file").set_input_files({
+                "name": backup.suggested_filename,
+                "mimeType": "application/json",
+                "buffer": Path(backup.path()).read_bytes(),
+            })
+            page.wait_for_function(
+                "() => localStorage.getItem('aftertone:session:v1') !== 'broken-test-session'",
+                timeout=TIMEOUT,
+            )
+            restored = json.loads(page.evaluate("localStorage.getItem('aftertone:session:v1')"))
+            require(restored.get("version") == 1, "Restored state is not valid")
+            require(restored.get("favorites") == payload["session"]["favorites"],
+                    "Restore did not recover saved favorites")
+            page.locator("#main-content .discovery-paths").wait_for(state="attached",timeout=TIMEOUT)
             page.locator('#main-nav button[data-view="duels"]').click()
             page.locator("#main-content .duels-page .duel-arena-picker").wait_for(
                 state="attached", timeout=TIMEOUT)
