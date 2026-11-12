@@ -133,3 +133,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Node tests cover valid round trips, corrupted/oversized/unsupported backups, transactional rollback, and Collection UI. Browser smoke test downloads and imports the real file with a deliberately damaged test session and verifies recovery. PR #12 CI passed.
 - Not yet included: optional imported playlist files, lyric timing offsets, additional migration formats. Keep roadmap issue #5 open until those omissions are addressed and cross-browser manual restore is checked.
 - Never conflate mocked Deezer browser tests with proof of live provider authorization or playback.
+
+
+## Optional playlist and lyric preferences backup extension — November 11, 2026
+
+- Work staged on branch `feature/complete-progress-backups-v011`, extending PR #12 data durability without altering Deezer, app navigation or playback logic.
+- New backup format v2 contains sanitized imported playlist `artist/title` pairs (up to 3000) and manual per-track lyric offsets (up to 200); original v1 backups are accepted, preserving destination playlist/offset settings because v1 had no such keys.
+- Validate complete file before writes, include optional keys in the transaction, and delete old playlist on v2 import when backup playlist is null. Rollback includes removal/overwrite of optional keys.
+- Added unit tests for old-file import compatibility, malicious/oversized entries, optional-key roundtrips, and rollback after later writes. Browser smoke test now verifies both fields survive real file download/upload.
+- Need green PR test/build, merge, and successful live Pages run before calling shipped; manual browser/provider verification remains separate.

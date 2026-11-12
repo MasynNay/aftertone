@@ -135,6 +135,14 @@ def browser_case(browser, base, width, height):
             heading = page.locator("#main-content .page-head h1")
             heading.wait_for(state="visible", timeout=TIMEOUT)
             require("collection" in heading.inner_text().lower(), "Collection failed to render")
+            # Add an imported-playlist seed and manual lyric timing preference.
+            # These previously lived outside the exported session state.
+            page.evaluate("""() => {
+                localStorage.setItem('aftertone:optional-playlist:v1',
+                    JSON.stringify({tracks:[{artist:'Fixture Artist 01', title:'Fixture Melody 01'}]}));
+                localStorage.setItem('aftertone:lyric-offsets:v1',
+                    JSON.stringify({'deezer:9100001':45}));
+            }""")
             # A backup must be downloadable even when no tracks are saved.
             page.locator('[data-action="backup-progress"]').wait_for(state="visible", timeout=TIMEOUT)
             with page.expect_download(timeout=TIMEOUT) as download_event:
@@ -144,11 +152,20 @@ def browser_case(browser, base, width, height):
             payload = json.loads(Path(backup.path()).read_text(encoding="utf-8"))
             require(payload.get("format") == "aftertone-progress", "Backup file schema missing")
             require("tournaments" in payload and "session" in payload, "Backup omitted saved state")
+            require(payload.get("version") == 2, "Expected current backup format version 2")
+            require(payload.get("playlist", {}).get("tracks", [{}])[0].get("title")
+                    == "Fixture Melody 01", "Backup omitted imported playlist")
+            require(payload.get("lyricOffsets", {}).get("deezer:9100001") == 45,
+                    "Backup omitted lyric timing adjustment")
             require(page.locator('[data-action="restore-progress"]').count() == 1,
                     "Restore backup control missing")
             # End-to-end restore: corrupt the existing session *after* exporting,
             # then import the good backup through the actual file input.
-            page.evaluate("localStorage.setItem('aftertone:session:v1', 'broken-test-session')")
+            page.evaluate("""() => {
+                localStorage.setItem('aftertone:session:v1', 'broken-test-session');
+                localStorage.setItem('aftertone:optional-playlist:v1', 'broken-test-playlist');
+                localStorage.setItem('aftertone:lyric-offsets:v1', 'broken-test-offsets');
+            }""")
             page.once("dialog", lambda dialog: dialog.accept())
             page.locator("#progress-backup-file").set_input_files({
                 "name": backup.suggested_filename,
@@ -163,6 +180,12 @@ def browser_case(browser, base, width, height):
             require(restored.get("version") == 1, "Restored state is not valid")
             require(restored.get("favorites") == payload["session"]["favorites"],
                     "Restore did not recover saved favorites")
+            stored_playlist = json.loads(page.evaluate(
+                "localStorage.getItem('aftertone:optional-playlist:v1')"))
+            stored_offsets = json.loads(page.evaluate(
+                "localStorage.getItem('aftertone:lyric-offsets:v1')"))
+            require(stored_playlist == payload["playlist"], "Restore lost imported playlist")
+            require(stored_offsets == payload["lyricOffsets"], "Restore lost lyric timing offsets")
             page.locator("#main-content .discovery-paths").wait_for(state="attached",timeout=TIMEOUT)
             page.locator('#main-nav button[data-view="duels"]').click()
             page.locator("#main-content .duels-page .duel-arena-picker").wait_for(

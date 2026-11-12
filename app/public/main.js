@@ -1413,8 +1413,12 @@ async function importProgressBackupFile(file) {
     if(file.size>BACKUP_MAX_BYTES)throw new Error('Backup must be smaller than 4 MB.');
     const content=await file.text();
     const preview=inspectProgressBackup(content).summary;
+    const optional=preview.version===1
+      ? 'This older backup does not contain imported playlists or lyric timing adjustments. Those existing settings will stay unchanged.'
+      : 'Also restore '+preview.playlistTracks+' imported playlist tracks and '+
+        preview.lyricOffsets+' lyric timing adjustments.';
     const message='Restore '+preview.favorites+' saved tracks, '+preview.decisions+
-      ' listening choices, and '+preview.tournaments+' tournaments?\n\n'+
+      ' listening choices, and '+preview.tournaments+' tournaments?\n\n'+optional+'\n\n'+
       'This replaces your current AFTERTONE progress. Export a backup of your current progress first.';
     if(!window.confirm(message))return;
     restoreProgressBackup(localStorage,content);

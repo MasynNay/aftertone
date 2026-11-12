@@ -30,7 +30,7 @@ AFTERTONE is being improved in small, testable releases. The immediate priority 
 
 **[View the development roadmap](docs/ROADMAP.md)** · **[Browse the open GitHub issues](https://github.com/MasynNay/aftertone/issues)**
 
-Planned work: **v0.10.2** (stability) → **v0.11** (discovery and saved data) → **v0.12** (accessibility and portfolio polish). Release targets are milestones, not deadlines.
+Current work: **v0.10.2** stability checks → **v0.11** discovery and reliable data portability → **v0.12** accessibility and portfolio polish. Milestones aren't deadlines. [Backup and Restore guide](docs/BACKUP_RESTORE.md).
 
 ## Screenshots
 
