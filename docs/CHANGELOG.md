@@ -1,3 +1,11 @@
+## v0.11 saved-data improvement — Complete progress backup formats (November 11, 2026)
+
+- New AFTERTONE progress backups use **format v2**, adding imported playlist artist/song entries and per-track lyric timing adjustments to the existing saved favorites, listening history, theme, volume, Duels, and quiz data.
+- Old **format v1** progress backups remain readable. Restoring one preserves the destination browser's existing playlist and lyric adjustments because those fields were never present in v1.
+- Each imported playlist row and offset is validated before any browser storage changes. Version 2 can also explicitly clear an absent playlist or empty offsets without leaving stale settings.
+- Expanded tests cover round trips, malformed data, rollback after late write failures, and a Chromium browser download/upload test that verifies playlist and offsets are restored.
+- No Deezer previews, audio, lyrics text, or provider credentials are included in these files. Real third-party playback is still a separate check.
+
 ## v0.11 preview — Safe Progress Backup and Restore (November 11, 2026)
 
 - Added **Backup Progress** and **Restore Backup** in Collection (even when no tracks have been saved), without changing the existing song-list JSON and CSV exports.

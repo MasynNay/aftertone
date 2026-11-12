@@ -13,7 +13,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 | Target | Priority | Focus | Status |
 | --- | --- | --- | --- |
 | **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser and preview fixes shipped |
-| **v0.11 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | Planned |
+| **v0.11 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | In progress · backup formats v1/v2 supported |
 | **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | Planned |
 | **v1.0 — Responsible public readiness** | Gate | Only after cross-browser reliability, provider rights, privacy, and licensing are resolved | Conditional |
 
@@ -29,7 +29,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 ### v0.11 — More rewarding discovery
 
 - [ ] [#4: First-run guidance and useful empty states](https://github.com/MasynNay/aftertone/issues/4). Improve discoverability of Comfort Zone, New Territory and Wild Card.
-- [ ] [#5: Safe browser-data backup/restore and migration checks](https://github.com/MasynNay/aftertone/issues/5). **Core feature shipped:** [PR #12](https://github.com/MasynNay/aftertone/pull/12) adds validated, local JSON backup/restore of favorites, preferences, history, artist choices, Tune Lab results and Duels; further migration coverage and imported-playlist/lyric-offset support are still planned.
+- [ ] [#5: Safe browser-data backup/restore and migration checks](https://github.com/MasynNay/aftertone/issues/5). **Core shipped:** [PR #12](https://github.com/MasynNay/aftertone/pull/12). **Extension under test:** export/import of optional playlists and lyric timing data, with backward-compatible v1 backup reading and rollback. Manual Firefox/Chrome verification and future schema migration checks remain.
 - [ ] [#6: Music Duels reliability across arenas and refreshes](https://github.com/MasynNay/aftertone/issues/6). Cover sparse track pools, brackets, persistence, and the Hall of Fame.
 
 **Exit criteria:** New listeners understand the first run; saved data survives upgrades; tournament states are tested and recoverable.
