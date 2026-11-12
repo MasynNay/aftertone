@@ -168,3 +168,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Empty catalog/search UI provides retry, clear search, broaden genre/language/era filters, another path and artist search without resetting history/favorites. Deleted the destructive Replay Heard Songs option from this recovery area (the separately confirmed reset function remains available elsewhere).
 - Added `docs/FIRST_LISTEN.md`, deterministic regression tests, and Chromium first-run guide checks. Keep issue #4 open for manual keyboard and Firefox UX checks.
 - Deezer API and real preview availability/permissions are not established by mocked test fixtures. Monitor the public GitHub Pages run before describing deployment as finished.
+
+
+## Music Duels reliability complete — November 11, 2026
+
+- PR #15 (https://github.com/MasynNay/aftertone/pull/15) squash merged as `014c1bfbdd1cd542421a1407844ff8e0a4210a6d`; PR Actions run `43143996090` passed **251/251 automated tests** and desktop/mobile Chromium browser checks.
+- Every arena readiness indicator follows selected 4/8/16 contestant count and Discovery/Favorites pool; missing verified genre/year metadata remains ineligible. The **Find More Songs** action returns to Discover for honest unavailable pools.
+- New localStorage `aftertone:duels:selection:v1` restores an opened bracket on refresh and preserves explicit Close; the existing archive key remains unchanged. Creation, deletion and voting update UI state only after save succeeds.
+- `test/duels-reliability.test.mjs`: 6 arenas x 3 sizes, reload after every vote, bronze before final, podium and Hall CSV, mystery reveal, poor/unknown metadata, unavailable pools and selection behavior. Chromium test follows a real UI create/vote/reload/resume/complete/export/close/reopen path using fictional fixture tracks.
+- Added updated `docs/MUSIC_DUELS.md` practical verification walkthrough and kept README screenshot. Mark issue #6 done after confirming the main deployment. Manual live Deezer playback and provider rights still require separate verification (#2/#3).

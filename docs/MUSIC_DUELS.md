@@ -1,4 +1,4 @@
-# Music Duels — themed arenas and Hall of Fame (v0.10.0)
+# Music Duels — Six Arenas, Resumable Brackets, and Hall of Fame
 
 ## Player guide
 
@@ -12,7 +12,7 @@
 
 ## Themed tournament arenas (v0.10.0)
 
-The **Choose your arena** cards above the bracket form change who is eligible for a tournament. Choose an arena, a 4/8/16-song bracket, and a discovery/favorites pool. The eligibility indicator updates before you start; an unavailable bracket cannot be created. No separate import, database, or special audio source is required.
+The **Choose your arena** cards above the bracket form change who is eligible for a tournament. Choose an arena, a 4/8/16-song bracket, and a discovery/favorites pool. Each card's eligibility count updates when the bracket size or song pool changes, so an arena never says it is ready for 4 entrants if you selected 16. The Start button is disabled for ineligible brackets and **Find More Songs** returns to Discover. No separate import, database, or special audio source is required.
 
 | Arena | Eligibility and gameplay |
 | --- | --- |
@@ -37,16 +37,30 @@ Every finished tournament contributes to the Hall of Fame. First place earns **5
 
 - Bracket algorithm: `src/duels.mjs`, pure functions `createTournament`, `nextDuelMatch`, `voteDuel`, `duelProgress`, `availableChampions`, `podiumTracks`, and persistence. Each match allows only one winner from its two listed contestants; stale votes cannot mutate a later round.
 - UI: `public/duels-view.js` renders a responsive, escaped, read-only snapshot. `public/main.js` handles event delegation, previews, votes, export, and storage. Bracket state never changes from rerendering.
-- Persistence: a separate versioned key `aftertone:duels:v1`, distinct from the older listening-session key. Existing favorites, themes, history, seed artists and imported playlist remain untouched. Up to 40 tournaments are retained (the app tells you when to delete an older event). Each stores a small snapshot of track identity and artwork to reopen brackets after a catalog refresh.
+- Persistence: the versioned archive key `aftertone:duels:v1`, distinct from the listening session, and `aftertone:duels:selection:v1` for which bracket was last opened. **Close Bracket** is remembered. New visitors with no selection reopen the newest unfinished event. Existing favorites, themes, history, seed artists, and imported playlist remain untouched. Up to 40 tournaments are retained. Entries store small track snapshots to reopen brackets after a catalog refresh. A new vote or tournament is displayed only if saving it succeeds.
 - Single-audio-element playback uses the existing `/api/audio?id=...` provider resolver, bounded to the same 22-second preview as Discover. No DRM bypass, download of full songs, or playback when the source is unavailable.
 - Songs enter from Deezer because it is the only normal discovery provider currently exposed by the application. The user can expand that available pool by listening and discovering more songs first.
 - Champion uniqueness is based on **track ID**, not artist name, to avoid creating a duplicate champion face-off with the same recording.
 - The optional third place match is scheduled before the grand final so the last battle crowns the champion.
 - CSV includes **rank**, **track name**, **artist name**, **source**, and **tournament**. It is a metadata export; it does not create a playlist inside Deezer or Spotify or imply rights to the recordings.
 
-## Testing
+## Practical verification walkthrough
 
-Run `npm run check` for syntax and unit regression tests. `test/duels.test.mjs` covers complete tournaments for 4/8/16 competitors, no repeated/stale votes, bronze then final ordering, champion promotion, 2-song champions cups, archive reload, unsafe saved data, escaping, and rendering the main UI. Real Deezer playback and browser autoplay must be tested on a live machine because the browser in this environment blocks local navigation.
+The [README screenshot](screenshots/app-music-duels.webp) demonstrates the actual Music Duels interface with **fictional sample track metadata**, not live Deezer results.
+
+1. Open [AFTERTONE Music Duels](https://aftertone.masynnay.com/demo/) using the left navigation. With a small discovery catalog, choose **16 songs** and **My favorites**. All six arena cards must show how many entries qualify; Start Bracket stays disabled until enough eligible songs exist. Use **Find More Songs** to return to Discover.
+2. Return when the discovery catalog contains at least four eligible tracks. Select **Open Stage**, **4 songs**, **Discovery songs**, then **Start Bracket**. Both contenders should have preview and Choose controls.
+3. Select the winner of the first matchup, refresh the browser, and reopen **Music Duels**. The same tournament and its completed vote should reappear. The archive should also provide **Resume Tournament**.
+4. Finish the second opening match, then the **Bronze Match** and **Grand Final**. A three-place podium must display, and the Hall of Fame should list the resulting champions.
+5. Select **Export Leaderboard CSV**. It must contain ranked track metadata, not music files. Close the bracket, refresh, and confirm the closed state is respected; reopen it from Tournament History.
+6. Test each arena with eligible and ineligible pools. **Pop vs Rock** requires verified genre tags, **2000s Throwback** requires confirmed years, and **Mystery Matchups** must keep track identities hidden until the event finishes.
+7. Check the same flow with 8 and 16 entrants. Saved progress must survive browser reloads. For transfers to a different browser, see the separate [Backup and Restore guide](BACKUP_RESTORE.md).
+
+## Automated verification
+
+Run `npm run check`. `test/duels-reliability.test.mjs` checks the full **6 arenas × 3 bracket sizes** matrix, reload after every vote, scarcity, archive selection, mystery reveal, safe persistence, podiums, and CSV exports. Earlier tournament tests remain in `test/duels.test.mjs` and `test/themed-tournaments.test.mjs`.
+
+The GitHub Pages Chromium smoke test uses the actual generated app with fictional catalog fixtures, deliberately tests an unavailable 16-song favorites cup, creates a four-song tournament, resumes after refresh, completes the bronze/final bracket, downloads a Hall of Fame CSV, and checks Close/Reopen across reload. It does **not** contact Deezer for real playback.
 
 ## Public deployment / licensing
 

@@ -64,7 +64,7 @@ These are browser captures of the **real AFTERTONE interface**—not redesigned 
 - **Three discovery paths.** **Comfort Zone** builds on artists and songs you already enjoy. **New Territory** explores less-familiar artists. **Wild Card** takes you toward unexpected genres and sounds.
 - **Keep or Pass.** Quickly react to a track, undo a choice, and build a collection based on your listening preferences.
 - **Search and explore.** Look up artists and songs, browse by genre, era, or language, and optionally import public Deezer playlists.
-- **Music Duels.** Compete across six tournament arenas, complete brackets, and see champions recognized in the **Hall of Fame**.
+- **Music Duels.** Compete across six tournament arenas with accurate eligibility counts, resume unfinished brackets after refreshing, and see champions recognized in the **Hall of Fame**.
 - **Taste map and Tune Lab.** Explore your listening preferences and experiment with your music collection.
 - **Challenges and progress.** Track personal discoveries, completed activities, tournament results, and related history in the browser.
 - **Player controls.** Autoplay after the user starts playback, volume adjustment, mute, skip, and responsive listening controls.

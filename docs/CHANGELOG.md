@@ -1,3 +1,12 @@
+## v0.11 reliability milestone — Music Duels Arenas and Bracket Resume (November 11, 2026)
+
+- All **six Music Duels arenas** now display eligible track counts for the actual 4, 8 or 16 entrants selected and for the Discovery/Favorites song pool. Unavailable themes no longer claim that a smaller bracket is ready.
+- When a cup can't start, the app explains what is missing, disables Start Bracket, and offers **Find More Songs** to return to Discover without inventing unverified genre/year metadata.
+- The last opened tournament resumes after a refresh. **Close Bracket** remains closed after reload; a removed active bracket safely falls back to another unfinished event. Tournament votes and creation are only reflected in the UI when their browser storage write succeeds.
+- Added a **6-arena × 3-size** reliability matrix, including reload after every match, bronze playoff before the final, mystery identities, real podium progress, archive selection and Hall of Fame CSV.
+- Chromium now creates a bracket using fictional test tracks, votes, refreshes, resumes, completes the final podium, exports the Hall of Fame, closes the bracket and reopens it from History.
+- [PR #15](https://github.com/MasynNay/aftertone/pull/15) passed **251/251 automated tests** plus desktop and mobile Chromium smoke checks. See the [Music Duels walkthrough](MUSIC_DUELS.md). Live Deezer playback and usage permissions remain separate unverified dependencies.
+
 ## v0.11 usability milestone — First-Listen Guidance and Search Recovery (November 11, 2026)
 
 - Added an inline, three-step first-listen guide: choose Comfort Zone, New Territory, or Wild Card; press Play; then Keep or Pass. No new popup and no changes to the existing welcome flow.
