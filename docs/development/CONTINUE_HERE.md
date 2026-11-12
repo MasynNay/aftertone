@@ -115,3 +115,11 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Added Retry Discovery when catalog failures are visible; prevented repeated media error callbacks from incrementing autoplay failures repeatedly.
 - Chromium smoke test now forces a blocked fixture CDN and checks recovery controls appear and Skip leaves journey count unchanged. All simulated results are test-only and do not establish real Deezer playback or media rights.
 - Do not merge if GitHub Actions browser or Node tests fail. Track provider licensing separately in issue #3.
+
+
+## Deezer recovery implementation shipped — November 11, 2026
+
+- PR #11 `https://github.com/MasynNay/aftertone/pull/11` merged as `b5db11e089fce10638a3e23a5494e0c3d5ded9a5`, incorporating prior PR #9's JSONP abort isolation. PR #9 was closed as superseded, not merged, to preserve the newer Chromium workflow.
+- Main UI offers Retry Preview and Skip Without Voting after a failed recording; retry invalidates cached previews and skip does not record a decision or change favorites/history. Catalog failures include Retry Discovery.
+- Node regression tests cover per-request cancellation isolation and script timeout/network cleanup. Chromium PR run `43138292719` passed, including deliberately blocked audio and neutral-skip validation.
+- Issue #2 remains open for actual provider/region validation. Issue #3 remains open for required third-party media permissions. CI success is not proof of live Deezer playback.

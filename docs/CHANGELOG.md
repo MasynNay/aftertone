@@ -1,3 +1,12 @@
+## v0.10.2 stability milestone — Deezer recovery (November 11, 2026)
+
+- Added **Retry Preview** and **Skip Without Voting** after unavailable audio. Retrying requests a fresh link; skipping is neutral and does not alter favorites or listening history.
+- Added **Retry Discovery** for catalog errors while preserving existing listening selections.
+- Isolated concurrent Deezer JSONP requests so canceling one request cannot abort another; reused PR #9's network-failure and timeout cleanup tests.
+- Prevented multiple media-error events from repeatedly incrementing autoplay failure handling. The existing three-failure stop remains.
+- Added Node regression checks and a Chromium scenario that deliberately blocks preview audio, verifies recovery controls, and confirms Skip doesn't count as an exploration decision. [PR #11](https://github.com/MasynNay/aftertone/pull/11) passed checks before merging.
+- **Limits:** Automated Deezer data is fictional. CI does not prove real upstream availability, region restrictions, or rights for preview or artwork use. Issues #2 and #3 remain open.
+
 ## v0.10.2 stability milestone — Browser deployment guard (November 11, 2026)
 
 - Added real Chromium checks against the **generated GitHub Pages build** at desktop and mobile sizes, exercising the portfolio's **Explore the Experience** button, application boot, Discover, Collection, and Music Duels.

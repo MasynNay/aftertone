@@ -12,7 +12,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 | Target | Priority | Focus | Status |
 | --- | --- | --- | --- |
-| **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | Planned |
+| **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser and preview fixes shipped |
 | **v0.11 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | Planned |
 | **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | Planned |
 | **v1.0 — Responsible public readiness** | Gate | Only after cross-browser reliability, provider rights, privacy, and licensing are resolved | Conditional |
@@ -21,7 +21,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 - [ ] [#1: Automated real-browser smoke tests for landing and full app](https://github.com/MasynNay/aftertone/issues/1). Catch broken CSS, import paths and blank app views before deployment.
   - **Automated portion shipped (November 11, 2026):** [PR #10](https://github.com/MasynNay/aftertone/pull/10) now gates deployments on desktop/mobile Chromium tests of the built site. Remains open for manual Firefox/Chrome provider verification.
-- [ ] [#2: Recover gracefully from Deezer catalog/preview failures](https://github.com/MasynNay/aftertone/issues/2). Retry, skip, and safe autoplay behavior; don't pretend that an inaccessible track can play.
+- [ ] [#2: Recover gracefully from Deezer catalog/preview failures](https://github.com/MasynNay/aftertone/issues/2). **Partial implementation shipped:** [PR #11](https://github.com/MasynNay/aftertone/pull/11) adds Retry Preview, Skip Without Voting, Retry Discovery, independent JSONP cancellation, and browser regression coverage. Real-provider verification and regional failure handling remain open.
 - [ ] [#3: Review third-party music and artwork permissions](https://github.com/MasynNay/aftertone/issues/3). Document authorization or provide a rights-cleared public fallback; a portfolio disclaimer alone does not establish usage rights.
 
 **Exit criteria:** `npm run check` passes; both public routes pass a real-browser smoke test; at least one actual preview is manually tested where permitted; provider failures yield a useful state; required media permissions are addressed.
