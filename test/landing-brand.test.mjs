@@ -7,6 +7,7 @@ const root=resolve(import.meta.dirname,'..');
 const site=readFileSync(resolve(root,'site/index.html'),'utf8');
 const css=readFileSync(resolve(root,'site/styles.css'),'utf8');
 const logo=readFileSync(resolve(root,'site/assets/mark.svg'),'utf8');
+const app=readFileSync(resolve(root,'app/public/main.js'),'utf8');
 
 test('the brand uses the actual AFTERTONE logo palette as accents, not a lime billboard',()=>{
   assert.match(logo, /fill="#d6fb77"/);
@@ -29,6 +30,8 @@ test('landing directly launches the real app and has usable mode choices',()=>{
   for(const path of ['familiar','balanced','explore']){
     assert.match(site,new RegExp('href="\\./demo/\\?path='+path+'"'));
   }
+  assert.match(app, /URLSearchParams\(window\.location\.search\)\.get\('path'\)/);
+  assert.match(app, /\['familiar', 'balanced', 'explore'\]\.includes\(landingPath\)/);
 });
 
 test('responsive layouts and keyboard navigation are explicitly supported',()=>{
