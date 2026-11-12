@@ -1,3 +1,23 @@
-# AFTERTONE marketing website — product-first direction
+# AFTERTONE product design direction
 
-The site must help visitors reach the real app immediately. Avoid large decorative fake app previews, oversized icon graphics, multi-screen marketing templates, or unrelated theme colors. The original logo is lime #D6FB77 and charcoal #0D1A1E. Use off-white #F7F8F4 for the primary background; use lime as a controlled accent and occasional section highlight. Each listening path on the landing opens the demo; the in-app discovery controls select the actual mode. Preserve direct app launch CTA, branded favicon, inline media disclaimer, accessible navigation, and 320px responsive support. Chrome 1600, 1440, 1024, 768, 390, 360 and 320 pixel local rendering was reviewed for overflow and missing imagery.
+AFTERTONE is a free, open-source music discovery application. It is **not** an engineering portfolio case study. This is a product homepage for people who want to listen.
+
+## Distinctive identity
+
+- Logo lime `#D6FB77` and charcoal `#0D1A1E` only, with calm neutral supporting tones
+- The station-console layout, sticky desktop rail, discovery channel dial, and horizontal station rows distinguish AFTERTONE from Keystoria's cinematic gaming hero and other projects' generic marketing layouts
+- Strong readability, clear one-click paths into the app, and keyboard accessibility matter more than decorative imagery
+- Do not present ornamental artwork or static illustrations as interactive playback
+- Treat channel and frequency terminology as a **playful interface metaphor**, not an actual FM broadcast service
+
+## User-facing promise
+
+Free to use. Open source under MIT for the app code. No sign-up required. Favorites and progress stored in the browser. Real third-party catalog discovery with short previews **where available**. Never claim that music rights are granted by the software's license, and do not promise provider uptime.
+
+## Navigation
+
+`./demo/` opens the application. `./demo/?path=familiar`, `balanced`, or `explore` opens the corresponding discovery mode. `./demo/?view=duels` opens Music Duels. Preserve the local app and its stored progress. Homepage navigation is plain HTML and does not need JavaScript.
+
+## Release safeguard
+
+Run the full Node test suite and Playwright desktop/mobile checks before deployment. CI can also emit actual viewport screenshots for visual review on pull requests. A passing test suite establishes functionality, not subjective visual quality.
