@@ -1565,6 +1565,12 @@ document.addEventListener('click', async (event) => {
     case 'use-mainstream':
       state.source = availableSources.includes('deezer') ? 'deezer' : 'featured'; state.discovery = 'hits'; rememberSource();
       persist(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp(); return;
+    case 'reset-discovery-filters':
+      // Only reset narrowed catalog filters; don't erase Keeps, history, or seed artists.
+      state.genre='all'; state.language='all'; state.era='any';
+      persist(); stopContinuous(); current=null;
+      render(); void loadMore(state.genre,true);
+      return;
     case 'clear-search': searchQuery = ''; searchDraft = ''; stopContinuous(); chooseNext(); render(); return maybeTopUp();
     case 'pass': return acceptChoice('pass');
     case 'like': return acceptChoice('like');

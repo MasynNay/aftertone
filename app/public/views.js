@@ -23,7 +23,26 @@ function renderListeningCard() {
   if (!current) {
     const challengeDone = challengeIds.length > 0 && challengeResponses.length >= challengeIds.length;
     const liked = challengeResponses.filter((item) => item.action === 'like').length;
-    return `<div class="empty-state" style="min-height:390px"><div class="empty-icon">${challengeDone ? '✦' : feed.loading ? '♫' : '◎'}</div><h2>${challengeDone ? 'Challenge complete.' : feed.loading ? 'Finding your next song…' : feed.hasMore ? 'More music is on the way.' : 'Nothing else matched this search.'}</h2><p>${challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.` : feed.loading ? 'Fetching another batch from your chosen music sources. Your favorites are safe.' : feed.error ? html(feed.error) : searchQuery ? `No matching recordings were found for “${html(searchQuery)}” in the selected sources. Deezer search results can be limited by availability and filtering.` : 'Deezer has no more matching tracks right now. Try another artist, genre, or language.'}</p>${challengeDone ? `<button class="accent-button" data-action="exit-challenge">Back to discovery →</button>` : `<div class="empty-actions"><button class="accent-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Searching…' : 'Find more songs ↻'}</button>${searchQuery ? '<button class="secondary-button" data-action="clear-search">Clear search</button>' : '<button class="secondary-button" data-action="reset-listens">Replay heard songs</button>'}</div>`}</div>`;
+    const narrowed=state.genre!=='all' || state.language!=='all' || state.era!=='any';
+    const otherPath=state.discoveryMix==='familiar' ? 'balanced' : state.discoveryMix==='balanced' ? 'explore' : 'balanced';
+    const otherName=otherPath==='explore' ? 'Wild Card' : 'New Territory';
+    const heading=challengeDone ? 'Challenge Complete' : feed.loading ? 'Finding Your Next Song…' :
+      feed.error ? 'Music Is Temporarily Unavailable' :
+      searchQuery ? 'No Matching Songs Found' : 'Ready for a Different Direction?';
+    const explanation=challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.` :
+      feed.loading ? 'Searching for real music from your selected provider. Your saved songs stay safe.' :
+      feed.error ? html(feed.error) :
+      searchQuery ? `No recordings matched “${html(searchQuery)}” with the current filters. Try a broader search or listening path.` :
+      'This listening path has no new matches right now. Try another path, broaden filters, or search an artist.';
+    const actions=challengeDone ? '<button type="button" class="accent-button" data-action="exit-challenge">Back to Discovery →</button>' :
+      `<div class="empty-actions">
+        <button type="button" class="accent-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Searching…' : searchQuery ? 'Retry Search ↻' : 'Find More Songs ↻'}</button>
+        ${!feed.loading && searchQuery ? '<button type="button" class="secondary-button" data-action="clear-search">Clear Search</button>' : ''}
+        ${!feed.loading && narrowed ? '<button type="button" class="secondary-button" data-action="reset-discovery-filters">Broaden Filters</button>' : ''}
+        ${!feed.loading ? `<button type="button" class="secondary-button" data-path="${otherPath}">Try ${otherName}</button>` : ''}
+        ${!feed.loading && !searchQuery ? '<button type="button" class="secondary-button" data-action="focus-music-search">Search for an Artist</button>' : ''}
+      </div>`;
+    return `<div class="empty-state discovery-empty-state" role="status" aria-live="polite"><div class="empty-icon" aria-hidden="true">${challengeDone ? '✦' : feed.loading ? '♫' : '◎'}</div><h2>${heading}</h2><p>${explanation}</p>${actions}</div>`;
   }
   const trackReason = current.seedReason || (state.discoveryMix === 'explore' ? 'A surprise beyond your usual sound' : state.discoveryMix === 'familiar' ? 'Close to your saved favorites' : 'An open-ended discovery');
   const ordinal = challengeIds.length ? challengeResponses.length + 1 : state.history.length + 1;
@@ -52,6 +71,11 @@ function renderDiscovery() {
   const countCopy = feed.total && state.source === 'jellyfin' ? `${Number(feed.total).toLocaleString()} tracks in your library` : `${catalog.length.toLocaleString()} loaded this session`;
   return `<section><div class="eyebrow">THE LISTENING ROOM ${challengeIds.length ? ' / SHARED CHALLENGE' : '/ DISCOVER'}</div>
     <div class="heading-row streamlined-head"><div><h1>${isBlind ? 'Blind Discovery.' : 'Find Your Next Favorite.'}</h1><p class="lead">Listen. Swipe. Save. Explore deeper in Tune Lab when you want.</p><div class="discovery-invitation"><span>♡ The more different artists you <strong>Keep</strong>, the better AFTERTONE can find your sound.</span><button type="button" data-action="focus-music-search">Search for an Artist ↗</button></div></div></div>
+    ${!state.history.length && !challengeIds.length ? `<section class="first-listen-guide" aria-label="How to start discovering music">
+      <div class="first-listen-intro"><span class="eyebrow">YOUR FIRST LISTEN</span><strong>Three steps to find your sound.</strong></div>
+      <ol><li><b>Choose a Path</b><span>Comfort Zone, New Territory, or Wild Card.</span></li><li><b>Press Play</b><span>Start a short music preview.</span></li><li><b>Keep or Pass</b><span>Guide the next discoveries. You can undo a choice.</span></li></ol>
+      <p>Continuous listening begins after your first Play. You control the volume and can stop at any time.</p>
+    </section>` : ''}
     ${seedInfo.active ? `<div class="discovery-mode-note">♫ ${seedInfo.kind==='artists'?'Your '+seedInfo.artists+' starting artists':'Your '+seedInfo.count+' imported songs'} · ${seedInfo.related ? seedInfo.related+' related artists found' : seedInfo.lookupStatus==='searching' ? 'Finding related artists…' : 'Mixing in chart discoveries'} <button data-action="fresh-discovery" class="secondary-button">Back to fresh</button></div>` : ''}
     ${(feed.error) ? `<div class="discovery-mode-note" role="status">${html(feed.error)} <button type="button" class="secondary-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Retrying…' : 'Retry Discovery'}</button></div>` : ''}
     <div class="discovery-paths" aria-label="Choose your discovery path"><div class="path-heading"><span class="eyebrow">PICK A PATH</span><span>Change direction whenever you want</span></div><div class="path-options">
