@@ -279,12 +279,40 @@ def browser_case(browser, base, width, height):
     finally:
         context.close()
 
+def check_product_deep_links(browser, base):
+    """Marketing stations must open the requested real listening mode, not just a generic app."""
+    context = browser.new_context(viewport={"width": 1024, "height": 800}, service_workers="block")
+    origin = urlsplit(base).netloc
+    context.route("**/*", lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc == origin else route.abort())
+    context.route("https://api.deezer.com/**", mock_deezer)
+    try:
+        for mode in ("familiar", "balanced", "explore"):
+            page = context.new_page()
+            page.goto(base + "/demo/?path=" + mode, wait_until="load", timeout=TIMEOUT)
+            option = page.locator('.path-option[data-path="' + mode + '"]')
+            option.wait_for(state="attached", timeout=TIMEOUT)
+            require(option.get_attribute("aria-pressed") == "true",
+                    "Station preset failed to select " + mode)
+            page.close()
+        page = context.new_page()
+        page.goto(base + "/demo/?view=duels", wait_until="load", timeout=TIMEOUT)
+        page.locator("#main-content .duels-page").wait_for(state="attached", timeout=TIMEOUT)
+        require(page.locator('#modal-root [role="dialog"]').count() == 0,
+                "Direct Music Duels entry should not be blocked by discovery onboarding")
+        page.close()
+    finally:
+        context.close()
+    print("PASS product station deep links and Music Duels direct entry")
+
+
 def main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
             browser_case(browser, base, 1440, 900)
             browser_case(browser, base, 390, 844)
+            check_product_deep_links(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
