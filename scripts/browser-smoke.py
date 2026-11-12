@@ -113,6 +113,12 @@ def browser_case(browser, base, width, height):
                 "App stylesheet failed to load")
         screenshot(page, f"discover-{label}")
         if width > 600:
+            # First-run onboarding is a real modal. Dismiss it like a visitor
+            # before exercising playback; never force-click through overlays.
+            first_run = page.locator('#modal-root button[data-modal="close"]')
+            if first_run.count():
+                first_run.first.click(timeout=TIMEOUT)
+                page.locator('#modal-root [role="dialog"]').wait_for(state="hidden", timeout=TIMEOUT)
             # No external CDN is contacted: a blocked fixture preview must
             # expose Retry and Skip instead of trapping the listener.
             page.locator("#stage-play").click()
