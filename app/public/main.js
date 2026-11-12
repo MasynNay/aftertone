@@ -16,9 +16,9 @@ import { belongsToDiscoveryFeed } from '/src/discovery/queue.mjs';
 import { selectRouteQueue, isActiveRequest } from '/src/discovery/route-session.mjs';
 import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/graph.mjs';
 import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
-import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore } from '/src/duels.mjs';
+import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore, loadDuelSelection, saveDuelSelection } from '/src/duels.mjs';
 import { renderDuels } from './duels-view.js';
-import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament } from '/src/tournament-themes.mjs';
+import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 
 const main = document.querySelector('#main-content');
@@ -118,7 +118,7 @@ let animatingChoice = false;
 let allGenres = [];
 let view = 'discover';
 let duelTournaments = loadDuelStore(localStorage);
-let selectedDuelId = null; // UI selection is transient; brackets themselves are persisted.
+let selectedDuelId = loadDuelSelection(localStorage,duelTournaments); // Active bracket reopens after refresh.
 let hallSeason = 'all'; // Season filter only affects the leaderboard, not stored results.
 let sidebarFiltersCollapsed = false;
 let quizSession = null;
@@ -1238,8 +1238,20 @@ async function copy(value, message) {
 
 /** Music Duels are independent of swipe ratings. A vote advances a bracket;
  * it never counts as a Like, Pass, or playlist recommendation signal. */
-function writeDuelArchive() {
-  if (!saveDuelStore(localStorage,duelTournaments)) toast('Your browser could not save the bracket. Check storage availability.');
+/** Write before mutating the in-memory bracket. A failed save must never
+ * imply the vote or tournament will survive a page refresh.
+ */
+function writeDuelArchive(next=duelTournaments) {
+  if(!saveDuelStore(localStorage,next)) {
+    toast('Unable to save this tournament. Check browser storage before continuing.');
+    return false;
+  }
+  duelTournaments=next;
+  return true;
+}
+function setDuelSelection(id) {
+  selectedDuelId=id;
+  saveDuelSelection(localStorage,id);
 }
 function duelTrack(id) {
   return lookup(id) || duelTournaments.flatMap(t=>t.entries).find(t=>t.id===id) || null;
@@ -1265,8 +1277,17 @@ function refreshDuelAvailability() {
   if(label){label.textContent=result.message;label.classList.toggle('is-ready',result.ready);}
   const submit=$('[data-duel-action="create"]');
   if(submit){submit.disabled=!result.ready;submit.setAttribute('aria-describedby','duel-eligibility');}
+  const help=$('[data-duel-action="discover-more"]');
+  if(help)help.hidden=result.ready;
   document.querySelectorAll('[data-duel-theme]').forEach(button=>{
-    const selected=button.dataset.duelTheme===themeId;
+    const arena=button.dataset.duelTheme;
+    const availability=tournamentAvailability({themeId:arena,tracks,favoriteIds:state.favorites,size});
+    const status=button.querySelector('[data-duel-status]');
+    if(status){
+      status.textContent=tournamentStatusLabel(availability,arena,size);
+      status.dataset.ready=String(availability.ready);
+    }
+    const selected=arena===themeId;
     button.classList.toggle('selected',selected);
     button.setAttribute('aria-pressed',String(selected));
   });
@@ -1276,9 +1297,9 @@ function registerTournament(event) {
     toast('The tournament archive is full (40). Delete an old event to create another.');
     return;
   }
-  duelTournaments.push(event);
-  selectedDuelId=event.id;
-  writeDuelArchive(); stopContinuous(); render();
+  if(!writeDuelArchive([...duelTournaments,event]))return;
+  setDuelSelection(event.id);
+  stopContinuous();render();
   document.querySelector('#duel-active-event')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 function createDuelId() {
@@ -1295,6 +1316,7 @@ function exportDuelPodium(event) {
 }
 function handleDuelAction(action, id=null) {
   const selected=duelTournaments.find(t=>t.id===selectedDuelId);
+  if(action==='discover-more')return goTo('discover');
   if(action==='create') {
     const size=Number($('#duel-size')?.value||8);
     if(![4,8,16].includes(size)) return;
@@ -1338,14 +1360,14 @@ function handleDuelAction(action, id=null) {
     catch(error){toast(error.message);}
     return;
   }
-  if(action==='open') {if(!duelTournaments.some(t=>t.id===id))return;selectedDuelId=id;stopAudio();render();return;}
-  if(action==='dismiss') {selectedDuelId=null;stopAudio();render();return;}
+  if(action==='open') {if(!duelTournaments.some(t=>t.id===id))return;setDuelSelection(id);stopAudio();render();return;}
+  if(action==='dismiss') {setDuelSelection(null);stopAudio();render();return;}
   if(action==='delete') {
     const event=duelTournaments.find(t=>t.id===id);
     if(!event || !confirm(`Delete tournament “${event.name}”? This cannot be undone.`)) return;
-    duelTournaments=duelTournaments.filter(t=>t.id!==id);
-    if(selectedDuelId===id) selectedDuelId=null;
-    writeDuelArchive(); stopAudio(); render();return;
+    if(!writeDuelArchive(duelTournaments.filter(t=>t.id!==id)))return;
+    if(selectedDuelId===id)setDuelSelection(null);
+    stopAudio();render();return;
   }
   const event=duelTournaments.find(t=>t.id===id);
   if(!event || event.status!=='complete')return;
@@ -1370,8 +1392,8 @@ function voteActiveDuel(winnerId) {
   if(!match)return;
   try {
     const updated=voteDuel(duelTournaments[index],match.id,winnerId);
-    duelTournaments[index]=updated;
-    stopAudio();writeDuelArchive();render();
+    if(!writeDuelArchive(duelTournaments.map((event,i)=>i===index?updated:event)))return;
+    stopAudio();render();
     if(updated.status==='complete') toast('Tournament complete! Your podium is ready.');
     else if(match.stage==='third')toast('Bronze decided. Time for the grand final!');
     else toast('Winner advances!');
