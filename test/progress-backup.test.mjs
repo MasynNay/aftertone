@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createInitialState} from '../app/src/taste.mjs';
 import {STORAGE_KEY,loadState,saveState} from '../app/src/persistence.mjs';
 import {createTournament,DUEL_STORAGE_KEY,loadDuelStore,saveDuelStore} from '../app/src/duels.mjs';
-import {BACKUP_FORMAT,BACKUP_MAX_BYTES,createProgressBackup,inspectProgressBackup,restoreProgressBackup} from '../app/src/progress-backup.mjs';
+import {BACKUP_FORMAT,BACKUP_VERSION,BACKUP_MAX_BYTES,createProgressBackup,inspectProgressBackup,restoreProgressBackup} from '../app/src/progress-backup.mjs';
 import {createViews} from '../app/public/views.js';
 
 function storage(initial={}) {
