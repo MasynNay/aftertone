@@ -109,6 +109,11 @@ def browser_case(browser, base, width, height):
         require(page.locator("#player").count() == 1, "Original audio element missing")
         require(page.locator("#main-content [data-path]").count() >= 3,
                 "Discovery path controls did not render")
+        # First-time listeners get inline guidance, not an additional blocking modal.
+        require(page.locator(".first-listen-guide ol li").count() == 3,
+                "First-session listening steps are missing")
+        require(page.locator(".first-listen-guide").is_visible(),
+                "First-session guidance is not visible")
         require(page.locator('link[rel="stylesheet"]').first.evaluate("(el) => Boolean(el.sheet)"),
                 "App stylesheet failed to load")
         screenshot(page, f"discover-{label}")

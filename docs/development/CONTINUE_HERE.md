@@ -151,3 +151,11 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Untrusted playlist/offset values are bounded and validated before the six-key restore transaction; late-write rollback is tested and v2 can intentionally clear an absent playlist.
 - PR GitHub Actions run `43141248271`: **240/240** Node tests and desktop/mobile Chromium browser check passed, including actual backup export/import of optional fields with a test fixture.
 - Monitor the final main-branch Pages workflow after merging. Issue #5 remains open for manual Firefox/Chrome restore checks and future state-schema migrations. Rights/provider playback verification is independent.
+
+
+## v0.11 first-listen guidance candidate — November 11, 2026
+
+- Branch `feature/v011-first-run-discovery-guidance` adds a compact inline three-step discovery guide only when history is empty. No extra modal, no portfolio homepage changes.
+- Empty search/error views offer Retry Search, Clear Search, Broaden Filters, an alternate listening path, and Search for an Artist as appropriate. Broadening resets genre/language/era but preserves decisions, favorites, and seeded artists; the destructive Replay Heard Songs option was removed from the empty card.
+- Added targeted Node UI tests and a real Chromium assertion that the first-session steps render on desktop and mobile. Do not merge if CI fails.
+- Real Deezer playback and rights remain unverified. Check PR and Pages deployment before describing as shipped.
