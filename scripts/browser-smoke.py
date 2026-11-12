@@ -135,6 +135,17 @@ def browser_case(browser, base, width, height):
             heading = page.locator("#main-content .page-head h1")
             heading.wait_for(state="visible", timeout=TIMEOUT)
             require("collection" in heading.inner_text().lower(), "Collection failed to render")
+            # A backup must be downloadable even when no tracks are saved.
+            page.locator('[data-action="backup-progress"]').wait_for(state="visible", timeout=TIMEOUT)
+            with page.expect_download(timeout=TIMEOUT) as download_event:
+                page.locator('[data-action="backup-progress"]').click()
+            backup = download_event.value
+            require(backup.suggested_filename.startswith("aftertone-progress-"), "Backup filename missing")
+            payload = json.loads(Path(backup.path()).read_text(encoding="utf-8"))
+            require(payload.get("format") == "aftertone-progress", "Backup file schema missing")
+            require("tournaments" in payload and "session" in payload, "Backup omitted saved state")
+            require(page.locator('[data-action="restore-progress"]').count() == 1,
+                    "Restore backup control missing")
             page.locator('#main-nav button[data-view="duels"]').click()
             page.locator("#main-content .duels-page .duel-arena-picker").wait_for(
                 state="attached", timeout=TIMEOUT)

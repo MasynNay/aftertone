@@ -2698,3 +2698,9 @@ h1 em {
 .preview-recovery p {margin:0 0 10px;}
 .preview-recovery-actions {display:flex;flex-wrap:wrap;gap:8px;}
 .preview-recovery-actions button {min-height:36px;}
+
+/* Compact backup controls on the Collection header, including empty collections. */
+.collection-header-actions {display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;}
+.collection-header-actions .secondary-button {white-space:nowrap;min-height:40px;}
+.collection-backup-note {max-width:850px;margin:10px 0 18px;color:var(--muted);font-size:12px;line-height:1.6;}
+@media(max-width:640px){.collection-header-actions{justify-content:flex-start;width:100%;}.collection-header-actions .secondary-button{flex:1 1 auto;}}
