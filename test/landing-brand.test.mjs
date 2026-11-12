@@ -7,29 +7,37 @@ const root=resolve(import.meta.dirname,'..');
 const site=readFileSync(resolve(root,'site/index.html'),'utf8');
 const css=readFileSync(resolve(root,'site/styles.css'),'utf8');
 const logo=readFileSync(resolve(root,'site/assets/mark.svg'),'utf8');
+const app=readFileSync(resolve(root,'app/public/main.js'),'utf8');
 
-test('portfolio palette matches the existing AFTERTONE logo',()=>{
+test('the brand uses the actual AFTERTONE logo palette as accents, not a lime billboard',()=>{
   assert.match(logo, /fill="#d6fb77"/);
   assert.match(logo, /stroke="#0d1a1e"/);
-  assert.match(css, /--lime:#d6fb77/);
-  assert.match(css, /--ink:#0d1a1e/);
-  assert.match(site, /content="#d6fb77"/);
+  assert.match(css, /--lime:\s*#d6fb77/);
+  assert.match(css, /--ink:\s*#0d1a1e/);
+  assert.match(css, /--paper:\s*#f7f8f4/);
+  assert.match(site, /content="#f7f8f4"/);
 });
 
-test('brand-led landing has direct app links and no fabricated interface preview',()=>{
+test('landing directly launches the real app and has usable mode choices',()=>{
   assert.match(site, /id="explore-experience" href="\.\/demo\/"/);
-  assert.match(site, /class="duel-visual"/);
-  assert.match(site, /class="art-symbol"/);
-  assert.doesNotMatch(site, /app-(?:discover|collection|music-duels)\.webp/);
+  assert.match(site, /class="path-selector"/);
+  assert.match(site, /class="selector-options"/);
+  assert.equal((site.match(/class="selector-option"/g)||[]).length,3);
+  assert.doesNotMatch(site, /src="\.\/assets\/app-(?:discover|collection|music-duels)\.webp"/);
   assert.match(site, /class="project-note wrap"/);
   assert.match(site, /not affiliated with or endorsed by Deezer/);
   assert.ok((site.match(/href="\.\/demo\/"/g)||[]).length >= 4);
+  for(const path of ['familiar','balanced','explore']){
+    assert.match(site,new RegExp('href="\\./demo/\\?path='+path+'"'));
+  }
+  assert.match(app, /URLSearchParams\(window\.location\.search\)\.get\('path'\)/);
+  assert.match(app, /\['familiar', 'balanced', 'explore'\]\.includes\(landingPath\)/);
 });
 
-test('small screens and accessibility are first-class',()=>{
-  assert.match(css, /@media\(max-width:540px\)/);
-  assert.match(css, /@media\(max-width:360px\)/);
-  assert.match(css, /prefers-reduced-motion:reduce/);
+test('responsive layouts and keyboard navigation are explicitly supported',()=>{
+  assert.match(css, /@media \(max-width: 560px\)/);
+  assert.match(css, /@media \(max-width: 360px\)/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
   assert.match(site, /class="skip" href="#main"/);
   assert.match(site, /aria-labelledby="hero-heading"/);
 });

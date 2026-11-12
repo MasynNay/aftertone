@@ -1833,6 +1833,13 @@ async function init() {
       if (available.length !== challengeIds.length) toast('Some shared tracks are not available from this catalog.');
       challengeIds = available;
     }
+    // Portfolio entry links can open a requested discovery path directly.
+    // Absent or invalid values preserve the listener's existing selection.
+    const landingPath = new URLSearchParams(window.location.search).get('path');
+    if (['familiar', 'balanced', 'explore'].includes(landingPath)) {
+      state.discoveryMix = landingPath;
+      persist();
+    }
     chooseNext();
     render();
     if (!challengeIds.length) {

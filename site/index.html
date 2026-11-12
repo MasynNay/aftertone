@@ -2,125 +2,92 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#d6fb77">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8f4">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'">
-  <meta name="description" content="AFTERTONE is a music discovery game for curious listeners. Explore different paths, keep what you love, and see what wins in Music Duels.">
+  <meta name="description" content="Find your next favorite. AFTERTONE is a free-to-try music discovery game with listening paths, Keep and Pass, personal favorites, and Music Duels.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="AFTERTONE — Find more to love">
-  <meta property="og:description" content="Music discovery for curious ears. Listen, discover, keep and compete in the real AFTERTONE browser app.">
-  <title>AFTERTONE — Find More to Love</title>
+  <meta property="og:title" content="AFTERTONE | Your next favorite is out there">
+  <meta property="og:description" content="Explore beyond your usual music. Listen to short previews, save what you love, and challenge your taste in Music Duels.">
+  <title>AFTERTONE | Find Your Next Favorite</title>
   <link rel="icon" type="image/svg+xml" href="./assets/mark.svg">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body id="top">
   <a class="skip" href="#main">Skip to content</a>
-  <header class="site-header wrap">
-    <a class="brand" href="#top" aria-label="AFTERTONE, return to top">
-      <img src="./assets/mark.svg" alt="" width="39" height="39">
-      <span>aftertone<span class="brand-period">.</span></span>
-    </a>
-    <nav aria-label="Primary navigation">
-      <a href="#modes">Explore</a>
-      <a href="#listening">How It Works</a>
-      <a href="#engineering">Behind the Build</a>
-    </nav>
-    <a class="nav-launch" href="./demo/">Open App <span aria-hidden="true">↗</span></a>
+  <header class="site-header">
+    <div class="header-inner wrap">
+      <a class="brand" href="#top" aria-label="AFTERTONE home">
+        <img src="./assets/mark.svg" width="42" height="42" alt="">
+        <span>aftertone<span class="brand-period">.</span></span>
+      </a>
+      <nav class="nav" aria-label="Primary navigation">
+        <a href="#modes">Discover</a>
+        <a href="#listening">How It Works</a>
+        <a href="#engineering">Behind the Build</a>
+      </nav>
+      <a class="nav-launch" href="./demo/">Open App <span aria-hidden="true">↗</span></a>
+    </div>
   </header>
-
   <main id="main">
-    <section class="hero" aria-labelledby="hero-heading">
-      <div class="hero-inner wrap">
-        <div class="hero-copy">
-          <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> MUSIC DISCOVERY, REIMAGINED</p>
-          <h1 id="hero-heading">Hear beyond<br>the <span>usual.</span></h1>
-          <p class="hero-description">The best songs are sometimes the ones you weren't looking for. Find new sounds, save what sticks, and make listening a little more fun.</p>
-          <div class="hero-actions">
-            <a class="button button-ink" id="explore-experience" href="./demo/">Explore the Experience <span aria-hidden="true">↗</span></a>
-            <a class="link-underline" href="#modes">Meet AFTERTONE <span aria-hidden="true">↓</span></a>
-          </div>
-          <p class="hero-note"><span aria-hidden="true">●</span> REAL MUSIC PREVIEWS WHERE AVAILABLE · NO ACCOUNT NEEDED</p>
+    <section class="hero wrap" aria-labelledby="hero-heading">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-mark" aria-hidden="true"></span> FOR THE MUSIC YOU HAVEN'T MET YET</p>
+        <h1 id="hero-heading">Find your<br>next <span>favorite.</span></h1>
+        <p class="hero-lede">A music discovery game for curious ears. Follow what you love, wander somewhere new, and save the tracks that stay with you.</p>
+        <div class="hero-actions">
+          <a class="button button-main" id="explore-experience" href="./demo/">Explore the Experience <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="#listening">How it works <span aria-hidden="true">↓</span></a>
         </div>
-        <div class="hero-art" aria-hidden="true">
-          <div class="art-top"><span>AT — 001</span><span>THE SIGNAL IS YOURS</span></div>
-          <div class="art-symbol">
-            <svg viewBox="0 0 80 80" role="presentation" focusable="false" aria-hidden="true">
-              <path d="M9 43h12l6-17 10 31 9-44 9 31 6-11h10" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"/>
-              <circle cx="63" cy="20" r="5.5" fill="currentColor"/>
-            </svg>
-          </div>
-          <div class="art-bottom"><span>DISCOVER / LISTEN / KEEP</span><span>EST. 2026</span></div>
-        </div>
+        <div class="hero-facts" aria-label="Before you start"><span><i aria-hidden="true"></i> No account needed</span><span><i aria-hidden="true"></i> Play in your browser</span></div>
       </div>
-      <div class="hero-baseline wrap"><span>NO TWO LISTENERS ALIKE.</span><span>NO TWO DISCOVERIES THE SAME.</span><span>01 / THE INTRODUCTION</span></div>
-    </section>
-
-    <section class="statement wrap" aria-labelledby="statement-heading">
-      <p class="section-kicker">01 <span>—</span> THE IDEA</p>
-      <div class="statement-layout">
-        <h2 id="statement-heading">Get out of your<br><strong>listening loop.</strong></h2>
-        <div class="statement-copy">
-          <p>Play something you don't know. Keep the songs that surprise you. Skip the ones that don't. It's discovery guided by your ears, not an endless feed.</p>
-          <a class="text-action" href="./demo/">Jump into the music <span aria-hidden="true">↗</span></a>
+      <aside class="path-selector" id="modes" aria-labelledby="path-heading">
+        <div class="selector-header"><span class="selector-kicker">START LISTENING / 001</span><span class="selector-icon" aria-hidden="true"><svg viewBox="0 0 80 80"><path d="M12 43h9l6-17 10 31 9-44 9 31 6-11h7" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round"/><circle cx="63" cy="20" r="5.5" fill="currentColor"/></svg></span></div>
+        <h2 id="path-heading">Pick a direction.</h2>
+        <p>Every discovery starts somewhere.</p>
+        <div class="selector-options">
+          <a class="selector-option" href="./demo/?path=familiar"><span class="option-number">01</span><span class="option-copy"><strong>Comfort Zone</strong><small>More of what feels like you</small></span><span class="option-arrow" aria-hidden="true">↗</span></a>
+          <a class="selector-option" href="./demo/?path=balanced"><span class="option-number">02</span><span class="option-copy"><strong>New Territory</strong><small>Music outside your usual orbit</small></span><span class="option-arrow" aria-hidden="true">↗</span></a>
+          <a class="selector-option" href="./demo/?path=explore"><span class="option-number">03</span><span class="option-copy"><strong>Wild Card</strong><small>Let the next song surprise you</small></span><span class="option-arrow" aria-hidden="true">↗</span></a>
         </div>
+        <p class="selector-footnote">CHOOSE A PATH TO OPEN AFTERTONE <span aria-hidden="true">↗</span></p>
+      </aside>
+    </section>
+    <div class="section-rule wrap"><span>MADE FOR CURIOUS LISTENERS</span><span>01 / DISCOVER</span></div>
+    <section class="listening-section wrap" id="listening" aria-labelledby="listening-heading">
+      <div class="section-intro">
+        <p class="section-label">THE EXPERIENCE</p>
+        <h2 id="listening-heading">Less searching.<br><span>More finding.</span></h2>
+        <p>Discovering music should feel like listening, not scrolling. AFTERTONE keeps the experience simple.</p>
       </div>
-    </section>
-
-    <section class="modes-section" id="modes" aria-labelledby="modes-heading">
-      <div class="wrap">
-        <div class="modes-heading">
-          <div><p class="section-kicker">02 <span>—</span> CHOOSE YOUR DIRECTION</p><h2 id="modes-heading">Three ways in.<br><span>Endless ways out.</span></h2></div>
-          <p>There isn't a right way to find your next favorite. Start with what feels right.</p>
-        </div>
-        <div class="route-list">
-          <a class="route" href="./demo/" aria-label="Explore Comfort Zone in the AFTERTONE app">
-            <span class="route-number">01</span><div class="route-title"><h3>Comfort Zone</h3><span>START WITH WHAT YOU KNOW</span></div><p>Follow familiar sounds and find something just beyond the edges.</p><span class="route-arrow" aria-hidden="true">↗</span>
-          </a>
-          <a class="route" href="./demo/" aria-label="Explore New Territory in the AFTERTONE app">
-            <span class="route-number">02</span><div class="route-title"><h3>New Territory</h3><span>GO SOMEWHERE DIFFERENT</span></div><p>Meet unfamiliar artists and make space for new favorites.</p><span class="route-arrow" aria-hidden="true">↗</span>
-          </a>
-          <a class="route" href="./demo/" aria-label="Explore Wild Card in the AFTERTONE app">
-            <span class="route-number">03</span><div class="route-title"><h3>Wild Card</h3><span>LET THE NEXT TRACK SURPRISE YOU</span></div><p>Leave your expectations behind. You never know what comes next.</p><span class="route-arrow" aria-hidden="true">↗</span>
-          </a>
-        </div>
+      <div class="steps">
+        <article class="step"><span class="step-count">01 <span>────</span></span><h3>Listen</h3><p>Explore real music catalogs and hear short previews when available.</p></article>
+        <article class="step"><span class="step-count">02 <span>────</span></span><h3>Keep or Pass</h3><p>Keep what moves you. Pass on the rest. Build your own collection.</p></article>
+        <article class="step"><span class="step-count">03 <span>────</span></span><h3>Play it out</h3><p>Challenge your picks in Music Duels and see which tracks win.</p></article>
       </div>
     </section>
-
-    <section class="duel-section wrap" aria-labelledby="duel-heading">
-      <div class="duel-copy">
-        <p class="section-kicker">03 <span>—</span> WHEN GOOD SONGS COLLIDE</p>
-        <h2 id="duel-heading">Some tracks<br>deserve a <em>showdown.</em></h2>
-        <p>Make a bracket, choose your winners and see which songs earn a place in your Hall of Fame. Music Duels puts your taste to the test.</p>
-        <a class="button button-lime" href="./demo/">Play Music Duels <span aria-hidden="true">↗</span></a>
-      </div>
-      <div class="duel-visual" aria-hidden="true">
-        <div class="duel-panel-head"><span>AFTERTONE / MUSIC DUELS</span><span>ROUND 01</span></div>
-        <div class="duel-match"><div class="duel-entry"><span>TRACK</span><b>A</b></div><div class="duel-vs">VS</div><div class="duel-entry"><span>TRACK</span><b>B</b></div></div>
-        <div class="duel-panel-foot"><span>ONE CHOICE.</span><span>YOUR CALL.</span></div>
+    <section class="duels-section" aria-labelledby="duels-heading">
+      <div class="duels-inner wrap">
+        <div class="duels-left">
+          <p class="section-label">MORE THAN DISCOVERY</p>
+          <h2 id="duels-heading">Your taste.<br>Your tournament.</h2>
+        </div>
+        <div class="duels-right"><div class="duels-accent" aria-hidden="true">VS<span>.</span></div><p>Great songs deserve a little competition. Build a Music Duels bracket, pick your winners, and give your favorites a place in the Hall of Fame.</p><a class="button button-lime" href="./demo/">Try Music Duels <span aria-hidden="true">↗</span></a></div>
       </div>
     </section>
-
-    <section class="listening-section" id="listening" aria-labelledby="listening-heading">
-      <div class="wrap listening-layout">
-        <div class="listening-head"><p class="section-kicker">04 <span>—</span> HOW IT WORKS</p><h2 id="listening-heading">Simple enough<br>to get <span>lost in.</span></h2><p>It's not about collecting more noise. It's about finding something worth a second listen.</p></div>
-        <ol class="listening-steps">
-          <li><span class="step-number">01</span><div><h3>Listen.</h3><p>Choose a discovery path and hear short music previews where they're available.</p></div></li>
-          <li><span class="step-number">02</span><div><h3>Decide.</h3><p>Keep what you like, pass on the rest and let the listening continue.</p></div></li>
-          <li><span class="step-number">03</span><div><h3>Come back.</h3><p>Build a collection, revisit your favorites and make new discoveries.</p></div></li>
-        </ol>
-      </div>
-    </section>
-
     <section class="engineering-section wrap" id="engineering" aria-labelledby="engineering-heading">
-      <div class="engineering-title"><p class="section-kicker">05 <span>—</span> UNDER THE HOOD</p><h2 id="engineering-heading">Not just a<br><span>landing page.</span></h2><p>A working browser app, designed to make music discovery feel personal and playful.</p><a class="text-action" href="https://github.com/MasynNay/aftertone" rel="noopener noreferrer" target="_blank">Explore the source on GitHub <span aria-hidden="true">↗</span></a></div>
-      <div class="engineering-facts"><article><span>01 / DISCOVERY</span><h3>Personalized Listening Paths</h3><p>Three different ways to find tracks outside your regular rotation.</p></article><article><span>02 / PLAYBACK</span><h3>Provider-Aware Playback</h3><p>Music catalog integration and short previews that respect provider availability.</p></article><article><span>03 / PROGRESSION</span><h3>Collections &amp; Music Duels</h3><p>Local favorites, tournament history and reasons to come back.</p></article><article><span>04 / DEVELOPMENT</span><h3>Made to Keep Evolving</h3><p>Automated checks, accessible navigation and an active project roadmap.</p></article></div>
+      <div class="engineering-intro"><p class="section-label">BEHIND THE BUILD</p><h2 id="engineering-heading">A real product.<br><span>Built to grow.</span></h2><p>AFTERTONE is an independent software portfolio project, built around the details that make music discovery work.</p><a class="text-link" href="https://github.com/MasynNay/aftertone" target="_blank" rel="noopener noreferrer">Explore the code on GitHub <span aria-hidden="true">↗</span></a></div>
+      <div class="engineering-list">
+        <article><span>01</span><div><h3>Personalized Listening Paths</h3><p>Different discovery routes for comfort, curiosity, and chance.</p></div></article>
+        <article><span>02</span><div><h3>Provider-Aware Playback</h3><p>Real catalog search and short previews where the providers allow them.</p></div></article>
+        <article><span>03</span><div><h3>Saved Favorites &amp; Music Duels</h3><p>Personal collections and competitive listening that keep the experience moving.</p></div></article>
+        <article><span>04</span><div><h3>Open Development</h3><p>Automated tests, GitHub Pages deployment, and a public roadmap.</p></div></article>
+      </div>
     </section>
-
-    <section class="project-note wrap" aria-labelledby="note-heading"><span class="notice-badge" aria-hidden="true">i</span><div><h2 id="note-heading">An independent listening project</h2><p>AFTERTONE is an independent software portfolio project, not a commercial streaming service. It is not affiliated with or endorsed by Deezer. Music metadata, artwork and short previews may be provided by third parties and remain the property of their rights holders. Availability depends on the provider and browser. A portfolio notice does not grant rights to use third-party media. Favorites and game progress are stored locally in your browser; no account is required.</p></div></section>
-
-    <section class="launch-section" id="launch" aria-labelledby="launch-heading"><div class="wrap launch-layout"><div><span>READY TO FIND SOMETHING NEW?</span><h2 id="launch-heading">Go where the<br>music takes you.</h2></div><div class="launch-actions"><a class="button button-ink" href="./demo/">Explore the Experience <span aria-hidden="true">↗</span></a><a class="link-underline" href="https://github.com/MasynNay/aftertone" target="_blank" rel="noopener noreferrer">View the source <span aria-hidden="true">↗</span></a></div></div></section>
+    <section class="launch-section" id="launch"><div class="launch-inner wrap"><div><p class="section-label">ONE CLICK AWAY</p><h2>There’s more<br>out there.</h2></div><div class="launch-right"><p>Your next favorite might be a song you've never heard of.</p><a class="button button-main" href="./demo/">Explore the Experience <span aria-hidden="true">↗</span></a></div></div></section>
+    <section class="project-note wrap" aria-labelledby="note-heading"><span class="note-icon" aria-hidden="true">i</span><div><h2 id="note-heading">An independent music project</h2><p>AFTERTONE is a portfolio demonstration, not a commercial streaming service. It is not affiliated with or endorsed by Deezer. Music metadata, artwork, and short previews belong to their respective rights holders and may be unavailable depending on the provider or browser. A portfolio notice does not grant rights to use third-party media. Favorites and progress are stored in your browser; no account is required.</p></div></section>
   </main>
-  <footer class="site-footer wrap"><a class="brand footer-brand" href="#top"><img src="./assets/mark.svg" alt="" width="34" height="34"><span>aftertone<span class="brand-period">.</span></span></a><p>AN INDEPENDENT MUSIC DISCOVERY PROJECT · 2026</p><a href="https://github.com/MasynNay/aftertone/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener noreferrer">ROADMAP ↗</a></footer>
+  <footer class="site-footer wrap"><a class="brand" href="#top"><img src="./assets/mark.svg" alt="" width="31" height="31"><span>aftertone<span class="brand-period">.</span></span></a><span>INDEPENDENT MUSIC DISCOVERY · 2026</span><a href="https://github.com/MasynNay/aftertone/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener noreferrer">ROADMAP ↗</a></footer>
 </body>
 </html>
