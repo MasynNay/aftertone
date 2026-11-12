@@ -5,6 +5,8 @@ Third-party Deezer requests are mocked with fictional track data. This checks
 our deployed UI, not provider availability or media playback permissions.
 """
 import json
+import os
+import base64
 import re
 import sys
 import threading
@@ -101,6 +103,12 @@ def browser_case(browser, base, width, height):
             require(page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"),
                     "Mobile homepage overflow detected")
         screenshot(page, f"portfolio-{label}")
+        if os.environ.get("AFTERTONE_VISUAL_REVIEW") == "1":
+            preview = page.screenshot(type="jpeg", quality=63, full_page=False)
+            print("AFTERTONE_VISUAL_" + str(width) + "=" + base64.b64encode(preview).decode(), flush=True)
+            print("AFTERTONE_LAYOUT_" + str(width) + "=" + json.dumps(page.evaluate(
+                "() => ({scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,heading:document.querySelector('h1')?.innerText})"
+            )), flush=True)
 
         page.locator("#explore-experience").click()
         page.wait_for_url("**/demo/", timeout=TIMEOUT)
@@ -271,12 +279,40 @@ def browser_case(browser, base, width, height):
     finally:
         context.close()
 
+def check_product_deep_links(browser, base):
+    """Marketing stations must open the requested real listening mode, not just a generic app."""
+    context = browser.new_context(viewport={"width": 1024, "height": 800}, service_workers="block")
+    origin = urlsplit(base).netloc
+    context.route("**/*", lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc == origin else route.abort())
+    context.route("https://api.deezer.com/**", mock_deezer)
+    try:
+        for mode in ("familiar", "balanced", "explore"):
+            page = context.new_page()
+            page.goto(base + "/demo/?path=" + mode, wait_until="load", timeout=TIMEOUT)
+            option = page.locator('.path-option[data-path="' + mode + '"]')
+            option.wait_for(state="attached", timeout=TIMEOUT)
+            require(option.get_attribute("aria-pressed") == "true",
+                    "Station preset failed to select " + mode)
+            page.close()
+        page = context.new_page()
+        page.goto(base + "/demo/?view=duels", wait_until="load", timeout=TIMEOUT)
+        page.locator("#main-content .duels-page").wait_for(state="attached", timeout=TIMEOUT)
+        require(page.locator('#modal-root [role="dialog"]').count() == 0,
+                "Direct Music Duels entry should not be blocked by discovery onboarding")
+        page.close()
+    finally:
+        context.close()
+    print("PASS product station deep links and Music Duels direct entry")
+
+
 def main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
             browser_case(browser, base, 1440, 900)
             browser_case(browser, base, 390, 844)
+            check_product_deep_links(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

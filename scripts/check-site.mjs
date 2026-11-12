@@ -11,14 +11,20 @@ const main=read('demo/main.js');
 const api=read('demo/api-browser.js');
 assert.match(intro, /href="\.\/styles\.css"/, 'Homepage must use the published stylesheet');
 assert.ok(existsSync(resolve(root,'dist/styles.css')), 'Homepage stylesheet must be published');
-assert.match(intro, /id="explore-experience"[^>]*href="\.\/demo\/"/, 'The main Explore the Experience button must open /demo/');
+assert.match(intro, /id="explore-experience"[^>]*href="\.\/demo\/"/, 'The main listening button must open /demo/');
 assert.match(intro, /class="nav-launch" href="\.\/demo\/"/, 'Header launch must open /demo/');
-assert.match(intro, /class="launch-section"/, 'Homepage needs a final call-to-action section');
-assert.match(intro, /id="modes"/, 'Homepage must explain discovery modes');
-assert.match(intro, /id="engineering"/, 'Homepage must include engineering content');
+assert.match(intro, /class="launch-section"/, 'Product site needs a final listening CTA');
+assert.match(intro, /id="modes"/, 'Product site must offer listening modes');
+assert.match(intro, /id="open-source"/, 'Product site must link to open source licensing');
+assert.match(intro, /class="station-rail"/, 'The product site must retain its unique radio navigation');
+assert.match(intro, /href="\.\/demo\/\?path=familiar"/, 'Comfort Zone must deep-link to its discovery path');
+assert.match(intro, /href="\.\/demo\/\?path=balanced"/, 'New Territory must deep-link to its discovery path');
+assert.match(intro, /href="\.\/demo\/\?path=explore"/, 'Wild Card must deep-link to its discovery path');
+assert.match(intro, /href="\.\/demo\/\?view=duels"/, 'Music Duels must open its actual app view');
 assert.match(intro, /not affiliated with or endorsed by Deezer/, 'Inline third-party media notice is required');
+assert.doesNotMatch(intro, /portfolio/i, 'Product website must not call itself a portfolio');
 assert.doesNotMatch(intro, /<dialog\b|<iframe\b|id="portfolio-welcome"|splash\.js/, 'Homepage must not block visitors with a modal or embed the application');
-assert.doesNotMatch(intro, /<script\b/, 'The portfolio homepage should need no JavaScript');
+assert.doesNotMatch(intro, /<script\b/, 'The product homepage should need no JavaScript');
 assert.ok(!existsSync(resolve(root,'dist/splash.js')), 'Obsolete splash script must not be deployed');
 assert.match(app, /id="main-nav"/, 'The launched app must be the original AFTERTONE UI');
 assert.match(app, /id="player"/, 'The real AFTERTONE player must be present');
@@ -30,7 +36,7 @@ assert.ok(existsSync(resolve(root,'dist/demo/src/taste.mjs')));
 assert.ok(existsSync(resolve(root,'dist/CNAME')));
 assert.equal(read('CNAME').trim(),'aftertone.masynnay.com');
 assert.doesNotMatch(intro, /fictional tracks|original synthesized sounds/, 'Do not substitute the original application');
-console.log('Portfolio-to-app navigation, no popup or iframe, inline media notice, and real app assets verified');
+console.log('Product-to-app navigation, mode deep links, inline media notice, and real app assets verified');
 
 
 // This is intentionally an actual asset graph check, not a string-presence

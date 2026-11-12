@@ -1,4 +1,4 @@
-/** Guard a small set of brand, navigation, and interface naming conventions. */
+/** Keep public-facing product language consistent with the live app. */
 import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {test} from 'node:test';
@@ -6,29 +6,31 @@ import assert from 'node:assert/strict';
 
 const root=resolve(import.meta.dirname,'..');
 const source=path=>readFileSync(resolve(root,path),'utf8');
-
 const site=source('site/index.html');
 const app=source('app/public/index.html');
 const discovery=source('app/public/views.js');
 const duels=source('app/public/duels-view.js');
 
-test('portfolio navigation and section titles follow consistent title case',()=>{
-  assert.match(site,/>Behind the Build<\/a>/);
-  assert.match(site,/>Open App <span/);
-  assert.match(site,/>Personalized Listening Paths<\/h3>/);
-  assert.match(site,/>Provider-Aware Playback<\/h3>/);
-  assert.match(site,/Explore the Experience/);
+test('homepage advertises the app clearly without pitching an engineering portfolio',()=>{
+  assert.match(site,/Tune in<\/a>/);
+  assert.match(site,/Music Duels<\/a>/);
+  assert.match(site,/>Launch the app <span/);
+  assert.match(site,/Comfort Zone/);
+  assert.match(site,/New Territory/);
+  assert.match(site,/Wild Card/);
+  assert.match(site,/Open Music Duels/);
+  assert.doesNotMatch(site,/portfolio|engineering case study/i);
 });
 
-test('AFTERTONE app navigation and discovery modes use their canonical names',()=>{
+test('AFTERTONE app navigation and discovery paths use canonical names',()=>{
   assert.match(app,/ Taste Map<\/button>/);
   assert.match(app,/Discover Your Sound<\/title>/);
   for(const name of ['Comfort Zone','New Territory','Wild Card']){
-    assert.ok(discovery.includes(`'${name}'`),`${name} label should use its official capitalization`);
+    assert.ok(discovery.includes("'"+name+"'"),name+' should be capitalized consistently');
   }
 });
 
-test('Music Duels headings and standings use consistent spelling and capitalization',()=>{
+test('Music Duels headings and standings use correct spelling',()=>{
   assert.match(duels,/Runners-up earn three/);
   assert.match(duels,/What Kind of Battle\?/);
   assert.match(duels,/Make a Little/);

@@ -46,7 +46,7 @@ test('the same artist is not forced forever: exploration and artist-streak penal
 
 test('first-run choices are optional and can be reopened later from Discover', async () => {
   const main=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
-  assert.match(main,/if \(!shown\) openModal\('onboarding'\)/);
+  assert.match(main,/if \(!shown && view === 'discover'\) openModal\('onboarding'\)/);
   assert.match(main,/action === 'onboarding-fresh'/); // case handled as an action condition below
   assert.match(main,/data-modal="onboarding-artists"/);
   assert.match(main,/Array.from\(\{length:FAVORITE_ARTIST_LIMIT\}/);
