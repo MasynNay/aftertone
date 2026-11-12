@@ -25,7 +25,10 @@ test('landing directly launches the real app and has usable mode choices',()=>{
   assert.doesNotMatch(site, /src="\.\/assets\/app-(?:discover|collection|music-duels)\.webp"/);
   assert.match(site, /class="project-note wrap"/);
   assert.match(site, /not affiliated with or endorsed by Deezer/);
-  assert.ok((site.match(/href="\.\/demo\/"/g)||[]).length >= 5);
+  assert.ok((site.match(/href="\.\/demo\/"/g)||[]).length >= 4);
+  for(const path of ['familiar','balanced','explore']){
+    assert.match(site,new RegExp('href="\\./demo/\\?path='+path+'"'));
+  }
 });
 
 test('responsive layouts and keyboard navigation are explicitly supported',()=>{
