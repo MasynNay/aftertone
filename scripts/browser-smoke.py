@@ -146,6 +146,24 @@ def browser_case(browser, base, width, height):
             require("tournaments" in payload and "session" in payload, "Backup omitted saved state")
             require(page.locator('[data-action="restore-progress"]').count() == 1,
                     "Restore backup control missing")
+            # End-to-end restore: corrupt the existing session *after* exporting,
+            # then import the good backup through the actual file input.
+            page.evaluate("localStorage.setItem('aftertone:session:v1', 'broken-test-session')")
+            page.once("dialog", lambda dialog: dialog.accept())
+            page.locator("#progress-backup-file").set_input_files({
+                "name": backup.suggested_filename,
+                "mimeType": "application/json",
+                "buffer": Path(backup.path()).read_bytes(),
+            })
+            page.wait_for_function(
+                "() => localStorage.getItem('aftertone:session:v1') !== 'broken-test-session'",
+                timeout=TIMEOUT,
+            )
+            restored = json.loads(page.evaluate("localStorage.getItem('aftertone:session:v1')"))
+            require(restored.get("version") == 1, "Restored state is not valid")
+            require(restored.get("favorites") == payload["session"]["favorites"],
+                    "Restore did not recover saved favorites")
+            page.locator("#main-content .discovery-paths").wait_for(state="attached",timeout=TIMEOUT)
             page.locator('#main-nav button[data-view="duels"]').click()
             page.locator("#main-content .duels-page .duel-arena-picker").wait_for(
                 state="attached", timeout=TIMEOUT)
