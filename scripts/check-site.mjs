@@ -1,3 +1,4 @@
+import {checkCssAssets} from './check-css-assets.mjs';
 /** Verify portfolio build keeps the real product and its import graph in place. */
 import {readFileSync,existsSync} from 'node:fs';
 import {resolve,dirname,extname} from 'node:path';
@@ -72,3 +73,8 @@ for(const page of [resolve(published,'index.html'),resolve(published,'demo/index
   }
 }
 console.log(`Published ESM import graph valid: ${modules.length} modules, ${importsChecked} local imports`);
+let cssAssetsChecked=0;
+for(const stylesheet of filesUnder(published).filter(f=>extname(f)==='.css')){
+  cssAssetsChecked+=checkCssAssets(stylesheet,published);
+}
+console.log(`Published CSS asset graph valid: ${cssAssetsChecked} local references`);
