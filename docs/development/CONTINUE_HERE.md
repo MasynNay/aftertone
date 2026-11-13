@@ -187,3 +187,11 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Added a GitHub Actions release publisher triggered **only by a successful main-branch Pages workflow**; it verifies the deployed SHA is still current, requires matching versioned release notes, and uses `gh release create` once. GitHub tag and release should point to the verified deployed commit. If it fails, inspect Actions before claiming a formal release was published.
 - No runtime application behavior changed for versioning. No new feature branches. This is a deliberate evening checkpoint.
 - NEXT: validate GitHub Releases shows `v0.11.0`, verify the release tag SHA and successful Pages + release workflow, then leave stable; later prioritize v0.12 accessibility/mobile polish and unresolved real Deezer/media rights review (roadmap #1–#3).
+
+
+## November 13, 2026 — CSS asset regression guard (PR #21)
+
+- Main at start: `f94930ce9c573891f6acf29335ca54109ed5663d` (v0.11.0). No open PRs at start of this session.
+- Added `scripts/check-css-assets.mjs` and `test/css-assets.test.mjs` on `test/static-css-asset-integrity-2026-11-13`, and wired the validator into `scripts/check-site.mjs`. Detects missing or escaping local CSS `url()` assets in built output; allows remote, data, blob and fragment URLs. Addresses a class of static presentation regressions relevant to #1.
+- PR: https://github.com/MasynNay/aftertone/pull/21. Head at PR creation: `4f46b86200cdf7d599ef2bf679f1cddbe4bdfe85`. Await PR checks; do not merge here. GitHub CI was not yet listed when initially queried. This session did not run local npm or a real browser; rely on reported CI status only once completed.
+- Existing open priorities remain #2 Deezer failure recovery, #3 third-party rights, #4 first-run guidance, #5 backup migration, #7 accessibility, #8 portfolio evidence. No live Deezer playback or rights permission verified.
