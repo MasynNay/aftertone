@@ -187,3 +187,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Added a GitHub Actions release publisher triggered **only by a successful main-branch Pages workflow**; it verifies the deployed SHA is still current, requires matching versioned release notes, and uses `gh release create` once. GitHub tag and release should point to the verified deployed commit. If it fails, inspect Actions before claiming a formal release was published.
 - No runtime application behavior changed for versioning. No new feature branches. This is a deliberate evening checkpoint.
 - NEXT: validate GitHub Releases shows `v0.11.0`, verify the release tag SHA and successful Pages + release workflow, then leave stable; later prioritize v0.12 accessibility/mobile polish and unresolved real Deezer/media rights review (roadmap #1–#3).
+
+
+## JSONP script-insertion failure cleanup — November 15, 2026 (PR pending)
+
+- Branch: `fix/jsonp-append-failure-cleanup-2026-11-15`.
+- The static Deezer JSONP adapter previously left its global callback and timeout alive if `document.head.append(script)` threw (for example, a blocked or patched DOM insertion). This could leave stale state after a failed discovery request.
+- The insertion is now guarded and calls the existing idempotent `finish(error)` cleanup. A mocked-DOM regression checks callback/script cleanup and a subsequent successful request.
+- Local full `npm run check` and real-provider playback are **not verified** in this execution environment (GitHub clone DNS unavailable). Review PR CI before merging. This test is not evidence of Deezer availability or music-use authorization.
+- Release only through the separate verified-release process; keep issue #2 open for live provider and browser verification.
