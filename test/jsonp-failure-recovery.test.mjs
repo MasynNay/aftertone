@@ -58,3 +58,39 @@ test('timed out JSONP requests clean up and ignore late script errors',async()=>
     globalThis.window=oldWindow;
   }
 });
+
+
+test('failed JSONP script insertion cleans callback and permits a later request',async()=>{
+  const oldDocument=globalThis.document;
+  const oldWindow=globalThis.window;
+  let shouldThrow=true;
+  let script;
+  globalThis.window=globalThis;
+  globalThis.document={
+    createElement:()=>({remove(){this.removed=true;}}),
+    head:{append(value){
+      script=value;
+      if(shouldThrow)throw new Error('Script insertion blocked');
+    }},
+  };
+  try{
+    const failed=deezerJSONP('/search?q=ambient',{timeoutMs:1000});
+    const first=script;
+    const callback=new URL(first.src).searchParams.get('callback');
+    await assert.rejects(failed,/Script insertion blocked/);
+    assert.equal(first.removed,true);
+    assert.equal(globalThis[callback],undefined);
+
+    shouldThrow=false;
+    const recovered=deezerJSONP('/search?q=ambient',{timeoutMs:1000});
+    const second=script;
+    const nextCallback=new URL(second.src).searchParams.get('callback');
+    globalThis[nextCallback]({data:[{id:43}]});
+    assert.deepEqual(await recovered,{data:[{id:43}]});
+    assert.equal(second.removed,true);
+    assert.equal(globalThis[nextCallback],undefined);
+  }finally{
+    globalThis.document=oldDocument;
+    globalThis.window=oldWindow;
+  }
+});
