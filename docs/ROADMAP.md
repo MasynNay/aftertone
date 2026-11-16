@@ -2,7 +2,7 @@
 
 **Project:** [AFTERTONE](https://aftertone.masynnay.com/) · **Full-screen app:** [Launch the app](https://aftertone.masynnay.com/demo/) · **Backlog:** [Open issues](https://github.com/MasynNay/aftertone/issues) · **Releases:** [Changelog](CHANGELOG.md)
 
-**Last reviewed:** November 11, 2026  
+**Last reviewed:** November 16, 2026  
 **Current release:** v0.11.0  
 **Approach:** Ship small, verified improvements. Version targets indicate order of work, **not promised release dates**.
 
@@ -14,7 +14,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 | --- | --- | --- | --- |
 | **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser and preview fixes shipped |
 | **v0.11.0 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | **Released** · [v0.11.0](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0); independent manual checks remain open |
-| **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | Next milestone |
+| **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | In progress · keyboard and narrow-mobile baseline merged |
 | **v1.0 — Responsible public readiness** | Gate | Only after cross-browser reliability, provider rights, privacy, and licensing are resolved | Conditional |
 
 ### v0.10.2 — Trust & stability (next up)
@@ -36,7 +36,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 ### v0.12 — Polish & portfolio proof
 
-- [ ] [#7: Accessibility and responsive interface audit](https://github.com/MasynNay/aftertone/issues/7). Keyboard, focus, contrast, reduced motion, mobile and assistive-technology checks.
+- [ ] [#7: Accessibility and responsive interface audit](https://github.com/MasynNay/aftertone/issues/7). **Partial milestone shipped:** [PR #23](https://github.com/MasynNay/aftertone/pull/23) adds keyboard skip navigation, modal focus trapping/return, native Space shortcuts, reduced motion, 390/320px overflow fixes, and representative 4.5:1 theme text-contrast checks. **265 tests and Chromium 1440/390/320px passed.** Manual Firefox, screen-reader, focus/touch-target and broader color contrast audits remain; [verification record](ACCESSIBILITY.md).
 - [ ] [#8: Real application screenshots and consistent release notes](https://github.com/MasynNay/aftertone/issues/8). Show actual discovery, player and Music Duels screens—not just the marketing page.
 
 **Exit criteria:** Representative mobile/desktop checks pass; the README shows the working application; each release explains visible changes.

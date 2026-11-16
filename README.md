@@ -94,6 +94,7 @@ The public app needs no user account. Local collections and game state are store
 - [Changelog](docs/CHANGELOG.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Browser testing](docs/BROWSER_TESTING.md)
+- [Accessibility and mobile verification](docs/ACCESSIBILITY.md)
 - [First-listen help](docs/FIRST_LISTEN.md)
 - [Backup and restore](docs/BACKUP_RESTORE.md)
 - [Open issues](https://github.com/MasynNay/aftertone/issues)

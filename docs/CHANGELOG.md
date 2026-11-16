@@ -1,3 +1,13 @@
+## v0.12 accessibility milestone — Keyboard and mobile baseline (November 16, 2026)
+
+- Added a visible-on-focus **Skip to listening room** link, labelled navigation and `aria-current` indication of the current app section.
+- Dialogs now cycle Tab/Shift+Tab focus and return focus to their original opener on Escape/Close. Native keyboard behavior of focused buttons, links, sliders and inputs takes precedence over global game shortcuts.
+- Made focus outlines more visible and respected reduced-motion settings for animation and navigation scrolling.
+- Fixed genuine horizontal overflow in the app at **390px** (top-right header controls) and **320px** (listening card labels/playback layout); all six mobile navigation sections remain visible.
+- Improved Sandstone's muted text contrast and Solarized's muted/accent contrast; added representative text-contrast regression checks for all 20 themes (text/background, muted/surface, accent/surface, accentInk/accent at **4.5:1 or better**).
+- [PR #23](https://github.com/MasynNay/aftertone/pull/23) passed **265/265 Node tests** and generated-site Chromium checks at **1440×900, 390×844, and 320×740**, including keyboard focus and layout tests. This is a verified **development milestone**, not a formal v0.12 release or full accessibility certification.
+- Remaining: manual Firefox/assistive-technology verification, all-component contrast/touch-target review and external media rights/dependency checks. Details in [accessibility verification](ACCESSIBILITY.md).
+
 ## v0.11.0 — Verified Portfolio Release (November 11, 2026)
 
 **Release:** [v0.11.0](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0) · [Full release notes](releases/v0.11.0.md)

@@ -1,0 +1,34 @@
+# AFTERTONE v0.12 — Accessibility and Mobile Verification
+
+**Reviewed November 16, 2026** · [Roadmap issue #7](https://github.com/MasynNay/aftertone/issues/7) · [Implemented in PR #23](https://github.com/MasynNay/aftertone/pull/23)
+
+## Shipped improvements
+
+This milestone addresses specific barriers discovered in the original browser application (not just the portfolio landing page):
+
+- A keyboard-focusable **Skip to listening room** link, a labelled app navigation landmark, `aria-current="page"` for the selected section, and focus moved to the main area after in-app navigation.
+- Active dialogs constrain Tab/Shift+Tab within their available controls, Escape closes the dialog, and focus returns to the original opener. Appearance themes retain the focused theme when the dialog is updated.
+- Music shortcuts no longer override Space/arrow keys while a native interactive control is focused. This preserves Space activation of buttons and normal operation of text inputs and sliders.
+- Clear `:focus-visible` outlines and a reduced-motion mode affecting animations and smooth scrolling.
+- Narrow-viewport repairs: a topbar control group previously extended **8px** off a 390px screen; the listening card previously forced **54px** overflow at 320px. Responsive wrapping removes both overflow cases, while six navigation sections remain visible.
+- Palette token corrections: Sandstone muted text, Solarized muted and accent text. Added automated WCAG-style **4.5:1** contrast checks for the four common token combinations (main text on background, muted text on surface, accent text on surface, and button text on accent) across the 20 defined themes. This does not establish that every individual component meets accessibility criteria.
+
+## Automated evidence
+
+[Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:
+
+- **265/265 Node tests** passing, including the new `test/accessibility-navigation.test.mjs` and `test/theme-accessibility-contrast.test.mjs`.
+- **Chromium 1440×900, 390×844 and 320×740** passing against the built Pages app.
+- Browser exercises skip-link presence, first-run dialog Shift+Tab/Tab wrapping, Escape close, opener focus restoration, appearance picker Escape behavior, native Space navigation, active navigation state, and mobile horizontal overflow.
+- Existing browser regression flow still covers the portfolio and actual app launch, backup/restore and Music Duels using fictitious provider metadata, **not live Deezer playback**.
+
+## Manual acceptance checklist (not yet verified)
+
+- [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.
+- [ ] Test a real screen reader (NVDA/VoiceOver), including labels, headings, dialog announcements and status changes.
+- [ ] Review focus order, scrolling, touch targets and 200% zoom at phone, tablet and desktop widths.
+- [ ] Perform a component-level contrast audit across representative dark/light palettes, including dim text, outlines, overlaid images and disabled controls.
+- [ ] Validate that reduced motion fully prevents disorienting transitions in practical use.
+- [ ] Check cross-browser backups, live provider failures and regional restrictions where applicable. Provider/rights review is tracked in separate roadmap issues.
+
+**Status:** A meaningful keyboard and responsive baseline shipped; issue #7 remains open for these acceptance steps. This is not a claim of WCAG conformance or of authorization to use third-party recordings.

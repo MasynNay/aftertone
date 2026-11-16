@@ -187,3 +187,13 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Added a GitHub Actions release publisher triggered **only by a successful main-branch Pages workflow**; it verifies the deployed SHA is still current, requires matching versioned release notes, and uses `gh release create` once. GitHub tag and release should point to the verified deployed commit. If it fails, inspect Actions before claiming a formal release was published.
 - No runtime application behavior changed for versioning. No new feature branches. This is a deliberate evening checkpoint.
 - NEXT: validate GitHub Releases shows `v0.11.0`, verify the release tag SHA and successful Pages + release workflow, then leave stable; later prioritize v0.12 accessibility/mobile polish and unresolved real Deezer/media rights review (roadmap #1–#3).
+
+
+## v0.12 keyboard and narrow-mobile baseline merged — November 16, 2026
+
+- Implemented [PR #23](https://github.com/MasynNay/aftertone/pull/23) on `feature/v012-keyboard-modal-mobile-a11y`, squash commit `24f4022459e2a86c7f9a8dc32b6aa4b6c9c8b065` on main.
+- App: keyboard skip link, labelled nav and `aria-current`, trap/return focus in modal dialogs, respect native Space/arrow behavior for focused controls, visible theme-token focus rings, and reduced-motion rules. App footer corrected to existing formal release v0.11.0; **v0.12 has not been tagged**.
+- Browser regression caught real 390px topbar and 320px listening-card overflow; both fixed. All six bottom navigation sections visible. Corrected Sandstone/Solarized contrast tokens and their generated CSS; new automated test covers four common text-contrast pairings across 20 themes.
+- **PR GitHub Actions run 43982300690** passed **265 Node tests**, Chromium portfolio/application smoke at **1440×900, 390×844, 320×740**, keyboard dialog cycling, Escape return focus, native Space navigation, and mobile overflow checks.
+- The older open PRs #21 (static CSS asset check) and #22 (Deezer JSONP append-failure recovery) were deliberately left untouched. The real provider and rights review remain unresolved.
+- Update roadmap issue #7 with evidence but leave open for manual Firefox/assistive-tech, 200%-zoom, complete component color/contrast and touch-target verification. [Test record](../ACCESSIBILITY.md). Follow up on Pages deployment of main before claiming live shipping.
