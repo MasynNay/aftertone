@@ -2754,3 +2754,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .topbar-actions {gap:6px;flex-shrink:0;}
   #mobile-refine-toggle {padding:8px 10px;}
 }
+
+/* Very narrow phones: listening card labels should wrap rather than widen
+   the entire page beyond 320px. Playback and decisions stay fully visible. */
+@media(max-width:360px) {
+  .discovery-grid {grid-template-columns:minmax(0,1fr);}
+  .discovery-grid > div {min-width:0;}
+  .listening-card {min-width:0;max-width:100%;padding:17px 13px;}
+  .card-top {flex-wrap:wrap;gap:7px;}
+  .on-air {font-size:8px;letter-spacing:1px;padding:7px 9px;}
+  .card-number {font-size:9px;letter-spacing:1px;}
+  .playback-controls {flex-wrap:wrap;gap:8px;}
+  .playback-copy {min-width:0;flex:1 1 130px;}
+  .playback-time {flex:0 0 auto;}
+  .player-shortcuts {flex-wrap:wrap;gap:8px;}
+}
