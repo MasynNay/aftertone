@@ -125,7 +125,21 @@ def browser_case(browser, base, width, height):
         require(page.locator(".skip-to-content").count() == 1,
                 "Accessible skip-to-content link missing")
         if width < 600:
-            require(page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"),
+            app_layout = page.evaluate("""() => ({
+                viewport: innerWidth,
+                scrollWidth: document.documentElement.scrollWidth,
+                offenders: [...document.querySelectorAll('body *')].map(el => {
+                    const box = el.getBoundingClientRect();
+                    return {tag:el.tagName.toLowerCase(), id:el.id,
+                        className:typeof el.className === 'string' ? el.className.slice(0,70) : '',
+                        left:Math.floor(box.left), right:Math.ceil(box.right),
+                        width:Math.ceil(box.width)};
+                }).filter(item => item.right > innerWidth+2 || item.left < -2)
+                  .slice(0,24)
+            })""")
+            if app_layout["scrollWidth"] > width + 2:
+                print("AFTERTONE_MOBILE_APP_OVERFLOW=" + json.dumps(app_layout),flush=True)
+            require(app_layout["scrollWidth"] <= width + 2,
                     "Music app overflows the small mobile viewport")
         # Initial onboarding must trap Tab within its dialog, allow Escape, and
         # restore focus to the previous content (rather than the browser body).
