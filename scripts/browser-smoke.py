@@ -122,6 +122,61 @@ def browser_case(browser, base, width, height):
                 "First-session listening steps are missing")
         require(page.locator(".first-listen-guide").is_visible(),
                 "First-session guidance is not visible")
+        require(page.locator(".skip-to-content").count() == 1,
+                "Accessible skip-to-content link missing")
+        if width < 600:
+            require(page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"),
+                    "Music app overflows the small mobile viewport")
+        # Initial onboarding must trap Tab within its dialog, allow Escape, and
+        # restore focus to the previous content (rather than the browser body).
+        intro=page.locator('#modal-root [role="dialog"]')
+        intro.wait_for(state="visible",timeout=TIMEOUT)
+        require(page.evaluate("document.querySelector('.shell').inert"),
+                "Page background was not made inert while modal is open")
+        require(page.locator('#modal-root [data-modal="close"]').evaluate(
+                    "(el) => document.activeElement === el"),
+                "Onboarding did not initially focus its close button")
+        page.keyboard.press("Shift+Tab")
+        require(page.locator('#modal-root [data-modal="onboarding-playlist"]').evaluate(
+                    "(el) => document.activeElement === el"),
+                "Shift+Tab escaped the initial dialog instead of wrapping")
+        page.keyboard.press("Tab")
+        require(page.locator('#modal-root [data-modal="close"]').evaluate(
+                    "(el) => document.activeElement === el"),
+                "Tab did not cycle back to the dialog's first control")
+        page.keyboard.press("Escape")
+        intro.wait_for(state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("!document.querySelector('.shell').inert"),
+                "Background remained inert after dialog close")
+        require(page.evaluate("document.activeElement?.id === 'main-content'"),
+                "Closing first-run onboarding lost keyboard focus")
+        # Opening help from a real button should restore that same button.
+        page.locator("#help-button").click()
+        page.locator('#modal-root [role="dialog"]').wait_for(state="visible",timeout=TIMEOUT)
+        page.keyboard.press("Escape")
+        require(page.evaluate("document.activeElement?.id === 'help-button'"),
+                "Closing help did not return focus to its opener")
+        # Escape should also close the keyboard-operated palette.
+        page.locator("#theme-menu-toggle").click()
+        require(page.locator("#theme-menu-toggle").get_attribute("aria-expanded") == "true",
+                "Palette did not open")
+        page.keyboard.press("Escape")
+        require(page.locator("#theme-menu-toggle").get_attribute("aria-expanded") == "false",
+                "Escape did not close palette")
+        require(page.evaluate("document.activeElement?.id === 'theme-menu-toggle'"),
+                "Palette did not restore keyboard focus")
+        # A focused navigation button must activate normally on Space.
+        page.locator('#main-nav button[data-view="collection"]').focus()
+        page.keyboard.press("Space")
+        page.locator("#main-content .page-head h1").wait_for(state="visible",timeout=TIMEOUT)
+        require("collection" in page.locator("#main-content .page-head h1").inner_text().lower(),
+                "Space key was stolen from the native navigation button")
+        require(page.evaluate("document.activeElement?.id === 'main-content'"),
+                "Single-page navigation did not move focus to new content")
+        require(page.locator('#main-nav button[data-view="collection"]').get_attribute("aria-current") == "page",
+                "Active navigation section not announced to assistive technology")
+        page.locator('#main-nav button[data-view="discover"]').click()
+        page.locator("#listening-card").wait_for(state="attached",timeout=TIMEOUT)
         require(page.locator('link[rel="stylesheet"]').first.evaluate("(el) => Boolean(el.sheet)"),
                 "App stylesheet failed to load")
         screenshot(page, f"discover-{label}")
@@ -312,6 +367,7 @@ def main():
         try:
             browser_case(browser, base, 1440, 900)
             browser_case(browser, base, 390, 844)
+            browser_case(browser, base, 320, 740)
             check_product_deep_links(browser, base)
         finally:
             browser.close()
