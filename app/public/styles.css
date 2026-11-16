@@ -2741,3 +2741,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   html {scroll-behavior:auto;}
   *,*::before,*::after {animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important;}
 }
+
+/* v0.12: phone topbar and all six app tabs fit without horizontal scrolling. */
+@media(max-width:900px) {
+  .primary-nav {grid-template-columns:repeat(6,minmax(0,1fr));}
+  .primary-nav .nav-link {min-width:0;}
+}
+@media(max-width:480px) {
+  .topbar {padding-inline:12px;gap:8px;}
+  .topbar-crumb {gap:4px;letter-spacing:.8px;min-width:0;}
+  .topbar-crumb .crumb-muted,.topbar-crumb .crumb-divider {display:none;}
+  .topbar-actions {gap:6px;flex-shrink:0;}
+  #mobile-refine-toggle {padding:8px 10px;}
+}
