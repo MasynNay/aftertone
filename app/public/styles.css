@@ -2728,3 +2728,16 @@ h1 em {
 .duel-availability-row>[hidden] {display:none!important;}
 .duel-arena-option em[data-duel-status][data-ready="true"] {color:var(--accent);}
 .duel-arena-option em[data-duel-status][data-ready="false"] {color:var(--muted);}
+
+/* v0.12: skip navigation and reliable keyboard focus across all 20 themes. */
+.skip-to-content {position:fixed;left:12px;top:12px;z-index:10000;transform:translateY(-160%);padding:12px 16px;border:2px solid var(--accent);border-radius:10px;background:var(--surface);color:var(--text);font-size:14px;font-weight:800;text-decoration:none;}
+.skip-to-content:focus-visible {transform:translateY(0);outline:3px solid var(--accent);outline-offset:3px;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+[role="button"]:focus-visible,[role="slider"]:focus-visible,.passport-go:focus-visible {
+  outline:3px solid var(--accent);
+  outline-offset:3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {scroll-behavior:auto;}
+  *,*::before,*::after {animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important;}
+}
