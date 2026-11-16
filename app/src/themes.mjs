@@ -21,12 +21,12 @@ export const THEMES = Object.freeze([
   palette('rose','Rosewater','light',['#fff5f6','#f8e9ee','#ffffff','#fff0f2','#f5e1e7','#e8cdd7','#513445','#896879','#a68d99','#b84778','#ffffff','#f9d5df','#f3e3ee','#e9bfd0'],'Soft blush, spacious and calm'),
   palette('mint','Mint','light',['#eefaf3','#ddf2e7','#ffffff','#e8f8ef','#d6efe2','#bedfce','#193b30','#54766a','#7c978a','#17765d','#ffffff','#c5f0d7','#e7f5ec','#c9e9dd'],'Clean white and spearmint'),
   palette('forest','Evergreen','dark',['#0f1b14','#17241a','#21352a','#2b4133','#385443','#3b5946','#f4f7eb','#b2caac','#89a087','#d1dd85','#23320f','#435b39','#243d31','#536348'],'Deep pine and moss'),
-  palette('sandstone','Sandstone','light',['#f9f2e9','#efe3d5','#fffaf4','#f4e8db','#e9d8c5','#dfc9b1','#403026','#887361','#a08e7b','#a15634','#ffffff','#e5c49e','#f4e7d9','#d9af90'],'Earthy beige and warm clay'),
+  palette('sandstone','Sandstone','light',['#f9f2e9','#efe3d5','#fffaf4','#f4e8db','#e9d8c5','#dfc9b1','#403026','#806854','#a08e7b','#a15634','#ffffff','#e5c49e','#f4e7d9','#d9af90'],'Earthy beige and warm clay'),
   palette('cream','Porcelain','light',['#fcfbf7','#f1efe9','#ffffff','#f7f5ee','#efebe2','#e1ddd1','#2d3034','#697179','#949ba0','#315a88','#ffffff','#d9e2ed','#f3eee2','#cbdce9'],'Minimal ivory and navy'),
   palette('latte','Café','light',['#f7f0e8','#e9dfd2','#fffaf4','#f2e7db','#e5d6c8','#d5c4b1','#3b2b24','#806c5f','#a18e81','#83563d','#ffffff','#dfb99b','#eaded2','#c99b86'],'Espresso, oat milk and caramel'),
   palette('lavender','Lavender','light',['#f6f1fc','#ebe2f5','#ffffff','#f2eafa','#e7dbf2','#d8c9e8','#392c4a','#746486','#9688a5','#7b52b4','#ffffff','#d7c2ef','#ede4f9','#d5d1ed'],'Light violet with ink-dark text'),
   palette('retro','Retro Arcade','dark',['#16132c','#21193d','#2c2350','#382b61','#4c397b','#53406c','#fffbfa','#b9aed4','#9084b4','#ffde59','#231331','#57428d','#2c2e70','#774b79'],'Purple neon and pixel nostalgia'),
-  palette('solarized','Solarized','dark',['#002b36','#073642','#12444e','#1a5158','#285e60','#38636d','#eee8d5','#93a1a1','#738e91','#b58900','#00212a','#135467','#003b52','#356361'],'Classic developer-friendly blue-green'),
+  palette('solarized','Solarized','dark',['#002b36','#073642','#12444e','#1a5158','#285e60','#38636d','#eee8d5','#a8b8b8','#738e91','#d0ae42','#00212a','#135467','#003b52','#356361'],'Classic developer-friendly blue-green'),
   palette('neon','Neon Pulse','dark',['#090b15','#11152b','#1a2040','#23294d','#303963','#39436c','#f5f8ff','#b0bee1','#7e92c0','#53fdd7','#061e20','#22286b','#181d4d','#443173'],'Electric cyan and midnight indigo'),
 ]);
 export const THEME_IDS = Object.freeze(THEMES.map((t) => t.id));

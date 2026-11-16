@@ -295,7 +295,7 @@ body[data-theme="sandstone"] {
   --surface3: #e9d8c5;
   --border: #dfc9b1;
   --text: #403026;
-  --muted: #887361;
+  --muted: #806854;
   --dim: #a08e7b;
   --accent: #a15634;
   --accentInk: #ffffff;
@@ -405,9 +405,9 @@ body[data-theme="solarized"] {
   --surface3: #285e60;
   --border: #38636d;
   --text: #eee8d5;
-  --muted: #93a1a1;
+  --muted: #a8b8b8;
   --dim: #738e91;
-  --accent: #b58900;
+  --accent: #d0ae42;
   --accentInk: #00212a;
   --warm: #ffb4a2;
   --purple: #bcb0ff;

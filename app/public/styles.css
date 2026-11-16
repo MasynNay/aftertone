@@ -2728,3 +2728,44 @@ h1 em {
 .duel-availability-row>[hidden] {display:none!important;}
 .duel-arena-option em[data-duel-status][data-ready="true"] {color:var(--accent);}
 .duel-arena-option em[data-duel-status][data-ready="false"] {color:var(--muted);}
+
+/* v0.12: skip navigation and reliable keyboard focus across all 20 themes. */
+.skip-to-content {position:fixed;left:12px;top:12px;z-index:10000;transform:translateY(-160%);padding:12px 16px;border:2px solid var(--accent);border-radius:10px;background:var(--surface);color:var(--text);font-size:14px;font-weight:800;text-decoration:none;}
+.skip-to-content:focus-visible {transform:translateY(0);outline:3px solid var(--accent);outline-offset:3px;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,
+[role="button"]:focus-visible,[role="slider"]:focus-visible,.passport-go:focus-visible {
+  outline:3px solid var(--accent);
+  outline-offset:3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {scroll-behavior:auto;}
+  *,*::before,*::after {animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;scroll-behavior:auto!important;}
+}
+
+/* v0.12: phone topbar and all six app tabs fit without horizontal scrolling. */
+@media(max-width:900px) {
+  .primary-nav {grid-template-columns:repeat(6,minmax(0,1fr));}
+  .primary-nav .nav-link {min-width:0;}
+}
+@media(max-width:480px) {
+  .topbar {padding-inline:12px;gap:8px;}
+  .topbar-crumb {gap:4px;letter-spacing:.8px;min-width:0;}
+  .topbar-crumb .crumb-muted,.topbar-crumb .crumb-divider {display:none;}
+  .topbar-actions {gap:6px;flex-shrink:0;}
+  #mobile-refine-toggle {padding:8px 10px;}
+}
+
+/* Very narrow phones: listening card labels should wrap rather than widen
+   the entire page beyond 320px. Playback and decisions stay fully visible. */
+@media(max-width:360px) {
+  .discovery-grid {grid-template-columns:minmax(0,1fr);}
+  .discovery-grid > div {min-width:0;}
+  .listening-card {min-width:0;max-width:100%;padding:17px 13px;}
+  .card-top {flex-wrap:wrap;gap:7px;}
+  .on-air {font-size:8px;letter-spacing:1px;padding:7px 9px;}
+  .card-number {font-size:9px;letter-spacing:1px;}
+  .playback-controls {flex-wrap:wrap;gap:8px;}
+  .playback-copy {min-width:0;flex:1 1 130px;}
+  .playback-time {flex:0 0 auto;}
+  .player-shortcuts {flex-wrap:wrap;gap:8px;}
+}

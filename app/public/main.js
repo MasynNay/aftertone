@@ -126,6 +126,7 @@ const quizStorageKey = 'aftertone:tune-lab:v1';
 let quizStats = (() => { try { const data=JSON.parse(localStorage.getItem(quizStorageKey)||'null'); return {answered:Math.max(0,Number(data?.answered)||0),correct:Math.max(0,Number(data?.correct)||0)}; } catch { return {answered:0,correct:0}; } })();
 let current = null;
 let modal = null;
+let modalReturnFocus = null; // Original opener survives nested dialogs.
 let activeAudioId = null;
 let continuousListening = false; // Starts only on a user-initiated Play in Discover.
 const unvotedPreviews = new Set(); // Auto-advanced previews aren't falsely recorded as dislikes.
@@ -466,7 +467,11 @@ function updateChrome() {
     button.classList.toggle('active', button.dataset.setTheme === state.theme);
     button.setAttribute('aria-pressed', String(button.dataset.setTheme === state.theme));
   });
-  document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === view));
+  document.querySelectorAll('[data-view]').forEach((button) => {
+    const active=button.dataset.view===view;
+    button.classList.toggle('active',active);
+    if(button.matches('#main-nav button'))button.setAttribute('aria-current',active?'page':'false');
+  });
   $('#current-view-label').textContent = ({ discover: 'DISCOVER', collection: 'COLLECTION', taste: 'TASTE MAP', challenges: 'CHALLENGES', quiz: 'TUNE LAB', duels: 'MUSIC DUELS' })[view];
   $('#sidebar-saves').textContent = String(state.favorites.length);
   const sound = $('#sound-toggle');
@@ -839,7 +844,9 @@ function goTo(nextView) {
   view = nextView;
   document.body.classList.remove('mobile-filters-open');
   render();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Route changes should announce the new content to keyboard and screen-reader users.
+  main.focus({preventScroll:true});
+  window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 
 function render() {
@@ -873,11 +880,21 @@ function render() {
 
 function renderModal() {
   if (!modal) {
-    modalRoot.innerHTML = '';
-    $('.shell').inert = false;
+    const hadDialog=Boolean(modalRoot.querySelector('[role="dialog"]'));
+    modalRoot.innerHTML='';
+    $('.shell').inert=false;
+    if(hadDialog) {
+      const opener=modalReturnFocus?.isConnected && !modalReturnFocus.closest('[hidden], [inert]')
+        ? modalReturnFocus : main;
+      modalReturnFocus=null;
+      opener.focus({preventScroll:true});
+    }
     return;
   }
-  $('.shell').inert = true;
+  $('.shell').inert=true;
+  // A live palette refresh must not throw keyboard users back to the close button.
+  const previousTheme=modalRoot.contains(document.activeElement)
+    ? document.activeElement?.getAttribute('data-set-theme') : null;
   let body = '';
   const track = lookup(modal.id);
   if (modal.kind === 'youtube' && track) {
@@ -922,8 +939,32 @@ function renderModal() {
       body = `<div class="eyebrow">THE BIG REVEAL</div><div class="reveal-art">${track.artwork ? `<img src="${urlSafe(track.artwork)}" alt="" />` : '♪'}</div><div class="reveal-result"><h2>${html(track.title)}</h2><span class="result-chip">${scoreText}</span></div><p class="reveal-artist">${html(track.artist)}</p><div class="tag-row">${tag(track.genre)}${tag(modal.mood || track.mood)}</div><div class="modal-actions"><button class="accent-button" data-modal="next">Save & next sound →</button>${track.link ? `<a class="secondary-button" href="${urlSafe(track.link)}" target="_blank" rel="noopener noreferrer">↗ Original source</a>` : ''}</div><div class="attribution">Music by ${html(track.artist)}. ${html(preview?.license || track.license)}. Listen from the original host. Check the linked file page for the complete license terms and credit requirements.</div>`;
     }
   }
-  modalRoot.innerHTML = `<div class="modal ${modal.kind === 'themes' ? 'modal-themes' : modal.kind === 'youtube' ? 'modal-youtube' : modal.kind === 'onboarding' ? 'modal-onboarding' : ''}" role="dialog" aria-modal="true" aria-label="${modal.kind === 'help' ? 'How to play' : modal.kind === 'themes' ? 'Appearance themes' : modal.kind === 'onboarding' ? 'Set up your music taste' : modal.kind === 'youtube' ? 'YouTube music preview' : 'Music recognition challenge'}"><button class="modal-close" data-modal="close" aria-label="Close dialog">×</button>${body}</div>`;
-  modalRoot.querySelector('button[data-modal],button[data-answer],button[data-mood]')?.focus();
+  modalRoot.innerHTML = `<div class="modal ${modal.kind === 'themes' ? 'modal-themes' : modal.kind === 'youtube' ? 'modal-youtube' : modal.kind === 'onboarding' ? 'modal-onboarding' : ''}" role="dialog" aria-modal="true" aria-label="${modal.kind === 'help' ? 'How to play' : modal.kind === 'themes' ? 'Appearance themes' : modal.kind === 'onboarding' ? 'Set up your music taste' : modal.kind === 'playlist' ? 'Import a playlist' : modal.kind === 'youtube' ? 'YouTube music preview' : 'Music recognition challenge'}"><button class="modal-close" data-modal="close" aria-label="Close dialog">×</button>${body}</div>`;
+  const restoreTheme=previousTheme
+    ? [...modalRoot.querySelectorAll('[data-set-theme]')].find(button=>button.dataset.setTheme===previousTheme)
+    : null;
+  (restoreTheme || modalRoot.querySelector('button[data-modal],button[data-answer],button[data-mood]'))?.focus();
+}
+/** Keep Tab inside the active dialog; focus returns to its opener on close. */
+function trapModalTab(event) {
+  const dialog=modalRoot.querySelector('[role="dialog"]');
+  if(!dialog)return;
+  const controls=[...dialog.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter(element=>element.getClientRects().length && !element.closest('[hidden], [inert]'));
+  if(!controls.length) {
+    event.preventDefault();
+    dialog.setAttribute('tabindex','-1');
+    dialog.focus();
+    return;
+  }
+  const first=controls[0], last=controls[controls.length-1];
+  if(event.shiftKey && (document.activeElement===first || !dialog.contains(document.activeElement))) {
+    event.preventDefault();
+    last.focus();
+  } else if(!event.shiftKey && (document.activeElement===last || !dialog.contains(document.activeElement))) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 async function findRelatedForPlaylist(version) {
@@ -1098,6 +1139,11 @@ async function importPlaylistLinkFromDialog() {
 
 function openModal(kind, extra = {}) {
   setThemeMenuOpen(false);
+  if(!modal) {
+    const opener=document.activeElement;
+    modalReturnFocus=opener instanceof HTMLElement && opener!==document.body &&
+      !modalRoot.contains(opener) ? opener : main;
+  }
   modal = { kind, ...extra };
   audio.pause();
   renderModal();
@@ -1703,10 +1749,16 @@ document.addEventListener('input', (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
-  const typing = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
   if (event.key === 'Escape' && !$('#theme-menu')?.hidden) { event.preventDefault(); return setThemeMenuOpen(false,true); }
-  if (event.key === 'Escape' && modal) return closeModal();
-  if (typing || modal) return;
+  if (modal) {
+    if(event.key==='Escape') {event.preventDefault();closeModal();return;}
+    if(event.key==='Tab')trapModalTab(event);
+    return;
+  }
+  // Native button/link/slider keyboard controls always win over game shortcuts.
+  const active=document.activeElement;
+  const interactive=active?.isContentEditable || active?.closest('button,a[href],input,textarea,select,summary,[contenteditable],[role="button"],[role="slider"],[role="switch"],[role="combobox"],[role="tab"]');
+  if(interactive)return;
   if(view==='duels') {
     const match=nextDuelMatch(duelTournaments.find(t=>t.id===selectedDuelId));
     if(match && ['1','2'].includes(event.key)) {event.preventDefault();voteActiveDuel(event.key==='1'?match.a:match.b);}
