@@ -1,0 +1,47 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+
+const index=readFileSync(new URL('../app/public/index.html',import.meta.url),'utf8');
+const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+const css=readFileSync(new URL('../app/public/styles.css',import.meta.url),'utf8');
+
+test('app exposes a keyboard-first skip link to its focusable main content',()=>{
+  assert.match(index,/<a class="skip-to-content" href="#main-content">Skip to listening room<\/a>/);
+  assert.match(index,/<main id="main-content" tabindex="-1"/);
+  assert.match(index,/<nav class="primary-nav" id="main-nav" aria-label="App sections"/);
+  assert.match(css,/\.skip-to-content:focus-visible/);
+});
+test('app navigation exposes the current view and moves keyboard focus to its content',()=>{
+  assert.match(main,/button\.setAttribute\('aria-current',active\?'page':'false'\)/);
+  const go=main.match(/function goTo\(nextView\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(go);
+  assert.match(go,/render\(\);\s*\/\/ Route changes/);
+  assert.match(go,/main\.focus\(\{preventScroll:true\}\)/);
+  assert.match(go,/prefers-reduced-motion: reduce/);
+});
+test('modal focus stays inside and returns to the original opener on close',()=>{
+  assert.match(main,/let modalReturnFocus = null/);
+  assert.match(main,/function trapModalTab\(event\) \{/);
+  assert.match(main,/last\.focus\(\)/);
+  assert.match(main,/first\.focus\(\)/);
+  assert.match(main,/modalReturnFocus\?\.isConnected/);
+  assert.match(main,/opener\.focus\(\{preventScroll:true\}\)/);
+  assert.match(main,/if\(event\.key==='Tab'\)trapModalTab\(event\)/);
+  assert.match(main,/modal\.kind === 'playlist' \? 'Import a playlist'/);
+});
+test('native keyboard activation takes priority over music hotkeys',()=>{
+  const keys=main.match(/window\.addEventListener\('keydown', \(event\) => \{([\s\S]*?)\n\}\);/)?.[1];
+  assert.ok(keys);
+  assert.match(keys,/if\(interactive\)return/);
+  assert.match(keys,/button,a\[href\],input,textarea,select/);
+  assert.ok(keys.indexOf('if(interactive)return') < keys.indexOf("event.code === 'Space'"),
+    'native keyboard guard should run before media shortcuts');
+  assert.match(keys,/event\.key==='Escape'/);
+});
+test('focus visibility and reduced-motion rules cover app interactions',()=>{
+  assert.match(css,/button:focus-visible,a:focus-visible,input:focus-visible/);
+  assert.match(css,/\.passport-go:focus-visible/);
+  assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
+  assert.match(css,/animation-duration:0\.01ms!important/);
+});
