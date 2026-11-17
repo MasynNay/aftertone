@@ -1,3 +1,10 @@
+## v0.12 development — Player-level Deezer rate-limit explanations (November 16, 2026)
+
+- When a preview's metadata request returns HTTP 429, the visible Play status and **Retry Preview / Skip Without Voting** region now explain that Deezer is temporarily limiting requests and recommend waiting before retrying. Previously the player discarded that distinction and only said the stream was unavailable.
+- Preserve the HTTP status through preview resolution without displaying raw provider responses as markup. Ordinary CDN/audio errors continue to show the existing generic recovery message; a subsequent retry clears an old quota warning when the failure reason changes.
+- Added built-site Chromium and Firefox tests for metadata quota errors, visible recovery guidance, fresh preview link retry, ordinary CDN-error fallback and unchanged favorites/history.
+- These are simulated provider responses and blocked media; public playback rights and real-world uptime remain unverified.
+
 ## v0.12 development — Recover cleanly from Deezer request throttling (November 16, 2026)
 
 - Deezer can signal quota exhaustion inside a nominally successful HTTP-200 JSONP response or through HTTP 429. AFTERTONE now recognizes both as **temporary rate limits** and shows actionable “wait a moment, then retry” guidance rather than treating them as empty search results.
