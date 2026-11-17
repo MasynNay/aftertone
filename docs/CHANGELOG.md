@@ -1,3 +1,11 @@
+## v0.12 development — CSS publishing safeguards and Deezer request cleanup (November 16, 2026)
+
+- Combined two previously tested but conflict-prone PRs (#21, draft #22) into [PR #24](https://github.com/MasynNay/aftertone/pull/24), cleanly based on the latest accessibility and mobile fixes. The superseded PRs were closed after equivalent functional changes were merged.
+- Built Pages validation now checks any local CSS `url()` references for missing files and escaping paths, excluding remote/data/blob/fragment references. The current emitted CSS contained **zero local references**, so correctness is verified with targeted fixture regression cases as well as the normal build gate.
+- Deezer JSONP now handles `document.head.append(script)` errors through the existing one-shot error cleanup. A test checks the rejected Promise, removed script and callback, and a later successful request.
+- [PR verification](https://github.com/MasynNay/aftertone/actions/runs/43998075871) passed **268/268 Node tests**, and real built Pages Chromium checks at **1440×900, 390×844, 320×740**.
+- No change to audio rights, source allowlists, or the tagged `v0.11.0` release. Manual live Deezer playback and authorization checks are still open.
+
 ## v0.12 accessibility milestone — Keyboard and mobile baseline (November 16, 2026)
 
 - Added a visible-on-focus **Skip to listening room** link, labelled navigation and `aria-current` indication of the current app section.

@@ -6,7 +6,9 @@ The published AFTERTONE site has two entry points: the portfolio homepage at / a
 
 The GitHub Pages workflow builds the site with npm run check, installs Playwright and Chromium, and then runs python scripts/browser-smoke.py before uploading the Pages artifact.
 
-The script serves the actual generated dist/ directory through a localhost HTTP server. In desktop and mobile Chromium it checks homepage styling and the direct Explore the Experience link, navigates into the real app, verifies the listening card and three discovery paths, and checks Collection and Music Duels navigation on desktop. Missing local assets, HTTP errors and uncaught JavaScript exceptions cause a failure.
+The app's build validation also checks local CSS `url()` references inside `dist/` using `scripts/check-css-assets.mjs`. The existing styles currently have no local asset URL references, so focused fixture tests ensure missing assets and traversal are rejected when encountered. This check never downloads remote resources.
+
+The script serves the actual generated dist/ directory through a localhost HTTP server. In desktop Chromium (1440×900) and mobile Chromium (390×844 and 320×740) it checks homepage styling and the direct listening link, navigates into the real app, verifies the listening card and three discovery paths, and checks Collection and Music Duels navigation on desktop. It also checks keyboard dialog focus cycling/return and narrow-phone overflow. Missing local assets, HTTP errors and uncaught JavaScript exceptions cause a failure.
 
 The script intercepts Deezer JSONP calls with deterministic fictional fixture metadata and blocks all other external requests. This tests our own routing and interface behavior; **it does not prove real Deezer availability, playback, usage permission, or media licensing**.
 

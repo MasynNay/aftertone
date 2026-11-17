@@ -197,3 +197,13 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - **PR GitHub Actions run 43982300690** passed **265 Node tests**, Chromium portfolio/application smoke at **1440×900, 390×844, 320×740**, keyboard dialog cycling, Escape return focus, native Space navigation, and mobile overflow checks.
 - The older open PRs #21 (static CSS asset check) and #22 (Deezer JSONP append-failure recovery) were deliberately left untouched. The real provider and rights review remain unresolved.
 - Update roadmap issue #7 with evidence but leave open for manual Firefox/assistive-tech, 200%-zoom, complete component color/contrast and touch-target verification. [Test record](../ACCESSIBILITY.md). Follow up on Pages deployment of main before claiming live shipping.
+
+
+## Safe static assets and Deezer JSONP cleanup merged — November 16, 2026
+
+- Built on top of current v0.12 keyboard/mobile checkpoint without overwriting either the app or newer documentation. Older PRs #21 and draft #22 conflicted on the historical `CONTINUE_HERE.md` appendix despite green earlier branch checks. Ported **functional code and tests only** to [PR #24](https://github.com/MasynNay/aftertone/pull/24).
+- Branch: `feature/v012-static-asset-and-jsonp-hardening`; tested SHA `dd80ad4b41c1f56d46c64c5b65c4fb13dcb6fda1`; squash merged SHA `e15ea0185d25974046ffd24e62a72de05b63835c`.
+- CSS checker `scripts/check-css-assets.mjs`, tests `test/css-assets.test.mjs`, and `scripts/check-site.mjs` integration reject missing local assets and escaping relative CSS file paths. Current Pages build has 0 local CSS `url()` references; artificial fixtures exercise success/failure.
+- Deezer JSONP adapter `app/src/static-adapter.mjs` catches synchronous `document.head.append(script)` failure and passes the error into the existing cleanup, avoiding leaked globals and timers. `test/jsonp-failure-recovery.test.mjs` verifies cleanup and subsequent request reuse.
+- PR Actions run `43998075871` passed **268/268 Node tests** and Chromium smoke at desktop 1440×900, phones 390×844 and 320×740.
+- Superseded PRs #21 and #22 were commented on and closed, with links to #24. No new formal release tag was created. Real live Deezer playback/authorization remains unresolved (#2, #3). Next: check final Pages deployment, then continue issue #7 manual accessibility/zoom/touch and issue #8 portfolio proof, without claiming unverified browser or music rights tests.

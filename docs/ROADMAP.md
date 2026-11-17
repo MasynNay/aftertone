@@ -12,7 +12,7 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 | Target | Priority | Focus | Status |
 | --- | --- | --- | --- |
-| **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser and preview fixes shipped |
+| **v0.10.2 — Trust & stability** | P0 | Prevent blank pages, recover from provider failures, confirm media permissions | In progress · browser, preview and CSS asset guards shipped |
 | **v0.11.0 — More rewarding discovery** | P1 | First-run UX, safe save-data backup/restore, Music Duels hardening | **Released** · [v0.11.0](https://github.com/MasynNay/aftertone/releases/tag/v0.11.0); independent manual checks remain open |
 | **v0.12 — Experience & presentation** | P2 | Accessibility/mobile QA, actual app screenshots, better release communication | In progress · keyboard and narrow-mobile baseline merged |
 | **v1.0 — Responsible public readiness** | Gate | Only after cross-browser reliability, provider rights, privacy, and licensing are resolved | Conditional |
@@ -20,8 +20,8 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 ### v0.10.2 — Trust & stability (next up)
 
 - [ ] [#1: Automated real-browser smoke tests for landing and full app](https://github.com/MasynNay/aftertone/issues/1). Catch broken CSS, import paths and blank app views before deployment.
-  - **Automated portion shipped (November 11, 2026):** [PR #10](https://github.com/MasynNay/aftertone/pull/10) now gates deployments on desktop/mobile Chromium tests of the built site. Remains open for manual Firefox/Chrome provider verification.
-- [ ] [#2: Recover gracefully from Deezer catalog/preview failures](https://github.com/MasynNay/aftertone/issues/2). **Partial implementation shipped:** [PR #11](https://github.com/MasynNay/aftertone/pull/11) adds Retry Preview, Skip Without Voting, Retry Discovery, independent JSONP cancellation, and browser regression coverage. Real-provider verification and regional failure handling remain open.
+  - **Automated portion shipped:** [PR #10](https://github.com/MasynNay/aftertone/pull/10) gates deployment on desktop/mobile Chromium. [PR #24](https://github.com/MasynNay/aftertone/pull/24) additionally validates built CSS `url()` references against published files. Manual Firefox/Chrome provider verification remains a separate check.
+- [ ] [#2: Recover gracefully from Deezer catalog/preview failures](https://github.com/MasynNay/aftertone/issues/2). **Partial implementation shipped:** [PR #11](https://github.com/MasynNay/aftertone/pull/11) adds Retry Preview, Skip Without Voting, Retry Discovery, and independent JSONP cancellation. [PR #24](https://github.com/MasynNay/aftertone/pull/24) cleans up blocked JSONP script insertion. Real-provider verification and regional failure handling remain open.
 - [ ] [#3: Review third-party music and artwork permissions](https://github.com/MasynNay/aftertone/issues/3). Document authorization or provide a rights-cleared public fallback; a portfolio disclaimer alone does not establish usage rights.
 
 **Exit criteria:** `npm run check` passes; both public routes pass a real-browser smoke test; at least one actual preview is manually tested where permitted; provider failures yield a useful state; required media permissions are addressed.
