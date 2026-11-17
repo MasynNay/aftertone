@@ -54,3 +54,16 @@ test('Deezer outages recover from an API error without a page reload or false vo
   const uses=[...browser.matchAll(/check_catalog_outage_recovery\(browser, base\)/g)];
   assert.equal(uses.length,3,'The outage test must run once in each browser plus its definition');
 });
+
+test('real backup and restore are exercised in Chromium and Firefox',()=>{
+  assert.match(browser,/def check_backup_restore_cross_browser\(browser, base\):/);
+  assert.match(browser,/accept_downloads=True/);
+  assert.match(browser,/page\.expect_download\(timeout=TIMEOUT\)/);
+  assert.match(browser,/malformed\["version"\]=999/);
+  assert.match(browser,/after_invalid==before/);
+  assert.match(browser,/page\.once\("dialog", lambda dialog: dialog\.accept\(\)\)/);
+  assert.match(browser,/page\.locator\("#progress-backup-file"\)\.set_input_files/);
+  assert.match(browser,/Restored favorite is missing from the visible Collection/);
+  const calls=[...browser.matchAll(/check_backup_restore_cross_browser\(browser, base\)/g)];
+  assert.equal(calls.length,3,'One definition and one call in each real browser');
+});
