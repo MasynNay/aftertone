@@ -1,3 +1,9 @@
+## v0.12 development — Zoom-equivalent reflow and reduced-motion browser audits (November 16, 2026)
+
+- Added built-site Chromium **and Firefox** checks at 720px and 360px with reduced-motion preferences enabled, covering the marketing page, all six app sections, named landmarks, visible primary controls, animation suppression and horizontal overflow.
+- 720px is a CSS layout proxy for reflow at approximately 200% zoom from a 1440px window, **not** an actual human browser-zoom or screen-reader test. Manual zoom and assistive-technology acceptance remain open under issue #7.
+- The tests use fictional music fixtures, no external recording playback or media-rights claims.
+
 ## v0.12 development — Safer browser-data recovery verification (November 16, 2026)
 
 - Added genuine Chromium and Firefox file download/import tests for versioned progress backups with a saved favorite, listening decision, volume, Tune Lab record, favorite artist, imported-playlist metadata and lyric offset.
