@@ -592,9 +592,22 @@ def check_catalog_outage_recovery(browser, base):
             return {favorites: state.favorites || [], history: state.history || []};
         }""")
         page.evaluate("window.__aftertoneRecoveryProbe = 'same-document'")
+        # Retry once while the provider is still unavailable. Keyboard focus
+        # must come back to the new enabled Retry button after the card rerenders.
+        retry.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => (
+            document.querySelector('#main-content .discovery-empty-state') &&
+            document.activeElement?.dataset?.action === 'load-more' &&
+            !document.activeElement.disabled
+        )""",timeout=TIMEOUT)
+        require(page.locator("#listening-card").count()==0,
+                "An unsuccessful retry must not manufacture a playable track")
         state["online"] = True
-        retry.click()
+        page.keyboard.press("Enter")
         page.locator("#listening-card").wait_for(state="visible", timeout=TIMEOUT)
+        page.wait_for_function("() => document.activeElement?.id === 'stage-play'",
+                               timeout=TIMEOUT)
         require("Fixture Melody" in page.locator("#listening-card").inner_text(),
                 "Retry should restore fixture discovery after provider recovery")
         require(page.evaluate("window.__aftertoneRecoveryProbe") == "same-document",
