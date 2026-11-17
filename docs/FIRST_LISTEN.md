@@ -20,6 +20,8 @@ You can switch listening paths whenever you like. Manually searching for an arti
 
 Continuous listening may move through previews after your first user gesture. Browser/provider restrictions can interrupt audio, and some previews may not be available.
 
+When focus is not inside a button or form control, the standalone **Left Arrow** and **Right Arrow** keys Pass or Keep; **Space** plays/pauses and **B** toggles blind mode. Shortcuts ignore Ctrl, Command, Alt, Shift, composition and key-repeat events so browser shortcuts and held keys do not accidentally rate extra songs. Buttons and sliders keep their native keyboard behavior.
+
 ## When you find no matches
 
 An empty screen is not a reason to erase your history. You can **Retry Search / Find More Songs**, **Clear Search**, **Broaden Filters** to return to all genres, languages, and eras, switch to a different listening path, or **Search for an Artist**. These actions don't remove favorites or prior Keep/Pass choices. Keyboard users can activate Retry Discovery with Enter, and focus returns to the new **Retry Discovery** control if the source remains unavailable or to **Play** if a track is found. Route switches and recovery controls are also designed to retain a useful focus target after the card changes.
