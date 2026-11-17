@@ -12,6 +12,8 @@ The script serves the actual generated dist/ directory through a localhost HTTP 
 
 A separate Firefox smoke pass checks desktop 1440×900 and phone 390×844 / 320×740: real homepage to app launch, first-run dialog Tab wrapping and Escape focus restoration, native Space navigation, all six app sections and their accessible labels/titles, mobile overflow/touch targets and browser JavaScript errors. It is a browser regression gate, **not** a manual cross-browser accessibility audit.
 
+The Chromium and Firefox smoke suites also simulate an HTTP-200 JSONP provider error, verify the user sees a nonblank **Music Is Temporarily Unavailable** state and usable Retry Discovery control, then restore fixture responses and retry without reloading or changing favorites/history. These deterministic simulations cannot establish actual provider uptime or availability by region.
+
 Both browser passes intercept Deezer JSONP calls with deterministic fictional fixture metadata and block all other external requests. This tests our own routing and interface behavior; **it does not prove real Deezer availability, playback, usage permission, or media licensing**.
 
 **Successful pull-request builds** now attach a seven-day `aftertone-ui-evidence` artifact with browser-generated desktop captures of the marketing page, Discover, Music Duels setup, an **in-progress four-song bracket**, and the completed podium. These use fictional fixture tracks, real rendered application markup and blocked external requests. This makes feature screenshots reviewable before they are copied into permanent README assets. The existing failure artifact is separate. Images do not demonstrate live music provider playback, content permissions or a human accessibility audit.

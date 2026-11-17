@@ -1,3 +1,9 @@
+## v0.12 development — End-to-end Deezer outage and retry browser coverage (November 16, 2026)
+
+- Added real Chromium and Firefox browser simulations of Deezer returning an error envelope inside HTTP 200. The test expects a visible, nonblank error state and an enabled Retry Discovery control, then switches the mock provider back online.
+- Confirms a recovered song renders in-place without a page reload, and that a failed search plus retry cannot silently add Keep/Pass votes or change favorites.
+- These tests use fictional data with all third-party requests blocked; live service uptime, regional behavior and media-use permissions remain separately unverified.
+
 ## v0.12 development — Real Music Duels bracket and podium in the product README (November 16, 2026)
 
 - Added permanent, verified WebP screenshots of an in-progress four-track Music Duels semifinal and the complete podium / Hall of Fame / tournament-history screen, alongside the existing real Discover, Collection and Duels setup captures. All screenshots use fictional test songs and placeholder artwork.
