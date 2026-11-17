@@ -51,6 +51,9 @@ test('Deezer outages recover from an API error without a page reload or false vo
   assert.match(browser,/retry\.click\(\)/);
   assert.match(browser,/window\.__aftertoneRecoveryProbe/);
   assert.match(browser,/saved_after == saved_before/);
+  assert.match(browser,/retry\.focus\(\)/);
+  assert.match(browser,/document\.activeElement\?\.dataset\?\.action === 'load-more'/);
+  assert.match(browser,/document\.activeElement\?\.id === 'stage-play'/);
   const uses=[...browser.matchAll(/check_catalog_outage_recovery\(browser, base\)/g)];
   assert.equal(uses.length,3,'The outage test must run once in each browser plus its definition');
 });
