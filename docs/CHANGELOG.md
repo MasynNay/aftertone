@@ -1,3 +1,9 @@
+## v0.12 development — One clear retry when music is unavailable (November 16, 2026)
+
+- When the current discovery path has **no playable song** and the provider fails, the empty state now owns the error announcement and displays one clearly labelled **Retry Discovery** action instead of repeating the same error above the page and showing a second **Find More Songs** button.
+- When a playable song is still visible, the existing compact provider-warning banner and its retry action remain available, without replacing the active card.
+- Added regression tests for one retry button, one error announcement and preservation of the in-card error banner. The Chromium and Firefox end-to-end outage/retry tests remain part of the deployment gate.
+
 ## v0.12 development — End-to-end Deezer outage and retry browser coverage (November 16, 2026)
 
 - Added real Chromium and Firefox browser simulations of Deezer returning an error envelope inside HTTP 200. The test expects a visible, nonblank error state and an enabled Retry Discovery control, then switches the mock provider back online.
