@@ -211,6 +211,28 @@ def browser_case(browser, base, width, height):
         page.locator("#listening-card").wait_for(state="attached",timeout=TIMEOUT)
         require(page.locator('link[rel="stylesheet"]').first.evaluate("(el) => Boolean(el.sheet)"),
                 "App stylesheet failed to load")
+        require(page.locator("#audio-status").get_attribute("role") == "status",
+                "Preview playback state should be a screen-reader status")
+        require(page.locator("#audio-status").get_attribute("aria-live") == "polite",
+                "Preview state must announce changes without interrupting the listener")
+        # A timeupdate fires several times per second. It must not rewrite and
+        # re-announce identical statuses during every playback tick.
+        status_stable = page.evaluate("""async () => {
+            const player=document.querySelector('#player');
+            const status=document.querySelector('#audio-status');
+            player.dispatchEvent(new Event('timeupdate')); // establish baseline
+            const before=status.textContent;
+            let writes=0;
+            const observer=new MutationObserver(records => { writes += records.length; });
+            observer.observe(status,{childList:true,characterData:true,subtree:true});
+            player.dispatchEvent(new Event('timeupdate'));
+            player.dispatchEvent(new Event('timeupdate'));
+            await Promise.resolve();
+            observer.disconnect();
+            return {before,after:status.textContent,writes};
+        }""")
+        require(status_stable["before"] == status_stable["after"] and status_stable["writes"] == 0,
+                f"Preview status changed on an ordinary timeupdate: {status_stable}")
         screenshot(page, f"discover-{label}")
         if width > 600:
             # First-run onboarding is a real modal. Dismiss it like a visitor
