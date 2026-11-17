@@ -1075,6 +1075,60 @@ def check_deezer_preview_quota_recovery(browser, base):
         context.close()
 
 
+
+def check_deezer_preview_on_demand(browser, base):
+    """Viewing tracks or browsing sections must not spend short-lived Deezer links."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    counts={"preview":0}
+    errors=[]
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def track_metadata(route):
+        if urlsplit(route.request.url).path.startswith("/track/"):
+            counts["preview"]+=1
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",track_metadata)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"on-demand-preview-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        require(counts["preview"]==0,
+                "Merely loading the discovery card fetched Deezer preview metadata")
+        for section in ("collection","duels","discover"):
+            page.locator(f'#main-nav button[data-view="{section}"]').click()
+            require(counts["preview"]==0,
+                    f"Navigating to {section} triggered unrequested Deezer preview metadata")
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        saved_before=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:s.favorites||[],history:s.history||[]};
+        }""")
+        page.locator("#stage-play").click()
+        page.locator("#preview-recovery").wait_for(state="visible",timeout=TIMEOUT)
+        require(counts["preview"]>=1,
+                "Explicit Play did not request the current track's Deezer preview metadata")
+        saved_after=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:s.favorites||[],history:s.history||[]};
+        }""")
+        require(saved_after==saved_before,
+                "Playing a blocked preview must not alter favorites or choice history")
+        require(not errors,"Browser exceptions during on-demand preview: "+"; ".join(errors))
+        print(f"PASS {label}: no speculative metadata, Play resolves on demand, no votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1088,6 +1142,7 @@ def firefox_main():
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
+            check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
         finally:
             browser.close()
@@ -1108,6 +1163,7 @@ def main():
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
+            check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
         finally:
             browser.close()
