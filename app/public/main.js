@@ -5,7 +5,7 @@ import { loadState, saveState } from '/src/persistence.mjs';
 import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, restoreProgressBackup } from '/src/progress-backup.mjs';
 import { encodeChallenge, decodeChallenge } from '/src/challenge.mjs';
 import { createViews } from './views.js';
-import { html, urlSafe, tag } from './view-utils.js';
+import { html, urlSafe, tag, setTextIfChanged } from './view-utils.js';
 import { THEMES, THEME_IDS } from '/src/themes.mjs';
 import { matchesLanguage, likelyMusicRecording } from '/src/recording-quality.mjs';
 import { parsePlaylist, buildSeedProfile, buildSeedLanes, trackIdentity } from '/src/playlist-import.mjs';
@@ -682,7 +682,7 @@ function updatePlaybackView() {
       button.textContent = '▶';
       button.setAttribute('aria-label', 'Open YouTube video preview');
       const status = $('#audio-status');
-      if (status) status.textContent = 'Watch a 22-second clip in the YouTube player; ads may appear';
+      setTextIfChanged(status, 'Watch a 22-second clip in the YouTube player; ads may appear');
       const time = $('#audio-time');
       if (time) time.textContent = '22 sec';
       const fill = $('#audio-progress');
@@ -700,7 +700,7 @@ function updatePlaybackView() {
     if (fill) fill.style.width = `${seconds / previewLength * 100}%`;
     if (time) time.textContent = `0:${String(Math.floor(seconds)).padStart(2, '0')} / 0:${previewLength}`;
     const status = $('#audio-status');
-    if (status) status.textContent = isLoadingAudio ? 'Finding the recording…' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? 'Stream unavailable — try another song or source' : 'Press play to sample this track';
+    setTextIfChanged(status, isLoadingAudio ? 'Finding the recording…' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? 'Stream unavailable — try another song or source' : 'Press play to sample this track');
   }
   // Recoverable failure controls belong to the discovery card, never the saved collection.
   const recovery=$('#preview-recovery');
