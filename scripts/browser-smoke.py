@@ -415,6 +415,119 @@ def check_product_deep_links(browser, base):
     print("PASS product station deep links and Music Duels direct entry")
 
 
+def firefox_case(browser, base, width, height):
+    """Real Firefox navigation/keyboard/layout checks; never contacts live providers."""
+    context = browser.new_context(viewport={"width": width, "height": height},
+                                  service_workers="block")
+    origin = urlsplit(base).netloc
+    context.route("**/*", lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc == origin else route.abort())
+    context.route("https://api.deezer.com/**", mock_deezer)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(f"JavaScript exception: {error}"))
+    page.on("response", lambda response: errors.append(f"HTTP {response.status}: {response.url}")
+            if urlsplit(response.url).netloc == origin and response.status >= 400 else None)
+    label = f"firefox-{width}x{height}"
+    try:
+        page.goto(base + "/", wait_until="load", timeout=TIMEOUT)
+        require(page.locator("#explore-experience").is_visible(),
+                "Firefox marketing page has no visible launch control")
+        require(page.locator('link[rel="stylesheet"]').first.evaluate(
+            "(el) => Boolean(el.sheet)"), "Firefox marketing stylesheet failed")
+        page.locator("#explore-experience").click()
+        page.wait_for_url("**/demo/", timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible", timeout=TIMEOUT)
+        require(page.locator('.skip-to-content').get_attribute('href') == '#main-content',
+                "Firefox skip link is missing")
+        require(page.locator("#main-content").get_attribute("aria-live") is None,
+                "The whole listening room should not be a live region")
+        require(page.locator("#audio-status").get_attribute("role") == "status",
+                "Firefox preview status is not accessible")
+
+        # Dialog focus and Escape restoration need to work in real Firefox.
+        dialog = page.locator('#modal-root [role="dialog"]')
+        dialog.wait_for(state="visible", timeout=TIMEOUT)
+        page.keyboard.press("Shift+Tab")
+        require(page.locator('#modal-root [data-modal="onboarding-playlist"]').evaluate(
+            "(el) => document.activeElement === el"),
+            "Firefox Shift+Tab escaped the onboarding dialog")
+        page.keyboard.press("Tab")
+        require(page.locator('#modal-root [data-modal="close"]').evaluate(
+            "(el) => document.activeElement === el"),
+            "Firefox Tab failed to wrap to the dialog's first button")
+        page.keyboard.press("Escape")
+        dialog.wait_for(state="hidden", timeout=TIMEOUT)
+        require(page.evaluate("document.activeElement?.id === 'main-content'"),
+                "Firefox closing the dialog did not restore focus")
+
+        # Native Space activation and the app's current-page landmarks.
+        collection = page.locator('#main-nav button[data-view="collection"]')
+        collection.focus()
+        page.keyboard.press("Space")
+        require(page.locator("#main-content").get_attribute("aria-label")
+                == "Collection section", "Firefox native Space navigation failed")
+        require(page.evaluate("document.activeElement?.id === 'main-content'"),
+                "Firefox navigation did not move focus to the main landmark")
+
+        for mode, name in (("discover", "Discover"), ("taste", "Taste Map"),
+                           ("quiz", "Tune Lab"), ("duels", "Music Duels"),
+                           ("challenges", "Challenges"), ("collection", "Collection")):
+            nav = page.locator(f'#main-nav button[data-view="{mode}"]')
+            nav.click()
+            require(nav.get_attribute("aria-current") == "page",
+                    f"Firefox navigation did not select {mode}")
+            require(page.locator("#main-content").get_attribute("aria-label")
+                    == f"{name} section", f"Firefox landmark label missing for {mode}")
+            require(page.title() == f"{name} — AFTERTONE",
+                    f"Firefox browser title did not update for {mode}")
+            require(page.locator("#main-content").inner_text().strip(),
+                    f"Firefox rendered an empty {mode} view")
+
+        page.locator("#help-button").click()
+        page.locator('#modal-root [role="dialog"]').wait_for(state="visible",timeout=TIMEOUT)
+        page.keyboard.press("Escape")
+        require(page.evaluate("document.activeElement?.id === 'help-button'"),
+                "Firefox closing Help lost opener focus")
+        if width <= 390:
+            width_info = page.evaluate("""() => ({
+                viewport:innerWidth,
+                page:document.documentElement.scrollWidth,
+                navigation:[...document.querySelectorAll('#main-nav button[data-view]')]
+                    .map(el=>({width:el.getBoundingClientRect().width,
+                               height:el.getBoundingClientRect().height}))
+            })""")
+            require(width_info["page"] <= width_info["viewport"] + 2,
+                    f"Firefox phone layout overflows: {width_info}")
+            require(len(width_info["navigation"]) == 6,
+                    "Firefox phone layout hides a navigation destination")
+            require(all(box["height"] >= 43.5 and box["width"] >= 43.5
+                        for box in width_info["navigation"]),
+                    "Firefox phone navigation has a touch target below 44px")
+
+        require(not errors, "Firefox browser errors:\\n" + "\\n".join(errors))
+        print(f"PASS {label}: marketing, app, dialogs, keyboard, six views, mobile fit")
+    except Exception:
+        screenshot(page, f"FAILED-{label}")
+        if errors:
+            print("\\n".join(errors), file=sys.stderr)
+        raise
+    finally:
+        context.close()
+
+
+def firefox_main():
+    with serve_build() as base, sync_playwright() as playwright:
+        browser = playwright.firefox.launch(headless=True)
+        try:
+            firefox_case(browser, base, 1440, 900)
+            firefox_case(browser, base, 390, 844)
+            firefox_case(browser, base, 320, 740)
+        finally:
+            browser.close()
+    print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
+
+
 def main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
@@ -428,4 +541,7 @@ def main():
     print("PASS all browser checks. Live provider playback was not tested.")
 
 if __name__ == "__main__":
-    main()
+    if "--firefox" in sys.argv:
+        firefox_main()
+    else:
+        main()
