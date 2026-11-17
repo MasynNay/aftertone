@@ -835,9 +835,10 @@ def check_backup_transfer_new_profile(browser, base):
                 JSON.stringify({[s.favorites[0]]:42}));
         }""")
         first.locator('#main-nav button[data-view="collection"]').click()
-        note=first.locator('.collection-backup-note').inner_text()
-        require("Version 2 backups include imported playlist song names" in note,
-                "Collection still falsely claims playlist/lyric offsets are omitted")
+        note=first.locator('#collection-backup-note').inner_text()
+        require("Version 2 backups include saved tracks, listening choices" in note
+                and "imported playlist song names and manual lyric timing offsets" in note,
+                "Collection must describe the actual v2 backup contents")
         with first.expect_download(timeout=TIMEOUT) as result:
             first.locator('[data-action="backup-progress"]').click()
         download=result.value
