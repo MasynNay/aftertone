@@ -122,7 +122,11 @@ test('Collection backup and restore actions appear even with an empty collection
     challengeIds:[],challengeResponses:[],catalogWarning:'',catalogLive:true,
     collectionQuery:'',collectionSort:'recent'}).renderCollection();
   assert.match(markup,/data-action="backup-progress"/);
-  assert.match(markup,/Version 2 backups include imported playlist song names and manual lyric timing offsets/);
+  assert.match(markup,/Restore replaces your current progress; download a backup first/);
+   assert.match(markup,/Backup files are not encrypted/);
+   assert.match(markup,/Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets/);
+   assert.match(markup,/id="progress-backup-status"[^>]*role="status" aria-live="polite" aria-atomic="true" hidden/);
+   assert.match(markup,/data-action="restore-progress" aria-describedby="collection-backup-note"/);
   assert.doesNotMatch(markup,/imported playlist files and lyric timing offsets are not included/);
   assert.match(markup,/data-action="restore-progress"/);
   assert.match(markup,/id="progress-backup-file"/);

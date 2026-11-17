@@ -1520,6 +1520,14 @@ function exportLibrary(type = 'json') {
   toast('Export created.');
 }
 
+/** Persistent action feedback stays available after the temporary toast fades. */
+function announceProgressBackup(message) {
+  const status=$('#progress-backup-status');
+  if (!status) return;
+  status.hidden=false;
+  status.textContent=message;
+}
+
 /** The backup file contains only metadata and local choices, never audio. */
 function downloadProgressBackup() {
   try {
@@ -1531,13 +1539,24 @@ function downloadProgressBackup() {
     anchor.download='aftertone-progress-'+new Date().toISOString().slice(0,10)+'.json';
     document.body.append(anchor);anchor.click();anchor.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
-    toast('Progress backup downloaded. Keep the file somewhere safe.');
+    const message='Progress backup downloaded. Keep the file somewhere safe.';
+    announceProgressBackup(message);
+    toast(message);
   } catch(error) {
-    toast(error.message || 'Could not create a progress backup.');
+    const message=error.message || 'Could not create a progress backup.';
+    announceProgressBackup(message);
+    toast(message);
   }
 }
+let progressRestoreBusy=false;
 async function importProgressBackupFile(file) {
+  // File.text() is asynchronous. Guard against overlapping restore attempts.
+  if (progressRestoreBusy) return;
+  progressRestoreBusy=true;
+  const restoreButton=$('[data-action="restore-progress"]');
+  if (restoreButton) restoreButton.disabled=true;
   try {
+    announceProgressBackup('Checking backup file…');
     if(file.size>BACKUP_MAX_BYTES)throw new Error('Backup must be smaller than 4 MB.');
     const content=await file.text();
     const preview=inspectProgressBackup(content).summary;
@@ -1550,12 +1569,27 @@ async function importProgressBackupFile(file) {
       preview.artists+' favorite artist'+(preview.artists===1?'':'s')+' and Tune Lab '+preview.quizCorrect+
       '/'+preview.quizAnswered+' correct?\n\n'+optional+'\n\n'+
       'This replaces your current AFTERTONE progress. Export a backup of your current progress first.';
-    if(!window.confirm(message))return;
+    if(!window.confirm(message)) {
+      announceProgressBackup('Restore canceled. Your existing progress was not changed.');
+      return;
+    }
     restoreProgressBackup(localStorage,content);
+    announceProgressBackup('Progress restored. Reloading AFTERTONE…');
     stopAudio();
     window.location.reload(); // Rehydrate the existing app from the validated saved state.
   } catch(error) {
-    toast(error.message || 'Could not restore backup. No changes were made.');
+    const message=error.message || 'Could not restore backup. Check your current saved progress.';
+    announceProgressBackup(message);
+    toast(message);
+  } finally {
+    progressRestoreBusy=false;
+    // The file picker itself is hidden. Return keyboard focus to a real
+    // visible button after cancel, validation failure or confirmation.
+    const action=$('[data-action="restore-progress"]');
+    if (action) {
+      action.disabled=false;
+      if (view==='collection') action.focus({preventScroll:true});
+    }
   }
 }
 

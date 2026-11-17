@@ -81,3 +81,12 @@ test('Keep, Pass and Undo restore focus after replacing the decision controls',(
   const undo=main.slice(main.indexOf("case 'undo':"),main.indexOf("case 'remove-favorite':"));
   assert.match(undo,/if \(returnFocus\) restoreDecisionFocus\('undo'\)/);
 });
+
+test('backup restoration never strands focus on a hidden picker or silently loses feedback',()=>{
+  assert.match(main,/function announceProgressBackup\(message\) \{/);
+  assert.match(main,/let progressRestoreBusy=false/);
+  assert.match(main,/if \(progressRestoreBusy\) return/);
+  assert.match(main,/if \(restoreButton\) restoreButton\.disabled=true/);
+  assert.match(main,/Restore canceled\. Your existing progress was not changed/);
+  assert.match(main,/if \(view==='collection'\) action\.focus\(\{preventScroll:true\}\)/);
+});
