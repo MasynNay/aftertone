@@ -1,3 +1,10 @@
+## v0.12 development — Keyboard continuity when discovery is empty (November 17, 2026)
+
+- Fixed a keyboard dead end after Retry Discovery replaced its own button with a loading state: focus now returns to the rebuilt Play control on success or the new enabled Retry action on another outage.
+- Applied focus continuity to Clear Search, Broaden Filters and keyboard-selected discovery-path changes, without stealing focus after pointer actions or after the user moves to another control while waiting.
+- Extended real Chromium and Firefox provider-outage checks to press Enter for an unsuccessful retry followed by a successful retry, preserve Keep/Pass history and assert focus returns to a usable target.
+- Provider calls use fictional test fixtures. Live Deezer playback and music-use authorization are still separate open requirements.
+
 ## v0.12 development — Honest backups and fresh-profile transfer verification (November 16, 2026)
 
 - Corrected the Collection note: format v2 **does** include imported playlist artist/song names and manual lyric timing offsets, though never music files. The old notice incorrectly claimed both were omitted.
