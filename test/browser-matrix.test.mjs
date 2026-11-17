@@ -78,3 +78,14 @@ test('reduced-motion reflow audits all routes in both real browsers at zoom-equi
   assert.equal(browser.split('check_reflow_reduced_motion(browser, base, 720, 900)').length-1,2);
   assert.equal(browser.split('check_reflow_reduced_motion(browser, base, 360, 740)').length-1,2);
 });
+
+test('failed preview retry and neutral skip restore keyboard focus and never record a vote',()=>{
+  assert.match(browser,/def check_preview_recovery_keyboard\(browser, base\):/);
+  assert.match(browser,/requests\["preview"\]>first_requests/);
+  assert.match(browser,/get_by_role\("button",name="Retry Preview",exact=True\)/);
+  assert.match(browser,/get_by_role\("button",name="Skip Without Voting",exact=True\)/);
+  assert.match(browser,/document.activeElement\?\.id === 'stage-play'/);
+  assert.match(browser,/after==initial/);
+  const runs=[...browser.matchAll(/check_preview_recovery_keyboard\(browser, base\)/g)];
+  assert.equal(runs.length,3,'One definition plus Chromium and Firefox runs required');
+});

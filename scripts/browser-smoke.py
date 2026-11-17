@@ -840,6 +840,74 @@ def check_reflow_reduced_motion(browser, base, width, height):
         context.close()
 
 
+
+def check_preview_recovery_keyboard(browser, base):
+    """A blocked fixture preview must not strand focus or count a vote."""
+    context = browser.new_context(viewport={"width":1024,"height":800},
+                                  service_workers="block")
+    origin=urlsplit(base).netloc
+    requests={"preview":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def fixture_provider(route):
+        if urlsplit(route.request.url).path.startswith("/track/"):
+            requests["preview"]+=1
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",fixture_provider)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"preview-focus-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        original=page.locator("#listening-card").get_attribute("aria-label")
+        initial=page.evaluate("""() => {
+            const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:state.favorites||[],history:state.history||[]};
+        }""")
+        # CDN is intentionally blocked by the route above. Use a real browser
+        # media element to exercise the actual recovery state.
+        page.locator("#stage-play").click()
+        recovery=page.locator("#preview-recovery")
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        first_requests=requests["preview"]
+        require(first_requests>0,"Initial preview did not resolve through provider fixture")
+        retry=page.get_by_role("button",name="Retry Preview",exact=True)
+        retry.focus()
+        page.keyboard.press("Enter")
+        require(page.evaluate("document.activeElement?.id === 'stage-play'"),
+                "Retry hid the focused recovery button without moving focus to Play")
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require(requests["preview"]>first_requests,
+                "Retry reused a stale preview instead of resolving a fresh provider URL")
+        require(page.locator("#listening-card").get_attribute("aria-label")==original,
+                "Retry unexpectedly changed the listener's current song")
+        skip=page.get_by_role("button",name="Skip Without Voting",exact=True)
+        skip.focus()
+        page.keyboard.press("Enter")
+        require(page.evaluate("""() => {
+            const focused=document.activeElement;
+            return focused?.id==='stage-play' || focused?.id==='main-content';
+        }"""),"Neutral skip removed the focused control without restoring focus")
+        after=page.evaluate("""() => {
+            const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:state.favorites||[],history:state.history||[]};
+        }""")
+        require(after==initial,
+                "Failed preview retry/skip created an implicit Keep or Pass")
+        require(not errors,"Browser JS exceptions during preview recovery: "+"; ".join(errors))
+        print(f"PASS {label}: blocked CDN, fresh retry, focus, neutral skip, no votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -851,6 +919,7 @@ def firefox_main():
             check_backup_restore_cross_browser(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
+            check_preview_recovery_keyboard(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -868,6 +937,7 @@ def main():
             check_backup_restore_cross_browser(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
+            check_preview_recovery_keyboard(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

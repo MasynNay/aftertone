@@ -572,6 +572,11 @@ function maybeResumeContinuous() {
 /** Retry the same preview using a freshly resolved URL, without changing taste data. */
 function retryFailedPreview() {
   if (!current || view !== 'discover' || failedAudioId !== current.id) return;
+  // The recovery controls are hidden while audio reloads. Transfer focus to
+  // the persistent Play/Pause button first instead of leaving keyboard users
+  // focused on a button inside a hidden status region.
+  const returnFocus = $('#preview-recovery')?.contains(document.activeElement);
+  if (returnFocus) $('#stage-play')?.focus({preventScroll:true});
   resolved.delete(current.id);
   failedSources.delete(current.id);
   deezerRefreshedOnce.delete(current.id);
@@ -581,11 +586,15 @@ function retryFailedPreview() {
 /** A failed preview is not a vote. Leave collection and history unchanged. */
 function skipUnavailablePreview() {
   if (!current || view !== 'discover' || challengeIds.length) return;
+  const returnFocus = $('#preview-recovery')?.contains(document.activeElement);
   unvotedPreviews.add(current.id);
   continuousListening=false;
   stopAudio();
   chooseNext();
   render();
+  // Skipping rebuilds the listening card. Restore focus to an actual visible
+  // control, or to the labelled main region if the feed is exhausted.
+  if (returnFocus) (current ? $('#stage-play') : main)?.focus({preventScroll:true});
   maybeTopUp();
 }
 function advancePreview() {

@@ -18,6 +18,8 @@ The Chromium and Firefox smoke suites now also exercise a **real JSON file downl
 
 The suite also checks both engines under **reduced motion** at narrow 720px and 360px CSS viewport widths, inspecting all six views for horizontal document overflow and clipped primary controls. These viewports are reflow/zoom-equivalent proxies, **not literal browser zoom tests**; a manual 200% zoom test is still required.
 
+Both browser engines also simulate a blocked audio CDN and use **real keyboard activation** of Retry Preview and Skip Without Voting. The checks require a fresh provider-resolution request, keyboard focus returned to a visible Play button (or the main landmark on an exhausted feed), and **no accidental Keep/Pass vote**. Provider metadata remains fictional and media requests remain blocked.
+
 Both browser passes intercept Deezer JSONP calls with deterministic fictional fixture metadata and block all other external requests. This tests our own routing and interface behavior; **it does not prove real Deezer availability, playback, usage permission, or media licensing**.
 
 **Successful pull-request builds** now attach a seven-day `aftertone-ui-evidence` artifact with browser-generated desktop captures of the marketing page, Discover, Music Duels setup, an **in-progress four-song bracket**, and the completed podium. These use fictional fixture tracks, real rendered application markup and blocked external requests. This makes feature screenshots reviewable before they are copied into permanent README assets. The existing failure artifact is separate. Images do not demonstrate live music provider playback, content permissions or a human accessibility audit.

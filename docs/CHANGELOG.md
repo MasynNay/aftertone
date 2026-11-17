@@ -1,3 +1,9 @@
+## v0.12 development — Keyboard-safe preview failure controls (November 16, 2026)
+
+- **Retry Preview** now transfers keyboard focus from the soon-to-be-hidden recovery buttons to the persistent Play/Pause control. **Skip Without Voting** moves focus to the next track's Play control, or the labelled main region if the feed is empty.
+- New Chromium and Firefox browser tests block actual media access, exercise the real preview failure/retry/skip path with keyboard activation, verify a fresh provider-link resolution attempt, and confirm that no listening decision or favorite was recorded.
+- No recordings were used in these tests. Real Deezer availability, human assistive-technology testing and media permissions remain outstanding.
+
 ## v0.12 development — Prevent silent loss during progress backup export (November 16, 2026)
 
 - Backup Progress now **refuses export** when an existing listening session, tournament archive, Tune Lab record or favorite-artist record is malformed or unsupported, instead of silently replacing that source with an empty/default record. The original browser storage is left untouched.
