@@ -34,7 +34,7 @@ test('local Node preview endpoint exposes a retryable provider rejection then re
   const url=`http://127.0.0.1:${server.address().port}/api/audio?id=deezer%3A41`;
   try {
     let response=await fetch(url);
-    assert.equal(response.status,502);
+    assert.equal(response.status,429);
     let payload=await response.json();
     assert.match(payload.detail,/Deezer rejected the preview request/);
     assert.equal(payload.url,undefined);
