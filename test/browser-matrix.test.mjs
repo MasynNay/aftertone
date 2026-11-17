@@ -27,3 +27,19 @@ test('Firefox smoke protects keyboard and navigation behavior without contacting
   assert.match(firefox,/scrollWidth/);
   assert.match(firefox,/pageerror/);
 });
+
+test('successful PR runs retain browser-generated app screenshots including an active bracket',()=>{
+  assert.match(workflow,/Upload verified product screenshots for PR review/);
+  assert.match(workflow,/if: success\(\) && github\.event_name == 'pull_request'/);
+  assert.match(workflow,/name: aftertone-ui-evidence/);
+  assert.match(workflow,/if-no-files-found: error/);
+  assert.match(workflow,/retention-days: 7/);
+  for (const name of ['portfolio','discover','duels','music-duels-bracket','music-duels-complete']) {
+    assert.ok(workflow.includes(`browser-smoke-artifacts/${name}-1440x900.png`),
+      `CI evidence is missing ${name}`);
+  }
+  const bracket=browser.indexOf('screenshot(page, f"music-duels-bracket-{label}")');
+  const created=browser.indexOf("page.locator('[data-duel-action=\"create\"]').click()");
+  const voted=browser.indexOf("page.locator('#duel-active-event [data-duel-vote]').first.click()");
+  assert.ok(created < bracket && bracket < voted,'Brackets must be captured after creation, before any votes');
+});
