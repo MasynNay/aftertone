@@ -879,7 +879,7 @@ def check_backup_transfer_new_profile(browser, base):
                    document.querySelector('#main-nav button[data-view="collection"]');
         }""",timeout=TIMEOUT)
         require(len(confirmation)==1 and
-                "1 favorite artists and Tune Lab 5/7 correct" in confirmation[0],
+                "1 favorite artist and Tune Lab 5/7 correct" in confirmation[0],
                 f"Restore confirmation did not disclose Tune Lab and favorite artists: {confirmation}")
         page.locator('#main-nav button[data-view="collection"]').click()
         saved=backup["session"]["savedTracks"][0]
