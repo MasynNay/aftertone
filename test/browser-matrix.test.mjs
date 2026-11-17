@@ -147,3 +147,13 @@ test('cross-browser restore tests cover persistent errors, cancel protection and
   assert.match(browser,/Canceled restore did not return focus to the restore button/);
   assert.match(browser,/Restore canceled\. Your existing progress was not changed/);
 });
+
+test('both browser engines reject shortcut modifiers and held keys without losing plain shortcuts',()=>{
+  assert.match(browser,/def check_safe_music_shortcuts\(browser, base\):/);
+  assert.match(browser,/Modified\/repeated shortcuts changed listening history or blind mode/);
+  assert.match(browser,/Holding an arrow rated a second song without another deliberate press/);
+  assert.match(browser,/A held\/modified Space shortcut unexpectedly requested preview playback/);
+  assert.match(browser,/page\.keyboard\.press\("ArrowLeft"\)/);
+  assert.equal(browser.split('check_safe_music_shortcuts(browser, base)').length-1,3,
+    'One definition and one invocation for Chromium and Firefox required');
+});
