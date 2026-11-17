@@ -15,3 +15,10 @@ export const urlSafe = (link) => {
 export const h32 = (string) => [...string].reduce((hash, char) => Math.imul(hash ^ char.charCodeAt(0), 16777619) >>> 0, 2166136261);
 export const shade = (id) => SPECTRUM[h32(id) % SPECTRUM.length];
 export const tag = (text) => `<span class="tag">${html(text)}</span>`;
+
+/** Replace live status text only when its meaning changes (not on every audio timeupdate). */
+export function setTextIfChanged(element, text) {
+  if (!element || element.textContent === text) return false;
+  element.textContent = text;
+  return true;
+}
