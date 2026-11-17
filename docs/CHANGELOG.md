@@ -1,3 +1,9 @@
+## v0.12 development — Deezer preview provider errors (November 16, 2026)
+
+- Deezer can signal a rejected preview request in an HTTP-200 JSON or JSONP body. The preview resolver now distinguishes that provider error from an ordinary track without a playable preview, and handles malformed metadata without throwing an unrelated JavaScript TypeError.
+- Both GitHub Pages and the local Node API return a recoverable error rather than a fake playable URL. The existing Retry Preview / Skip Without Voting flow remains unchanged and does not record a failed playback as a dislike.
+- Added mocked provider error, missing-preview, malformed-response, and successful retry cases, including actual API calls through the browser-style adapter and local Node server. Automated tests do **not** establish real Deezer availability, media rights, or regional provider behavior.
+
 ## v0.12 development — Accurate preview recovery guidance (November 16, 2026)
 
 - Preview failures now give source-aware advice instead of telling users of local Jellyfin or other music providers to retry a Deezer link. Deezer retries mention a fresh provider link; Jellyfin advises checking the local media server; other providers receive neutral retry/skip wording.

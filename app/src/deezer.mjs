@@ -57,6 +57,16 @@ export async function resolveDeezerPreview(id, fetcher = fetch) {
   const response = await fetcher(`${API}/track/${id}`, {headers:{Accept:'application/json'},signal:AbortSignal.timeout(9000)});
   if (!response.ok) throw new Error(`Deezer preview returned HTTP ${response.status}`);
   const item = await response.json();
+  // Deezer can return {error: {...}} with HTTP 200 (including over JSONP).
+  // That is a provider rejection, not a recording with no preview.
+  if (item?.error) {
+    const detail = typeof item.error.message === 'string' && item.error.message.trim()
+      ? item.error.message.trim().slice(0, 160)
+      : String(item.error.code ?? 'unavailable').slice(0, 40);
+    throw new Error(`Deezer rejected the preview request: ${detail}`);
+  }
+  if (!item || typeof item !== 'object' || Array.isArray(item))
+    throw new Error('Deezer returned invalid preview metadata');
   const url = validDeezerPreview(item.preview);
   if (!url) throw new Error('Deezer has no playable preview for this track');
   return {url, ttlSeconds:480, license:'Preview served from Deezer CDN; obtain game-use authorization before publishing', page:`https://www.deezer.com/track/${id}`};
