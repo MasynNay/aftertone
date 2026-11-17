@@ -730,9 +730,12 @@ function updatePlaybackView() {
   const recovery=$('#preview-recovery');
   if(recovery && current) {
     recovery.hidden = isLoadingAudio || failedAudioId !== current.id;
-    if (!recovery.hidden && current.source === 'deezer' && failedAudioQuota) {
-      setTextIfChanged(recovery.querySelector('p'),
-        'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without counting it as a Pass.');
+    if (!recovery.hidden && current.source === 'deezer') {
+      // Recovery UI is retained while retrying. Never leave an old quota
+      // warning on screen after the new request fails for another reason.
+      setTextIfChanged(recovery.querySelector('p'), failedAudioQuota
+        ? 'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without counting it as a Pass.'
+        : 'This Deezer preview is unavailable. Retry a fresh provider link or skip without counting it as a Pass.');
     }
   }
   const skipRecovery=$('#preview-skip');
