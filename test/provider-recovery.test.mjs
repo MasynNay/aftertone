@@ -68,3 +68,16 @@ test('empty provider outage has one understandable retry and one error announcem
   assert.match(withSong,/class="discovery-mode-note" role="status"/,
     'While a song is visible, preserve the provider retry banner without replacing it');
 });
+
+test('rendering discovery and bracket views cannot preload Deezer preview URLs',()=>{
+  const code=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const prewarm=code.slice(code.indexOf('function prewarm('),code.indexOf('function stopContinuous()'));
+  assert.match(prewarm,/if \(!track \|\| track\.source === 'deezer'\) return;/,
+    'Short-lived Deezer preview URLs must only be fetched after explicit playback');
+  assert.match(prewarm,/resolveAudio\(track\)/,
+    'Other allowed sources retain their existing prewarm behavior');
+  const toggle=code.slice(code.indexOf('async function togglePlayback('),
+    code.indexOf('function updatePlaybackView()',code.indexOf('async function togglePlayback(')));
+  assert.match(toggle,/const source = await resolveAudio\(track\)/,
+    'Clicking Play must still resolve the latest Deezer preview on demand');
+});
