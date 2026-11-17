@@ -693,8 +693,8 @@ def check_backup_restore_cross_browser(browser, base):
             "mimeType":"application/json",
             "buffer":json.dumps(malformed).encode("utf-8"),
         })
-        page.wait_for_function("""() => document.querySelector('#toast')?.
-            textContent?.includes('not a supported AFTERTONE progress backup')""",
+        page.wait_for_function("""() => document.querySelector('#toast')?.textContent?.includes(
+            'not a supported AFTERTONE progress backup')""",
             timeout=TIMEOUT)
         after_invalid=page.evaluate(
             "(keys) => keys.map(k => localStorage.getItem(k))", keys)
