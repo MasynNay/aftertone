@@ -74,6 +74,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Restore is temporarily disabled while the selected file is being checked to prevent simultaneous import attempts. After an invalid or canceled import, focus returns to the visible Restore Backup button instead of a hidden file input.
 - Chromium and Firefox browser checks exercise invalid-file rejection, explicit confirmation dismissal without writes, focus restoration, and subsequent confirmed restore of the same selected backup. This is automated keyboard-continuity evidence, not a real screen-reader review or physical-device transfer.
 
+## Empty discovery and keyboard recovery (v0.12 development)
+
+- When a focused Retry Discovery button rebuilds a loading card, the app holds focus on the stable main region while fetching and then returns it to the new Play button or an enabled Retry button. A retry that fails again never strands the user on a removed control.
+- Clear Search, Broaden Filters, and keyboard-activated listening-path changes use the same focus-aware recovery where appropriate. Focus is returned only when the action started from a focused control and the listener has not moved to something else while loading.
+- Both Chromium and Firefox browser scripts now simulate a provider outage, keyboard retry while the provider is still offline, and successful retry after recovery; saved votes and the document stay unchanged. This does not verify manual screen-reader speech output, real Deezer playback or mobile hardware behavior.
+
 ## Manual acceptance checklist (not yet verified)
 
 - [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.
