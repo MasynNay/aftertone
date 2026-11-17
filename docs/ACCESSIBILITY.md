@@ -32,6 +32,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Ordinary audio `timeupdate` events refresh the timer but do **not** rewrite unchanged status text; redundant DOM mutations could otherwise cause screen readers to repeat the same sentence throughout a 22-second preview.
 - Added a small unit regression and rendered Chromium check. Actual NVDA/VoiceOver playback behavior still needs human verification; these checks do not establish live third-party preview availability or authorization.
 
+## Firefox cross-browser gate (v0.12 development)
+
+- Added a dedicated Playwright **Firefox** smoke mode at desktop 1440px and phone widths 390px and 320px, alongside the existing Chromium gate. It exercises dialog focus/return, native Space navigation, named landmarks, all six views, mobile hit areas/overflow and uncaught browser errors with fictional provider records.
+- The GitHub Pages workflow installs both engines and requires both browser scripts to pass before deploying. See [browser testing](BROWSER_TESTING.md).
+- Automated Firefox coverage does **not** replace a real-device Firefox run, manual keyboard and screen-reader testing, 200% zoom assessment, or legitimate provider playback/rights verification. Keep issue #7 open until those checks are recorded.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:

@@ -29,14 +29,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install Playwright and Chromium
+      - name: Install Playwright, Chromium and Firefox
         run: |
           python -m pip install --disable-pip-version-check playwright==1.56.0
-          python -m playwright install --with-deps chromium
+          python -m playwright install --with-deps chromium firefox
       - name: Smoke-test the actual homepage and app in Chromium
         run: python scripts/browser-smoke.py
         env:
           AFTERTONE_VISUAL_REVIEW: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+      - name: Smoke-test Firefox homepage, app navigation and keyboard access
+        run: python scripts/browser-smoke.py --firefox
       - name: Upload failure screenshots
         if: failure()
         uses: actions/upload-artifact@v4
