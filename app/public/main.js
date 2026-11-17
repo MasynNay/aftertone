@@ -291,8 +291,17 @@ function sourceOrder() {
   // YouTube is opt-in: do not silently introduce video ads into the audio mix.
   return state.source === 'mix' ? ['audius', 'jellyfin', 'jamendo', 'commons'].filter((x) => availableSources.includes(x)) : [state.source];
 }
+/** A rebuilt listening card must not strand a keyboard user on document.body.
+ * Focus is restored only for a user-initiated, focused recovery action.
+ */
+function focusDiscoveryRecovery() {
+  const target=$('#stage-play') ||
+    $('#main-content .discovery-empty-state [data-action="load-more"]:not(:disabled)') ||
+    main;
+  target.focus({preventScroll:true});
+}
 /** Fetch new batches progressively. Counters represent loaded songs, not provider catalog sizes. */
-async function loadMore(genre = state.genre, showStatus = false, prioritizeRelated = false) {
+async function loadMore(genre = state.genre, showStatus = false, prioritizeRelated = false, restoreKeyboardFocus = false) {
   if (challengeIds.length) return;
   const feed = getFeed(genre);
   const requestSearch=searchQuery;
@@ -427,6 +436,12 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
         if (loaded) loaded.textContent = `${feed.ids.size} loaded · Deezer`;
       }
       maybeResumeContinuous();
+      // A keyboard Retry/Filter action can replace the focused button twice:
+      // once for loading and again for the result. Return to Play or Retry only
+      // if the listener did not move focus elsewhere while the fetch ran.
+      if (restoreKeyboardFocus && view === 'discover' &&
+          document.activeElement === main && requestSearch === searchQuery)
+        focusDiscoveryRecovery();
     }
     // Similarity lookups may finish during a chart fetch. Never lose the
     // background related-artist refill just because a request was in flight.
@@ -854,7 +869,7 @@ function chooseNext() {
 
 /** Switching paths is a new listening lane, not a cosmetic ranking tweak.
  * Leave the saved collection untouched and let the new lane preload first. */
-function changeDiscoveryPath(mode) {
+function changeDiscoveryPath(mode, restoreKeyboardFocus = false) {
   if (!['familiar','balanced','explore'].includes(mode) || state.discoveryMix===mode) return;
   lastModeSwitchTrackId=current?.id || null;
   // Clicking a discovery path exits any temporary artist/song search. Otherwise
@@ -873,8 +888,13 @@ function changeDiscoveryPath(mode) {
   // pretending the same song was recommended by three different modes.
   if(feed.primed) chooseNext();
   render();
+  if (restoreKeyboardFocus) {
+    if (current) focusDiscoveryRecovery();
+    else main.focus({preventScroll:true});
+  }
   if(wasSearching) toast('Search closed · loading your new discovery path.');
-  if(!feed.primed || !availableCount(state.genre)) void loadMore(state.genre,false,true);
+  if(!feed.primed || !availableCount(state.genre))
+    void loadMore(state.genre,false,true,restoreKeyboardFocus);
   if(mode!=='explore') void warmRelatedFromSaved(seedVersion);
 }
 
@@ -1669,7 +1689,7 @@ document.addEventListener('click', async (event) => {
   if (preview) return togglePlayback(lookup(preview.dataset.preview));
   const path=event.target.closest('[data-path]');
   if(path && ['familiar','balanced','explore'].includes(path.dataset.path)) {
-    changeDiscoveryPath(path.dataset.path); // Distinct request and presentation pools.
+    changeDiscoveryPath(path.dataset.path,document.activeElement===path); // Distinct request and presentation pools.
     return;
   }
   const action = event.target.closest('[data-action]');
@@ -1707,10 +1727,14 @@ document.addEventListener('click', async (event) => {
       if(lyricsEnabled && current) void requestCurrentLyrics(current);
       return;
 
-    case 'load-more':
+    case 'load-more': {
+      const restoreKeyboardFocus=document.activeElement===action;
+      // The active retry button disappears while its feed is loading.
+      if (restoreKeyboardFocus) main.focus({preventScroll:true});
       // User-initiated retry recovers providers disabled after temporary errors.
       if (!getFeed().hasMore) { getFeed().exhausted.clear(); getFeed().hasMore = true; }
-      return loadMore(state.genre, true);
+      return loadMore(state.genre,true,false,restoreKeyboardFocus);
+    }
     case 'toggle-blind': state.blind = !state.blind; persist(); return render();
     case 'passport-route': {
       const route = action.dataset.route;
@@ -1720,7 +1744,7 @@ document.addEventListener('click', async (event) => {
         $('#listening-card')?.scrollIntoView({behavior:motionSafeScroll(),block:'center'});
         return;
       }
-      if (['balanced','familiar','explore'].includes(route)) changeDiscoveryPath(route);
+      if (['balanced','familiar','explore'].includes(route)) changeDiscoveryPath(route,document.activeElement===action);
       return;
     }
     case 'toggle-side-filters': sidebarFiltersCollapsed = !sidebarFiltersCollapsed; return render();
@@ -1729,13 +1753,22 @@ document.addEventListener('click', async (event) => {
     case 'use-mainstream':
       state.source = availableSources.includes('deezer') ? 'deezer' : 'featured'; state.discovery = 'hits'; rememberSource();
       persist(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp(); return;
-    case 'reset-discovery-filters':
+    case 'reset-discovery-filters': {
+      const restoreKeyboardFocus=document.activeElement===action;
       // Only reset narrowed catalog filters; don't erase Keeps, history, or seed artists.
       state.genre='all'; state.language='all'; state.era='any';
       persist(); stopContinuous(); current=null;
-      render(); void loadMore(state.genre,true);
+      render();
+      if (restoreKeyboardFocus) main.focus({preventScroll:true});
+      void loadMore(state.genre,true,false,restoreKeyboardFocus);
       return;
-    case 'clear-search': searchQuery = ''; searchDraft = ''; stopContinuous(); chooseNext(); render(); return maybeTopUp();
+    }
+    case 'clear-search': {
+      const restoreKeyboardFocus=document.activeElement===action;
+      searchQuery=''; searchDraft=''; stopContinuous(); chooseNext(); render();
+      if (restoreKeyboardFocus) focusDiscoveryRecovery();
+      return maybeTopUp();
+    }
     case 'pass': return acceptChoice('pass');
     case 'like': return acceptChoice('like');
     case 'undo': {
@@ -1812,7 +1845,7 @@ document.addEventListener('change', (event) => {
     persist(); stopContinuous(); chooseNext(); render(); maybeTopUp();
   }
   if (event.target.id === 'discovery-mix-select') {
-    changeDiscoveryPath(event.target.value); return;
+    changeDiscoveryPath(event.target.value,document.activeElement===event.target); return;
   }
   if (event.target.id === 'language-select') {
     state.language = ['en','en-strict','all','es','fr','pt','de','it','ja','ko','zh','hi','ar','ru'].includes(event.target.value) ? event.target.value : 'all';
