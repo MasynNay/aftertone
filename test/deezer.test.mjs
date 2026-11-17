@@ -97,3 +97,54 @@ test('Deezer favorites survive hydration and the new source is displayed beside 
  assert.doesNotMatch(pages.renderSidebarPreferences(), /toggle-originals/);
  assert.match(ui,/22-second listening preview/);
 });
+
+test('HTTP-200 Deezer quota error does not trigger a second artist search',async()=>{
+  const calls=[];
+  const fetcher=async url=>{
+    const u=new URL(url);calls.push(u.pathname);
+    return {ok:true,status:200,json:async()=>({
+      error:{code:429,message:'Temporary test quota reached'}
+    })};
+  };
+  let failure;
+  try {await fetchDeezerPage('all','0',fetcher,'Fixture Artist');}
+  catch(error){failure=error;}
+  assert.ok(failure,'Expected rate limit to reject the search');
+  assert.equal(failure.status,429);
+  assert.match(failure.message,/Requests are temporarily limited.*Wait a moment, then retry/);
+  assert.deepEqual(calls,['/search/artist'],
+    'When artist lookup is throttled, do not issue another ranked search');
+});
+
+test('artist-top quota errors stop instead of using the fallback ranked search',async()=>{
+  const calls=[];
+  const fetcher=async url=>{
+    const u=new URL(url);calls.push(u.pathname);
+    if(u.pathname==='/search/artist')return {
+      ok:true,status:200,json:async()=>({data:[{id:501,name:'Fixture Artist'}]})
+    };
+    return {ok:true,status:200,json:async()=>({error:{code:429,message:'Please retry later'}})};
+  };
+  await assert.rejects(fetchDeezerPage('all','0',fetcher,'','all','any','Fixture Artist'),error=>{
+    assert.equal(error.status,429);
+    assert.match(error.message,/Deezer rejected the catalog request/);
+    return true;
+  });
+  assert.deepEqual(calls,['/search/artist','/artist/501/top'],
+    'Throttled top tracks must not cause a third-ranked search immediately');
+});
+
+test('real HTTP 429 preserves rate-limit guidance without extra fallback requests',async()=>{
+  const calls=[];
+  const fetcher=async url=>{
+    calls.push(new URL(url).pathname);
+    return {ok:false,status:429};
+  };
+  await assert.rejects(fetchDeezerPage('all','0',fetcher,'Fixture Artist'),error=>{
+    assert.equal(error.status,429);
+    assert.match(error.message,/Deezer returned HTTP 429/);
+    assert.match(error.message,/temporarily limited/);
+    return true;
+  });
+  assert.deepEqual(calls,['/search/artist']);
+});
