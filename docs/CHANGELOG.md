@@ -1,3 +1,9 @@
+## v0.12 development — Accurate preview recovery guidance (November 16, 2026)
+
+- Preview failures now give source-aware advice instead of telling users of local Jellyfin or other music providers to retry a Deezer link. Deezer retries mention a fresh provider link; Jellyfin advises checking the local media server; other providers receive neutral retry/skip wording.
+- **Retry Preview** and **Skip Without Voting** remain available and continue to preserve listening history and favorites after failed audio.
+- Added tests for Deezer, Jellyfin, and another source plus a rendered browser assertion for a blocked Deezer preview. Provider availability, licensed usage and real media playback still require separate verification.
+
 ## v0.12 development — Accessible navigation and preview feedback (November 16, 2026)
 
 - [PR #26](https://github.com/MasynNay/aftertone/pull/26) replaced full-screen live announcements with concise names for the focused app section and matching browser tab titles. Dialog focus behavior and the separate toast status are unchanged.

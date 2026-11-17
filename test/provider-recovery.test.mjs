@@ -32,3 +32,23 @@ test('retry invalidates old preview URL; neutral skip does not record a decision
   assert.ok(skip,'Skip handler exists');
   assert.doesNotMatch(skip,/recordDecision|acceptChoice|persist\(/);
 });
+
+test('preview recovery explains the active music source rather than always blaming Deezer',()=>{
+  const base={id:'deezer:123',source:'deezer',title:'Fixture Melody',artist:'Fixture Artist',genre:'unknown',mood:'Fresh',artwork:null,duration:190};
+  const render=(track)=>viewWith({catalog:[track],current:track});
+  const deezer=render(base);
+  const jellyfin=render({...base,id:'jellyfin:123',source:'jellyfin'});
+  const audius=render({...base,id:'audius:123',source:'audius'});
+  assert.match(deezer,/This Deezer preview is unavailable/);
+  assert.match(deezer,/Retry a fresh provider link/);
+  assert.match(jellyfin,/Your Jellyfin stream is unavailable/);
+  assert.match(jellyfin,/Check your media server/);
+  assert.doesNotMatch(jellyfin,/This Deezer preview is unavailable/);
+  assert.match(audius,/This preview is unavailable from its music source/);
+  assert.doesNotMatch(audius,/Retry a fresh provider link/);
+  for (const view of [deezer,jellyfin,audius]) {
+    assert.match(view,/data-action="retry-preview"/);
+    assert.match(view,/data-action="skip-unavailable"/);
+    assert.match(view,/without counting it as a Pass/);
+  }
+});
