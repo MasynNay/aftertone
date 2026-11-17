@@ -377,6 +377,11 @@ def browser_case(browser, base, width, height):
                 window.scrollTo({top:0,behavior:'instant'});
             }""")
             page.wait_for_function("window.scrollY === 0",timeout=TIMEOUT)
+            # Export confirmation is transient. Wait for its normal dismissal
+            # rather than capturing a notification over the tournament picker.
+            page.wait_for_function(
+                "() => !document.querySelector('#toast')?.classList.contains('show')",
+                timeout=TIMEOUT)
             screenshot(page,f"music-duels-complete-{label}")
             # Close stays closed on reload, and History can reopen the podium.
             page.locator('[data-duel-action="dismiss"]').click()
