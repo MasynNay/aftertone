@@ -216,3 +216,11 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Extended `scripts/browser-smoke.py` to measure ten actual phone touch rectangles at 390px and 320px, in addition to existing keyboard focus, no-overflow and full app smoke.
 - [Run 43998680847](https://github.com/MasynNay/aftertone/actions/runs/43998680847) passed **269 Node tests** and Chromium at **1440×900, 390×844, 320×740**. Desktop app and Deezer code unchanged from prior milestone. Existing v0.11.0 GitHub Release not modified.
 - Continue issue #7 manual hardware/Firefox/screen-reader/200%-zoom and broader per-component contrast review. Do not claim full WCAG compliance or media rights approval. Check latest Pages Actions success before describing new touch layout as live.
+
+
+## CSS asset symlink boundary — November 17, 2026
+
+- Draft PR #49 (`test/css-symlink-boundary-2026-11-17`) tightens `scripts/check-css-assets.mjs` so a CSS asset path cannot pass the published-root check by resolving through a symlink outside `dist/`.
+- Added regression tests for an escaping symlink and a valid in-tree symlink. This is a static build-integrity guard, not a live provider fix.
+- Local full `npm run check` was blocked because this environment could not resolve github.com to clone the repository. Verify the PR GitHub Actions checks before merge. No Deezer playback or media permissions were tested.
+- Do not merge or publish this draft without successful CI review; release remains owned by the separate release workflow.
