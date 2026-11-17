@@ -335,6 +335,9 @@ def browser_case(browser, base, width, height):
             page.locator('[data-duel-action="create"]').click()
             page.locator('#duel-active-event [data-duel-vote]').first.wait_for(
                 state="visible",timeout=TIMEOUT)
+            # Preserve genuine browser evidence of a live, in-progress bracket,
+            # not just the tournament picker or a hand-composed marketing mockup.
+            screenshot(page, f"music-duels-bracket-{label}")
             selected = page.evaluate("localStorage.getItem('aftertone:duels:selection:v1')")
             require(selected and selected.startswith("duel_"),"Opened bracket was not saved")
             page.locator('#duel-active-event [data-duel-vote]').first.click()
