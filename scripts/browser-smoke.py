@@ -696,9 +696,13 @@ def check_backup_restore_cross_browser(browser, base):
             "mimeType":"application/json",
             "buffer":json.dumps(malformed).encode("utf-8"),
         })
-        page.wait_for_function("""() => document.querySelector('#toast')?.textContent?.includes(
+        page.wait_for_function("""() => document.querySelector('#progress-backup-status')?.textContent?.includes(
             'not a supported AFTERTONE progress backup')""",
             timeout=TIMEOUT)
+        require(page.locator("#progress-backup-status").is_visible(),
+                "Invalid restore feedback was not persistently visible")
+        require(page.evaluate("document.activeElement?.dataset?.action === 'restore-progress'"),
+                "Invalid restore left keyboard focus on a hidden file input")
         after_invalid=page.evaluate(
             "(keys) => keys.map(k => localStorage.getItem(k))", keys)
         require(after_invalid==before,
@@ -718,6 +722,26 @@ def check_backup_restore_cross_browser(browser, base):
                 JSON.stringify({answered:0,correct:0}));
             localStorage.setItem('aftertone:favorite-artists:v1','[]');
         }""")
+        # Canceling a valid restore must leave all current data unchanged
+        # and return focus to the visible Restore Backup action.
+        before_cancel=page.evaluate(
+            "(keys) => keys.map(k => localStorage.getItem(k))", keys)
+        page.once("dialog", lambda dialog: dialog.dismiss())
+        page.locator("#progress-backup-file").set_input_files({
+            "name":download.suggested_filename,
+            "mimeType":"application/json",
+            "buffer":json.dumps(backup).encode("utf-8"),
+        })
+        page.wait_for_function("""() => document.querySelector('#progress-backup-status')?.textContent?.includes(
+            'Restore canceled. Your existing progress was not changed.')""",
+            timeout=TIMEOUT)
+        require(page.evaluate(
+            "document.activeElement?.dataset?.action === 'restore-progress'"),
+            "Canceled restore did not return focus to the restore button")
+        require(page.evaluate(
+            "(keys) => keys.map(k => localStorage.getItem(k))", keys)==before_cancel,
+            "Canceling restore unexpectedly modified saved progress")
+        # Repeat the same file after dismissal; the file input must be reset.
         page.once("dialog", lambda dialog: dialog.accept())
         page.locator("#progress-backup-file").set_input_files({
             "name":download.suggested_filename,
