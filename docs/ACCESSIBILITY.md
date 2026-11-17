@@ -26,6 +26,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Removed `aria-live` from the repeatedly replaced main view and dialog wrapper. The separate toast remains a polite status region, and dialogs retain their own accessible names and focus management. This avoids attempting to announce an entire rerendered page or modal body on every update.
 - Added Node and real Chromium assertions for these behaviors. A manual screen-reader review is **still required** before claiming screen-reader compatibility or WCAG conformance.
 
+## Preview playback status follow-up
+
+- The Discover playback status is now a dedicated polite, atomic status region. It announces loading, playing, preview failure and native YouTube-player instructions instead of relying only on a changing icon.
+- Ordinary audio `timeupdate` events refresh the timer but do **not** rewrite unchanged status text; redundant DOM mutations could otherwise cause screen readers to repeat the same sentence throughout a 22-second preview.
+- Added a small unit regression and rendered Chromium check. Actual NVDA/VoiceOver playback behavior still needs human verification; these checks do not establish live third-party preview availability or authorization.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:
