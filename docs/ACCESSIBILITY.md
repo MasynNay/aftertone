@@ -43,6 +43,11 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Added real Chromium and Firefox checks at **720px** and **360px** CSS viewport widths with `prefers-reduced-motion: reduce` enabled. Each pass verifies marketing-page reflow, reduced-motion styles and scrolling, all six app sections, named landmarks, no document-level horizontal overflow, and that navigation/header controls remain inside the viewport.
 - A 720px CSS viewport is a useful **layout proxy** for a 1440px browser at roughly 200% zoom; this is **not** an actual user-controlled browser zoom test. Real-device zoom, text-only resizing, assistive technology, focus-order and additional per-component contrast checks remain unverified. Keep issue #7 open.
 
+## Preview failure keyboard continuity (v0.12 development)
+
+- When Retry Preview hides the recovery buttons during an audio reload, focus now returns to the persistent Play/Pause control instead of remaining on a hidden button. A neutral Skip Without Voting restores focus to the next song's Play button, or to the named main area when the feed is empty.
+- Chromium and Firefox now simulate a **blocked CDN preview** against fictional provider metadata, retry for a fresh preview URL, and skip without changing listening history or favorites. This is automated focus/recovery evidence, **not** a screen-reader audit or confirmation of live media playback rights.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:
