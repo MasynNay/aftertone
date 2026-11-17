@@ -60,10 +60,7 @@ export async function resolveDeezerPreview(id, fetcher = fetch) {
   // Deezer can return {error: {...}} with HTTP 200 (including over JSONP).
   // That is a provider rejection, not a recording with no preview.
   if (item?.error) {
-    const detail = typeof item.error.message === 'string' && item.error.message.trim()
-      ? item.error.message.trim().slice(0, 160)
-      : String(item.error.code ?? 'unavailable').slice(0, 40);
-    throw new Error(`Deezer rejected the preview request: ${detail}`);
+    throw deezerRejected(item.error, 'preview request');
   }
   if (!item || typeof item !== 'object' || Array.isArray(item))
     throw new Error('Deezer returned invalid preview metadata');
@@ -72,13 +69,34 @@ export async function resolveDeezerPreview(id, fetcher = fetch) {
   return {url, ttlSeconds:480, license:'Preview served from Deezer CDN; obtain game-use authorization before publishing', page:`https://www.deezer.com/track/${id}`};
 }
 
+/** Deezer sometimes reports a quota error inside HTTP 200 JSONP.
+ * Keep its error classification through the adapter instead of falling back
+ * to yet another artist/search request while the service is rate-limiting us.
+ */
+function deezerRejected(payload, context) {
+  const detail = typeof payload?.message === 'string' && payload.message.trim()
+    ? payload.message.trim().slice(0, 160)
+    : String(payload?.code ?? 'unavailable').slice(0, 40);
+  const error = new Error(`Deezer rejected the ${context}: ${detail}` +
+    (Number(payload?.code) === 429 ? '. Requests are temporarily limited. Wait a moment, then retry.' : ''));
+  if (Number(payload?.code) === 429) error.status = 429;
+  return error;
+}
+const isDeezerRateLimited = error => error?.status === 429;
+
 async function deezerGet(path, params, fetcher) {
   const url = new URL(`${API}/${path}`);
   for (const [k,v] of Object.entries(params)) if(v!==undefined && v!==null) url.searchParams.set(k,String(v));
   const response=await fetcher(url, {headers:{Accept:'application/json'},signal:AbortSignal.timeout(9000)});
-  if(!response.ok) throw new Error(`Deezer returned HTTP ${response.status}. The public catalog may be unavailable in your region or network.`);
+  if(!response.ok) {
+    const error = new Error(`Deezer returned HTTP ${response.status}. ` +
+      (response.status === 429 ? 'Requests are temporarily limited. Wait a moment, then retry.' :
+        'The public catalog may be unavailable in your region or network.'));
+    if (response.status === 429) error.status = 429;
+    throw error;
+  }
   const result=await response.json();
-  if(result?.error) throw new Error(`Deezer catalog rejected this request: ${result.error.message || result.error.code || 'unavailable'}`);
+  if(result?.error) throw deezerRejected(result.error, 'catalog request');
   if(!Array.isArray(result?.data)) throw new Error('Deezer returned no catalog data.');
   return result;
 }
@@ -121,7 +139,12 @@ async function fetchArtistTracks(name,page,fetcher,knownArtist=null) {
   try {
     const artist=knownArtist || await findExactArtist(name,fetcher);
     if(artist) direct=await deezerGet(`artist/${artist.id}/top`,{limit:PAGE_SIZE,index:offset},fetcher);
-  } catch { /* Fallback to a ranked plain query below. */ }
+  } catch (error) {
+    // A 429 is not a missing artist. Do not amplify quota exhaustion by
+    // immediately launching another search request.
+    if (isDeezerRateLimited(error)) throw error;
+    // Otherwise retain the existing ranked-search fallback.
+  }
   // An artist's top list can have no previews in a particular market. Don't
   // leave the listener staring at an empty route when ranked search works.
   if(direct?.data.some(row=>validDeezerPreview(row?.preview) && canonicalArtist(row?.artist?.name)===canonicalArtist(name)))
@@ -149,7 +172,10 @@ export async function fetchDeezerPage(genre='all', cursor='0', fetcher=fetch, qu
     // An exact artist name should return that artist's top tracks immediately.
     // Song-title searches still use ranked Deezer track search.
     const eligible=/^[\p{L}\p{N} .&'’_-]{2,75}$/u.test(search);
-    const artist=eligible ? await findExactArtist(search,fetcher).catch(()=>null) : null;
+    const artist=eligible ? await findExactArtist(search,fetcher).catch(error=>{
+      if (isDeezerRateLimited(error)) throw error;
+      return null;
+    }) : null;
     if(artist) {
       laneArtist=artist.name;
       ({result}=await fetchArtistTracks(artist.name,page,fetcher,artist));

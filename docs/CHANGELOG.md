@@ -1,3 +1,10 @@
+## v0.12 development — Recover cleanly from Deezer request throttling (November 16, 2026)
+
+- Deezer can signal quota exhaustion inside a nominally successful HTTP-200 JSONP response or through HTTP 429. AFTERTONE now recognizes both as **temporary rate limits** and shows actionable “wait a moment, then retry” guidance rather than treating them as empty search results.
+- A throttled artist lookup or artist-top request no longer triggers another immediate ranked catalog search, preventing fallback requests from amplifying a provider rate limit.
+- The public GitHub Pages adapter preserves HTTP 429 for Deezer quota errors. Existing background retry backoff, Retry Discovery, saved favorites, and neutral skip behavior remain unchanged.
+- Added deterministic Deezer search/preview tests and a Chromium+Firefox outage test asserting the useful 429 message. This does **not** independently verify current Deezer availability, regional restrictions or public music-use permissions.
+
 ## v0.12 development — Preserve future mixed-source recovery after temporary outages (November 16, 2026)
 
 - Fixed a latent discovery bug: a failed Audius/Jamendo/Commons/Jellyfin request in mixed-source mode incorrectly marked its entire catalog permanently exhausted. That provider is now skipped only for the current fetch batch, with existing bounded background backoff and explicit Retry Discovery behavior preserved.

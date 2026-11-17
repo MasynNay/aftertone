@@ -34,7 +34,7 @@ test('local Node preview endpoint exposes a retryable provider rejection then re
   const url=`http://127.0.0.1:${server.address().port}/api/audio?id=deezer%3A41`;
   try {
     let response=await fetch(url);
-    assert.equal(response.status,502);
+    assert.equal(response.status,429);
     let payload=await response.json();
     assert.match(payload.detail,/Deezer rejected the preview request/);
     assert.equal(payload.url,undefined);
@@ -46,7 +46,7 @@ test('local Node preview endpoint exposes a retryable provider rejection then re
   } finally { await new Promise(resolve=>server.close(resolve)); }
 });
 
-test('GitHub Pages JSONP preview returns 502 for provider error and succeeds on retry', async()=>{
+test('GitHub Pages JSONP preview preserves provider quota status 429 and succeeds on retry', async()=>{
   const previous={window:globalThis.window,document:globalThis.document,location:globalThis.location};
   let fail=true;
   const requests=[];
@@ -62,9 +62,10 @@ test('GitHub Pages JSONP preview returns 502 for provider error and succeeds on 
   };
   try {
     let response=await apiFetch('/api/audio?id=deezer%3A41');
-    assert.equal(response.status,502);
+    assert.equal(response.status,429);
     const error=await response.json();
     assert.match(error.error,/Deezer rejected the preview request: Temporary provider quota reached/);
+    assert.match(error.error,/Requests are temporarily limited.*Wait a moment, then retry/);
     assert.equal(error.url,undefined);
     assert.equal(requests[0].removed,true);
     fail=false;
