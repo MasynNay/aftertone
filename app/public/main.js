@@ -465,10 +465,13 @@ function autoRefillTick() {
   if(counter) counter.textContent=String(ready);
 }
 setInterval(autoRefillTick,REFILL_INTERVAL_MS);
-function maybeTopUp() {
+function maybeTopUp(restoreKeyboardFocus = false) {
   if (challengeIds.length) return;
   const feed = getFeed();
-  if (availableCount(state.genre) < 12 && feed.hasMore && !feed.loading) void loadMore(state.genre);
+  if (availableCount(state.genre) < 12 && feed.hasMore && !feed.loading)
+    void loadMore(state.genre,false,false,restoreKeyboardFocus);
+  else if (restoreKeyboardFocus && document.activeElement === main)
+    focusDiscoveryRecovery();
 }
 
 function toast(message) {
@@ -1766,8 +1769,8 @@ document.addEventListener('click', async (event) => {
     case 'clear-search': {
       const restoreKeyboardFocus=document.activeElement===action;
       searchQuery=''; searchDraft=''; stopContinuous(); chooseNext(); render();
-      if (restoreKeyboardFocus) focusDiscoveryRecovery();
-      return maybeTopUp();
+      if (restoreKeyboardFocus) main.focus({preventScroll:true});
+      return maybeTopUp(restoreKeyboardFocus);
     }
     case 'pass': return acceptChoice('pass');
     case 'like': return acceptChoice('like');
