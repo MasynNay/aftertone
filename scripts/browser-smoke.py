@@ -758,6 +758,88 @@ def check_backup_restore_cross_browser(browser, base):
         context.close()
 
 
+
+def check_reflow_reduced_motion(browser, base, width, height):
+    """Audit CSS reflow at zoom-equivalent widths with reduced motion enabled.
+
+    Narrow CSS viewports approximate 200% zoom at a larger browser window;
+    they do NOT prove literal browser zoom or assistive-technology support.
+    """
+    context = browser.new_context(
+        viewport={"width":width,"height":height},
+        reduced_motion="reduce", service_workers="block")
+    origin = urlsplit(base).netloc
+    context.route("**/*", lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc == origin else route.abort())
+    context.route("https://api.deezer.com/**", mock_deezer)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    label = f"reflow-{browser.browser_type.name}-{width}x{height}"
+    try:
+        require(page.evaluate("true"), "Browser failed to initialize")
+        page.goto(base + "/", wait_until="load", timeout=TIMEOUT)
+        require(page.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches"),
+                "Browser context did not enable reduced-motion preference")
+        require(page.evaluate("getComputedStyle(document.documentElement).scrollBehavior === 'auto'"),
+                "Marketing page still smooth-scrolls with reduced motion")
+        require(page.evaluate("document.documentElement.scrollWidth <= innerWidth + 2"),
+                f"Marketing page overflows at equivalent zoom width {width}")
+        page.locator("#explore-experience").click()
+        page.wait_for_url("**/demo/", timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible", timeout=TIMEOUT)
+        first_dialog = page.locator('#modal-root [role="dialog"]')
+        if first_dialog.count() and first_dialog.is_visible():
+            page.keyboard.press("Escape")
+            first_dialog.wait_for(state="hidden", timeout=TIMEOUT)
+        require(page.evaluate("getComputedStyle(document.documentElement).scrollBehavior === 'auto'"),
+                "App still smooth-scrolls with reduced motion")
+        require(page.evaluate("""() => {
+            const el=document.querySelector('#listening-card');
+            const style=getComputedStyle(el);
+            const durations=[...style.animationDuration.split(','),
+                             ...style.transitionDuration.split(',')];
+            return durations.every(value=>{
+                value=value.trim();
+                const amount=parseFloat(value);
+                return !Number.isFinite(amount) ||
+                       amount <= (value.endsWith('ms') ? 0.1 : 0.0001);
+            });
+        }"""),"Listening card animations still run despite reduced-motion preference")
+        for mode, name in (("discover","Discover"),("collection","Collection"),
+                           ("taste","Taste Map"),("quiz","Tune Lab"),
+                           ("duels","Music Duels"),("challenges","Challenges")):
+            nav=page.locator(f'#main-nav button[data-view="{mode}"]')
+            nav.click()
+            require(page.locator("#main-content").get_attribute("aria-label") == f"{name} section",
+                    f"Accessible {mode} landmark missing at {width}px")
+            dimensions=page.evaluate("""() => {
+                const root=document.documentElement;
+                const selectors=['#main-nav', '#theme-menu-toggle',
+                                 '#sound-toggle','#help-button'];
+                const clipped=selectors.map(selector=>{
+                    const el=document.querySelector(selector);
+                    if (!el || !el.getClientRects().length) return null;
+                    const box=el.getBoundingClientRect();
+                    return {selector,left:box.left,right:box.right};
+                }).filter(v=>v && (v.left < -2 || v.right > innerWidth+2));
+                return {viewport:innerWidth, page:root.scrollWidth, clipped};
+            }""")
+            require(dimensions["page"] <= dimensions["viewport"] + 2,
+                    f"Horizontal document overflow in {mode} at {width}px: {dimensions}")
+            require(not dimensions["clipped"],
+                    f"Navigation/control clipped at {width}px in {mode}: {dimensions}")
+            require(page.locator("#main-content").inner_text().strip(),
+                    f"No content in {mode} view at {width}px")
+        require(not errors, "JS exceptions in reduced-motion reflow: "+"; ".join(errors))
+        print(f"PASS {label}: landing, reduced motion, six-view reflow and accessible navigation")
+    except Exception:
+        screenshot(page, f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -767,6 +849,8 @@ def firefox_main():
             firefox_case(browser, base, 320, 740)
             check_catalog_outage_recovery(browser, base)
             check_backup_restore_cross_browser(browser, base)
+            check_reflow_reduced_motion(browser, base, 720, 900)
+            check_reflow_reduced_motion(browser, base, 360, 740)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -782,6 +866,8 @@ def main():
             check_product_deep_links(browser, base)
             check_catalog_outage_recovery(browser, base)
             check_backup_restore_cross_browser(browser, base)
+            check_reflow_reduced_motion(browser, base, 720, 900)
+            check_reflow_reduced_motion(browser, base, 360, 740)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

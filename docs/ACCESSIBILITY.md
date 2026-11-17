@@ -38,6 +38,11 @@ This milestone addresses specific barriers discovered in the original browser ap
 - The GitHub Pages workflow installs both engines and requires both browser scripts to pass before deploying. See [browser testing](BROWSER_TESTING.md).
 - Automated Firefox coverage does **not** replace a real-device Firefox run, manual keyboard and screen-reader testing, 200% zoom assessment, or legitimate provider playback/rights verification. Keep issue #7 open until those checks are recorded.
 
+## Zoom-equivalent reflow and reduced-motion automation (v0.12 development)
+
+- Added real Chromium and Firefox checks at **720px** and **360px** CSS viewport widths with `prefers-reduced-motion: reduce` enabled. Each pass verifies marketing-page reflow, reduced-motion styles and scrolling, all six app sections, named landmarks, no document-level horizontal overflow, and that navigation/header controls remain inside the viewport.
+- A 720px CSS viewport is a useful **layout proxy** for a 1440px browser at roughly 200% zoom; this is **not** an actual user-controlled browser zoom test. Real-device zoom, text-only resizing, assistive technology, focus-order and additional per-component contrast checks remain unverified. Keep issue #7 open.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:
