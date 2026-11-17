@@ -215,6 +215,8 @@ export function inspectProgressBackup(text) {
       decisions:session.history.length,
       tournaments:tournaments.length,
       artists:artists.length,
+      quizAnswered:quiz.answered,
+      quizCorrect:quiz.correct,
       playlistTracks:isV2?(playlist?.tracks.length??0):null,
       lyricOffsets:isV2?Object.keys(lyricOffsets).length:null,
       version:input.version,
