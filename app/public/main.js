@@ -850,7 +850,7 @@ function changeDiscoveryPath(mode) {
 }
 
 /** JavaScript-triggered scrolling must honor reduced-motion preferences too.
- * CSS media rules alone do not override scrollIntoView({behavior:'smooth'}).
+ * CSS media rules alone cannot override a JavaScript-requested smooth scroll.
  */
 function motionSafeScroll() {
   return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
