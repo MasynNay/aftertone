@@ -364,25 +364,19 @@ def browser_case(browser, base, width, height):
                     "Match count did not reflect the completed tournament")
             require(page.locator(".duel-hall-leader").count() >= 1,
                     "Completed cup did not enter Hall of Fame")
-            with page.expect_download(timeout=TIMEOUT) as hall_download:
-                page.locator('[data-duel-action="export-hall"]').click()
-            hall = Path(hall_download.value.path()).read_text(encoding="utf-8")
-            require("Track Name" in hall and "Fixture Melody" in hall,
-                    "Hall of Fame export must contain podium metadata")
-            # Screenshot evidence must show the actual page from its top,
-            # without an accidental keyboard focus ring or sticky sidebar
-            # displaced by the final CSV export and earlier scrolling.
+            # Capture the verified podium BEFORE requesting the CSV: Export
+            # intentionally shows a toast, which is not part of the podium UI.
             page.evaluate("""() => {
                 document.activeElement?.blur?.();
                 window.scrollTo({top:0,behavior:'instant'});
             }""")
             page.wait_for_function("window.scrollY === 0",timeout=TIMEOUT)
-            # Export confirmation is transient. Wait for its normal dismissal
-            # rather than capturing a notification over the tournament picker.
-            page.wait_for_function(
-                "() => !document.querySelector('#toast')?.classList.contains('show')",
-                timeout=TIMEOUT)
             screenshot(page,f"music-duels-complete-{label}")
+            with page.expect_download(timeout=TIMEOUT) as hall_download:
+                page.locator('[data-duel-action="export-hall"]').click()
+            hall = Path(hall_download.value.path()).read_text(encoding="utf-8")
+            require("Track Name" in hall and "Fixture Melody" in hall,
+                    "Hall of Fame export must contain podium metadata")
             # Close stays closed on reload, and History can reopen the podium.
             page.locator('[data-duel-action="dismiss"]').click()
             page.reload(wait_until="load",timeout=TIMEOUT)
