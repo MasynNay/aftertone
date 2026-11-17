@@ -555,7 +555,12 @@ async function resolveAudio(track) {
 }
 
 function prewarm(track) {
-  if (track && track.source !== 'youtube' && !resolved.has(track.id) && !failedSources.has(track.id)) {
+  // Deezer preview URLs are short-lived. Merely rendering a card or bracket
+  // must not trigger a provider request before the listener asks to play:
+  // repeated re-renders during quota limits otherwise create extra 429s.
+  // Explicit Play and Retry Preview still resolve a fresh URL on demand.
+  if (!track || track.source === 'deezer') return;
+  if (track.source !== 'youtube' && !resolved.has(track.id) && !failedSources.has(track.id)) {
     resolveAudio(track).catch(() => { /* Let the play action surface a retryable error. */ });
   }
 }
