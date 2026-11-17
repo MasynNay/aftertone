@@ -571,7 +571,9 @@ def check_catalog_outage_recovery(browser, base):
         empty.wait_for(state="visible", timeout=TIMEOUT)
         require("Music Is Temporarily Unavailable" in empty.inner_text(),
                 "A failed Deezer request must show a recoverable error, not a blank app")
-        retry = page.locator('#main-content [data-action="load-more"]')
+        # Both the retry banner and the empty-state help can use load-more;
+        # exercise the specifically labelled outage recovery action.
+        retry = page.get_by_role("button", name="Retry Discovery", exact=True)
         require(retry.is_visible() and retry.is_enabled(),
                 "Deezer outage should provide an enabled in-app retry control")
         require(state["failed"] >= 1, "The test must actually exercise a provider rejection")
