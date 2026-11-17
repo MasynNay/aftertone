@@ -1,3 +1,9 @@
+## v0.12 development — Request Deezer preview links only when listeners press Play (November 16, 2026)
+
+- Rendering discovery cards and Music Duels no longer silently fetches short-lived Deezer preview URLs. Preview metadata is resolved **on demand** when listeners start playback or use Retry Preview, reducing unnecessary provider requests, especially during quotas/outages.
+- Other provider-specific prewarming remains unchanged. First playback may incur a metadata lookup before the preview starts; Keep/Pass history, saved favorites, and neutral skip behavior are unchanged.
+- Added built-site Chromium and Firefox checks requiring zero Deezer track-preview metadata requests during navigation, an actual metadata request on Play, and no false listening votes. These are fictional fixture tests with real external audio blocked, not provider-availability or licensing evidence.
+
 ## v0.12 development — Player-level Deezer rate-limit explanations (November 16, 2026)
 
 - When a preview's metadata request returns HTTP 429, the visible Play status and **Retry Preview / Skip Without Voting** region now explain that Deezer is temporarily limiting requests and recommend waiting before retrying. Previously the player discarded that distinction and only said the stream was unavailable.

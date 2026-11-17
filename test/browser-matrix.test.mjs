@@ -116,3 +116,13 @@ test('real browsers distinguish Deezer preview quota errors from ordinary CDN fa
   assert.equal(browser.split('check_deezer_preview_quota_recovery(browser, base)').length-1,3,
     'Define once, run in Chromium and Firefox');
 });
+
+test('Deezer metadata is fetched only after Play in both browser engines',()=>{
+  assert.match(browser,/def check_deezer_preview_on_demand\(browser, base\):/);
+  assert.match(browser,/counts\["preview"\]==0/);
+  assert.match(browser,/for section in \("collection","duels","discover"\):/);
+  assert.match(browser,/counts\["preview"\]>=1/);
+  assert.match(browser,/saved_after==saved_before/);
+  assert.equal(browser.split('check_deezer_preview_on_demand(browser, base)').length-1,3,
+    'One definition plus Chromium and Firefox calls are required');
+});
