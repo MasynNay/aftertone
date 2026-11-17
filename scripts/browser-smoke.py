@@ -369,6 +369,14 @@ def browser_case(browser, base, width, height):
             hall = Path(hall_download.value.path()).read_text(encoding="utf-8")
             require("Track Name" in hall and "Fixture Melody" in hall,
                     "Hall of Fame export must contain podium metadata")
+            # Screenshot evidence must show the actual page from its top,
+            # without an accidental keyboard focus ring or sticky sidebar
+            # displaced by the final CSV export and earlier scrolling.
+            page.evaluate("""() => {
+                document.activeElement?.blur?.();
+                window.scrollTo({top:0,behavior:'instant'});
+            }""")
+            page.wait_for_function("window.scrollY === 0",timeout=TIMEOUT)
             screenshot(page,f"music-duels-complete-{label}")
             # Close stays closed on reload, and History can reopen the podium.
             page.locator('[data-duel-action="dismiss"]').click()
