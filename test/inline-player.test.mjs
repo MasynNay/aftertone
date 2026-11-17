@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInitialState } from '../app/src/taste.mjs';
+import { setTextIfChanged } from '../app/public/view-utils.js';
 import { createViews } from '../app/public/views.js';
 import { normalizeDeezerTrack } from '../app/src/deezer.mjs';
 
@@ -39,4 +40,24 @@ test('invalid Deezer IDs never become player URLs', () => {
   const markup=view(false,malformed);
   assert.match(markup, /id="stage-play"/);
   assert.doesNotMatch(markup, /widget\.deezer\.com/);
+});
+
+test('preview status has an accessible but low-noise live region', () => {
+  const markup=view();
+  assert.match(markup, /id="audio-status" role="status" aria-live="polite" aria-atomic="true"/);
+});
+
+test('preview status updates only when its message changes', () => {
+  const writes=[];
+  const element={
+    get textContent(){ return writes.at(-1) ?? ''; },
+    set textContent(value){ writes.push(value); },
+  };
+  assert.equal(setTextIfChanged(element, 'Finding the recording…'), true);
+  assert.equal(setTextIfChanged(element, 'Finding the recording…'), false);
+  assert.equal(setTextIfChanged(element, 'Listening in progress'), true);
+  assert.equal(setTextIfChanged(element, 'Listening in progress'), false);
+  assert.equal(setTextIfChanged(element, 'Stream unavailable'), true);
+  assert.equal(setTextIfChanged(null, 'No player on this page'), false);
+  assert.deepEqual(writes, ['Finding the recording…', 'Listening in progress', 'Stream unavailable']);
 });
