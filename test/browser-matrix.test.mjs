@@ -137,3 +137,10 @@ test('portable progress really transfers into an isolated new browser profile',(
   assert.equal(browser.split('check_backup_transfer_new_profile(browser, base)').length-1,3,
     'One definition and a separate Chromium/Firefox test run required');
 });
+
+test('cross-browser restore tests cover persistent errors, cancel protection and focus return',()=>{
+  assert.match(browser,/Invalid restore left keyboard focus on a hidden file input/);
+  assert.match(browser,/Canceling restore unexpectedly modified saved progress/);
+  assert.match(browser,/Canceled restore did not return focus to the restore button/);
+  assert.match(browser,/Restore canceled\. Your existing progress was not changed/);
+});
