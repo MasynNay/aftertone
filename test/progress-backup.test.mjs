@@ -122,6 +122,8 @@ test('Collection backup and restore actions appear even with an empty collection
     challengeIds:[],challengeResponses:[],catalogWarning:'',catalogLive:true,
     collectionQuery:'',collectionSort:'recent'}).renderCollection();
   assert.match(markup,/data-action="backup-progress"/);
+  assert.match(markup,/Version 2 backups include imported playlist song names and manual lyric timing offsets/);
+  assert.doesNotMatch(markup,/imported playlist files and lyric timing offsets are not included/);
   assert.match(markup,/data-action="restore-progress"/);
   assert.match(markup,/id="progress-backup-file"/);
 });
