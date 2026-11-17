@@ -1896,6 +1896,10 @@ window.addEventListener('keydown', (event) => {
     if(event.key==='Tab')trapModalTab(event);
     return;
   }
+  // Do not hijack browser/assistive-technology shortcuts or let holding
+  // an arrow silently rate multiple tracks. Only standalone key presses act.
+  if (event.defaultPrevented || event.isComposing || event.repeat ||
+      event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
   // Native button/link/slider keyboard controls always win over game shortcuts.
   const active=document.activeElement;
   const interactive=active?.isContentEditable || active?.closest('button,a[href],input,textarea,select,summary,[contenteditable],[role="button"],[role="slider"],[role="switch"],[role="combobox"],[role="tab"]');
