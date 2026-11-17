@@ -16,7 +16,7 @@ The backup includes saved favorites and track metadata, Keep/Pass listening hist
 
 1. Open **Collection** in the browser where you want to restore progress.
 2. Choose **Restore Backup** and select an AFTERTONE progress JSON file.
-3. Review the saved-track, listening-choice, tournament, artist, imported-playlist, and lyric timing counts.
+3. Review the saved-track, listening-choice, tournament, **favorite-artist**, and Tune Lab score counts. Version 2 also shows imported-playlist and lyric timing counts.
 4. Confirm only if you want to **replace** the current browser's progress. Existing data is not automatically merged.
 5. AFTERTONE reloads with the restored data.
 
@@ -37,4 +37,6 @@ The backup includes saved favorites and track metadata, Keep/Pass listening hist
 
 The [browser smoke suite](BROWSER_TESTING.md) tests actual JSON download and restore through the UI using a fixture catalog. `test/progress-backup.test.mjs` covers sanitization, bad files, version rejection, round trips, and rollback behavior.
 
-Automated Chromium **and Firefox** browser tests now exercise nonempty JSON backup export, invalid import rejection without changing storage, confirmed restore, post-refresh local data integrity and visible restored favorites. Remaining roadmap work: manual transfer between physical devices/browsers, future migration formats as state schemas change, and accessibility checks for backup and restore. The CI browser test uses fictional provider fixtures and does not verify real Deezer playback.
+Automated Chromium **and Firefox** browser tests now exercise nonempty JSON backup export, invalid import rejection without changing storage, confirmed restore, post-refresh local data integrity and visible restored favorites. Additional tests export an actual file in one browser context, **close that source context**, open a fresh context with independent storage, import the downloaded file through the real input/confirmation UI, and verify favorites, history, tracks, Tune Lab, favorite artists, imported playlist names and lyric timing data after another reload.
+
+This verifies **separate profiles within each browser engine**, not copying data between physical devices or from Firefox into Chromium. Remaining roadmap work: manual transfer between physical devices/browsers, future migration formats as state schemas change, and accessibility checks for backup and restore. CI uses fictional provider fixtures and does not verify real Deezer playback.
