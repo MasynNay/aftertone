@@ -1,3 +1,10 @@
+## v0.12 development — Accessible navigation and preview feedback (November 16, 2026)
+
+- [PR #26](https://github.com/MasynNay/aftertone/pull/26) replaced full-screen live announcements with concise names for the focused app section and matching browser tab titles. Dialog focus behavior and the separate toast status are unchanged.
+- [PR #27](https://github.com/MasynNay/aftertone/pull/27) made the Discover preview status a polite, atomic announcement for loading, playback, and failure. Identical updates are ignored so a 22-second preview does not repeat announcements on every time tick.
+- Both PRs passed Node/build checks and actual generated-site Chromium smoke tests at desktop and small-phone widths before merging. The new browser regression measures whether repeated audio time updates mutate the status text.
+- These are **merged v0.12 development milestones**, not a new version tag or a claim of screen-reader, live Deezer playback, third-party media rights, or WCAG certification. Manual verification and the [release checklist](RELEASE_CHECKLIST.md) remain necessary.
+
 ## v0.12 mobile usability — Primary touch target sizing (November 16, 2026)
 
 - Enlarged phone header theme, sound and help buttons, Filters, and all six navigation destinations to **at least 44 × 44 CSS pixels** at narrow widths. Key preview recovery, Collection and Duels recovery buttons now use a 44px minimum height.
