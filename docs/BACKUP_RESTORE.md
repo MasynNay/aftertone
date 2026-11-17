@@ -35,4 +35,4 @@ The backup includes saved favorites and track metadata, Keep/Pass listening hist
 
 The [browser smoke suite](BROWSER_TESTING.md) tests actual JSON download and restore through the UI using a fixture catalog. `test/progress-backup.test.mjs` covers sanitization, bad files, version rejection, round trips, and rollback behavior.
 
-Remaining roadmap work: manual Firefox/Chrome cross-device restoration, future migration formats as state schemas change, and accessibility checks for backup and restore. The CI browser test uses fictional provider fixtures and does not verify real Deezer playback.
+Automated Chromium **and Firefox** browser tests now exercise nonempty JSON backup export, invalid import rejection without changing storage, confirmed restore, post-refresh local data integrity and visible restored favorites. Remaining roadmap work: manual transfer between physical devices/browsers, future migration formats as state schemas change, and accessibility checks for backup and restore. The CI browser test uses fictional provider fixtures and does not verify real Deezer playback.
