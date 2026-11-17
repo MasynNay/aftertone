@@ -16,13 +16,13 @@ The backup includes saved favorites and track metadata, Keep/Pass listening hist
 
 1. Open **Collection** in the browser where you want to restore progress.
 2. Choose **Restore Backup** and select an AFTERTONE progress JSON file.
-3. Review the saved-track, listening-choice, tournament, **favorite-artist**, and Tune Lab score counts. Version 2 also shows imported-playlist and lyric timing counts.
+3. Review the saved-track, listening-choice, tournament, **favorite-artist**, and Tune Lab score counts in the native confirmation dialog. Version 2 also shows imported-playlist and lyric timing counts. The Collection page warns that restore replaces current progress and that JSON backups are not encrypted.
 4. Confirm only if you want to **replace** the current browser's progress. Existing data is not automatically merged.
 5. AFTERTONE reloads with the restored data.
 
 **If Backup Progress reports damaged saved data**, AFTERTONE stops instead of silently creating an apparently valid but incomplete backup. This protects the original browser storage; it does **not** repair the damaged record. Keep the browser data intact, retain an earlier trusted backup if available, and avoid replacing progress with a newly generated empty backup.
 
-**Before restoring, export a backup of your current progress.** If a file is malformed or its format is unsupported, AFTERTONE rejects it without writing data. If browser storage fails mid-restore, the app attempts to roll back changes; some storage failures can also prevent complete rollback.
+**Before restoring, export a backup of your current progress.** If a file is malformed or its format is unsupported, AFTERTONE rejects it without writing data. Validation errors remain visible in Collection after the brief toast disappears. Canceling the confirmation preserves existing progress and returns keyboard focus to Restore Backup. Overlapping file imports are ignored while an import is being checked. If browser storage fails mid-restore, the app attempts to roll back changes; some storage failures can also prevent complete rollback.
 
 ## Privacy and compatibility
 
