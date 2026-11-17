@@ -53,7 +53,12 @@ export function deezerJSONP(input,{signal,timeoutMs=TIMEOUT_MS}={}){
     script.async=true;
     script.referrerPolicy='no-referrer';
     script.src=u.href;
-    document.head.append(script);
+    try{
+      document.head.append(script);
+    }catch(error){
+      // A blocked/failed script insertion must release callback, listener and timer.
+      finish(error);
+    }
   });
   return promise;
 }
