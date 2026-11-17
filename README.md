@@ -33,7 +33,7 @@ Use **Keep** and **Pass** to guide discoveries, save favorites to your collectio
 
 ## Screenshots
 
-These screenshots show real AFTERTONE interface layouts, using test fixture music and placeholder artwork for repeatable, rights-safe captures. They are **not** evidence that an external provider's previews will always play.
+These are captures of the working AFTERTONE app, with fictional test tracks and placeholder artwork so the demonstration does not reproduce commercial cover art. The Duels captures show an actual four-song bracket and its completed podium. These images **do not** verify live music playback, provider availability or music-use rights. [How the screenshots were verified](docs/SCREENSHOT_PROVENANCE.md).
 
 **Discover music**
 
@@ -43,9 +43,17 @@ These screenshots show real AFTERTONE interface layouts, using test fixture musi
 
 ![Collection screen with test favorite tracks](docs/screenshots/app-collection.webp)
 
-**Music Duels**
+**Music Duels — choose an arena**
 
-![Music Duels competition setup](docs/screenshots/app-music-duels.webp)
+![Real Music Duels arena selection screen with six tournament modes and fictional test-track metadata](docs/screenshots/app-music-duels.webp)
+
+**Music Duels — a match in progress**
+
+![Real AFTERTONE four-track Open Stage bracket with two fictional songs in a semifinal and preview and vote controls](docs/screenshots/app-music-duels-bracket.webp)
+
+**Music Duels — champions and results**
+
+![Real completed four-track tournament with gold silver and bronze podium, Hall of Fame leaderboard and saved tournament history, using fictional songs](docs/screenshots/app-music-duels-podium.webp)
 
 ## Start listening
 

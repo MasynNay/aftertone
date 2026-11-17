@@ -6,7 +6,7 @@
 **Current release:** v0.11.0  
 **Approach:** Ship small, verified improvements. Version targets indicate order of work, **not promised release dates**.
 
-AFTERTONE is an independent music-discovery portfolio application: real catalog search where available, personalized discovery modes, short previews, Keep/Pass, collection, autoplay, themes, and six Music Duels arenas. The public version runs on GitHub Pages with a browser-side provider adapter; the local Node server remains in `app/server.mjs`.
+AFTERTONE is an independent, free and open-source music-discovery product: real catalog search where available, personalized discovery modes, short previews, Keep/Pass, collection, autoplay, themes, and six Music Duels arenas. The public version runs on GitHub Pages with a browser-side provider adapter; the local Node server remains in `app/server.mjs`.
 
 ## Release plan
 
@@ -34,10 +34,10 @@ AFTERTONE is an independent music-discovery portfolio application: real catalog 
 
 **Exit criteria:** New listeners understand the first run; saved data survives upgrades; tournament states are tested and recoverable.
 
-### v0.12 — Polish & portfolio proof
+### v0.12 — Experience & product proof
 
 - [ ] [#7: Accessibility and responsive interface audit](https://github.com/MasynNay/aftertone/issues/7). **Partial milestones merged:** [PR #23](https://github.com/MasynNay/aftertone/pull/23) added skip navigation, modal focus management, native Space shortcuts, reduced motion, narrow-screen overflow fixes and representative theme contrast tests. [PR #25](https://github.com/MasynNay/aftertone/pull/25) verified 44px touch targets for primary phone controls. [PR #26](https://github.com/MasynNay/aftertone/pull/26) now names focused app sections and removes whole-screen live announcements; [PR #27](https://github.com/MasynNay/aftertone/pull/27) provides concise, deduplicated preview status announcements. Node/build and Chromium 1440/390/320px checks passed before merging. Manual Firefox, screen-reader, real-device touch, zoom and wider component contrast audits remain; [verification record](ACCESSIBILITY.md).
-- [ ] [#8: Real application screenshots and consistent release notes](https://github.com/MasynNay/aftertone/issues/8). **Partially complete:** the README already shows genuine fixture-backed Discover, Collection and Music Duels screenshots, and the changelog records individual milestones. Keep screenshots current when the UI changes; use the [release checklist](RELEASE_CHECKLIST.md) for verification, privacy and rights gates before the next tag.
+- [x] [#8: Real application screenshots and consistent release notes](https://github.com/MasynNay/aftertone/issues/8). **Completed:** the product README now shows verified browser captures of Discover, Collection, Music Duels setup, an in-progress four-song bracket, and the completed podium. The [screenshot provenance](SCREENSHOT_PROVENANCE.md) explains fictional test tracks, the real browser workflow and non-claims about external playback; the changelog and [release checklist](RELEASE_CHECKLIST.md) keep releases accountable. Refresh screenshots whenever the UI changes materially.
 
 **Exit criteria:** Representative mobile/desktop checks pass; the README shows the working application; each release explains visible changes.
 
