@@ -89,3 +89,9 @@ test('failed preview retry and neutral skip restore keyboard focus and never rec
   const runs=[...browser.matchAll(/check_preview_recovery_keyboard\(browser, base\)/g)];
   assert.equal(runs.length,3,'One definition plus Chromium and Firefox runs required');
 });
+
+test('real reduced-motion smoke checks scripted search scrolling, not just CSS',()=>{
+  assert.match(browser,/__aftertoneScrollLog/);
+  assert.match(browser,/scrollIntoView=function\(options\)/);
+  assert.match(browser,/item\["id"\]=="music-search" and item\["behavior"\]=="auto"/);
+});
