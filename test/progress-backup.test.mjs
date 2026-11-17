@@ -48,7 +48,8 @@ test('backup round trip preserves favorites, history, volume, themes, music duel
   assert.equal(parsed.lyricOffsets['deezer:200'],45);
   const to=storage();
   const info=restoreProgressBackup(to,exported);
-  assert.deepEqual(info,{favorites:1,decisions:1,tournaments:1,artists:2,playlistTracks:2,lyricOffsets:2,version:2});
+  assert.deepEqual(info,{favorites:1,decisions:1,tournaments:1,artists:2,
+    quizAnswered:4,quizCorrect:3,playlistTracks:2,lyricOffsets:2,version:2});
   assert.equal(loadState(to).discoveryMix,'explore');
   assert.deepEqual(loadState(to).favorites,[songs[0].id]);
   assert.equal(loadState(to).history[0].mood,'Bright');
@@ -121,6 +122,8 @@ test('Collection backup and restore actions appear even with an empty collection
     challengeIds:[],challengeResponses:[],catalogWarning:'',catalogLive:true,
     collectionQuery:'',collectionSort:'recent'}).renderCollection();
   assert.match(markup,/data-action="backup-progress"/);
+  assert.match(markup,/Version 2 backups include imported playlist song names and manual lyric timing offsets/);
+  assert.doesNotMatch(markup,/imported playlist files and lyric timing offsets are not included/);
   assert.match(markup,/data-action="restore-progress"/);
   assert.match(markup,/id="progress-backup-file"/);
 });
@@ -129,6 +132,9 @@ test('inspection previews counts without modifying storage',()=>{
   const original=current.entries();
   const preview=inspectProgressBackup(createProgressBackup(current));
   assert.equal(preview.summary.tournaments,1);
+  assert.equal(preview.summary.artists,2);
+  assert.equal(preview.summary.quizAnswered,4);
+  assert.equal(preview.summary.quizCorrect,3);
   assert.equal(preview.writes.length,6);
   assert.deepEqual(current.entries(),original);
   assert.match(current.getItem(DUEL_STORAGE_KEY),/Backup Cup/);

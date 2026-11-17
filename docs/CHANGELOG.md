@@ -1,3 +1,10 @@
+## v0.12 development — Honest backups and fresh-profile transfer verification (November 16, 2026)
+
+- Corrected the Collection note: format v2 **does** include imported playlist artist/song names and manual lyric timing offsets, though never music files. The old notice incorrectly claimed both were omitted.
+- Before a destructive restore, the confirmation now shows how many favorite artists and Tune Lab correct/answered results will be restored, in addition to saved tracks, decisions, tournament counts, imported playlist tracks and lyric offsets.
+- Added Chromium and Firefox browser checks that export a real JSON backup with listening decisions, close the source browser profile, create a fresh independent profile, import using the actual file input and confirmation, and verify the saved track/decision, Tune Lab, artist choices, playlist and lyric offsets after a second reload.
+- **Scope:** cross-profile transfer in each browser engine is automated; physical-device transfers, cross-engine transfer and screen-reader/manual accessibility remain open. Fictional fixture tracks do not verify music playback rights.
+
 ## v0.12 development — Request Deezer preview links only when listeners press Play (November 16, 2026)
 
 - Rendering discovery cards and Music Duels no longer silently fetches short-lived Deezer preview URLs. Preview metadata is resolved **on demand** when listeners start playback or use Retry Preview, reducing unnecessary provider requests, especially during quotas/outages.
