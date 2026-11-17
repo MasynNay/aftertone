@@ -245,6 +245,8 @@ def browser_case(browser, base, width, height):
             # expose Retry and Skip instead of trapping the listener.
             page.locator("#stage-play").click()
             page.locator("#preview-recovery").wait_for(state="visible", timeout=TIMEOUT)
+            require("Deezer preview is unavailable" in page.locator("#preview-recovery p").inner_text(),
+                    "Blocked Deezer audio should explain the affected provider")
             before = page.locator(".journey-metrics div:first-child strong").inner_text()
             page.locator('[data-action="skip-unavailable"]').click()
             page.locator("#listening-card").wait_for(state="attached", timeout=TIMEOUT)
