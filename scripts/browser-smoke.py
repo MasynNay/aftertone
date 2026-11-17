@@ -999,6 +999,82 @@ def check_choice_keyboard_focus(browser, base):
         context.close()
 
 
+
+def check_deezer_preview_quota_recovery(browser, base):
+    """A 429 metadata error needs a useful, reversible player message."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    state={"limited":True,"metadata":0}
+    errors=[]
+
+    def preview_quota_fixture(route):
+        parsed=urlsplit(route.request.url)
+        if parsed.path.startswith("/track/"):
+            state["metadata"]+=1
+            if state["limited"]:
+                callback=parse_qs(parsed.query).get("callback",[""])[0]
+                require(re.fullmatch(r"__aftertoneDeezer_\d+",callback),
+                        "Blocked unexpected provider JSONP callback")
+                body={"error":{"code":429,"message":"Synthetic preview quota reached"}}
+                route.fulfill(status=200,content_type="application/javascript",
+                              body=f"window[{json.dumps(callback)}]({json.dumps(body)});")
+                return
+        return mock_deezer(route)
+
+    context.route("https://api.deezer.com/**",preview_quota_fixture)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"preview-quota-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        before=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:s.favorites||[],history:s.history||[]};
+        }""")
+        original=page.locator("#listening-card").get_attribute("aria-label")
+        page.locator("#stage-play").click()
+        recovery=page.locator("#preview-recovery")
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require("temporarily limiting requests" in recovery.inner_text() and
+                "Wait a moment before Retry Preview" in recovery.inner_text(),
+                "Rate-limited Deezer preview lost its actionable recovery explanation")
+        require("Deezer requests limited" in page.locator("#audio-status").inner_text(),
+                "The playback status must distinguish quota errors from broken audio")
+        require(state["metadata"]>=1,"Provider was never asked for preview metadata")
+
+        state["limited"]=False
+        prev=state["metadata"]
+        page.get_by_role("button",name="Retry Preview",exact=True).click()
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require(state["metadata"]>prev,
+                "Retry did not request a fresh preview link after provider recovery")
+        require("temporarily limiting requests" not in recovery.inner_text(),
+                "An older rate limit warning persisted after the retry failed for a CDN issue")
+        require("This Deezer preview is unavailable" in recovery.inner_text(),
+                "Ordinary CDN failure did not restore normal recovery help")
+        require(page.locator("#listening-card").get_attribute("aria-label")==original,
+                "Retry unexpectedly advanced the listening card")
+        after=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:s.favorites||[],history:s.history||[]};
+        }""")
+        require(before==after,"Quota/retry silently added a favorite or listening vote")
+        require(not errors,"Browser exceptions during preview quota recovery: "+"; ".join(errors))
+        print(f"PASS {label}: quota help, retry, ordinary CDN error, no false votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1011,6 +1087,7 @@ def firefox_main():
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
+            check_deezer_preview_quota_recovery(browser, base)
             check_choice_keyboard_focus(browser, base)
         finally:
             browser.close()
@@ -1030,6 +1107,7 @@ def main():
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
+            check_deezer_preview_quota_recovery(browser, base)
             check_choice_keyboard_focus(browser, base)
         finally:
             browser.close()

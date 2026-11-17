@@ -105,3 +105,14 @@ test('both browser engines test Pass, Undo and Keep keyboard focus restoration',
   assert.equal(browser.split('check_choice_keyboard_focus(browser, base)').length-1,3,
     'One definition and one run per browser');
 });
+
+test('real browsers distinguish Deezer preview quota errors from ordinary CDN failures',()=>{
+  assert.match(browser,/def check_deezer_preview_quota_recovery\(browser, base\):/);
+  assert.match(browser,/state=\{"limited":True,"metadata":0\}/);
+  assert.match(browser,/temporarily limiting requests/);
+  assert.match(browser,/state\["limited"\]=False/);
+  assert.match(browser,/An older rate limit warning persisted/);
+  assert.match(browser,/Quota\/retry silently added a favorite or listening vote/);
+  assert.equal(browser.split('check_deezer_preview_quota_recovery(browser, base)').length-1,3,
+    'Define once, run in Chromium and Firefox');
+});

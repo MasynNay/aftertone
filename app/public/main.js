@@ -137,6 +137,7 @@ let audioGeneration = 0;
 let isLoadingAudio = false;
 let activeAudioFallback = false;
 let failedAudioId = null;
+let failedAudioQuota = false; // Rate limits need different recovery guidance from a broken CDN.
 let resolved = new Map();
 const inFlightAudio = new Map();
 let failedSources = new Set();
@@ -525,6 +526,7 @@ function stopAudio() {
   isLoadingAudio = false;
   activeAudioFallback = false;
   failedAudioId = null;
+  failedAudioQuota = false;
 }
 
 async function resolveAudio(track) {
@@ -537,7 +539,11 @@ async function resolveAudio(track) {
   const request = (async () => {
     const response = await apiFetch(`/api/audio?id=${encodeURIComponent(track.id)}`);
     const payload = await response.json();
-    if (!response.ok || !payload.url) throw new Error(payload.detail || payload.error || 'No playable file');
+    if (!response.ok || !payload.url) {
+      const error = new Error(payload.detail || payload.error || 'No playable file');
+      error.status = response.status; // Preserve 429 without exposing provider text as HTML.
+      throw error;
+    }
     if (resolved.size >= 320) resolved.delete(resolved.keys().next().value);
     if (payload.ttlSeconds) payload.expiresAt = Date.now() + payload.ttlSeconds * 1000;
     resolved.set(track.id, payload);
@@ -636,6 +642,7 @@ async function togglePlayback(track, automatic = false) {
   activeAudioId = track.id;
   activeAudioFallback = false;
   failedAudioId = null;
+  failedAudioQuota = false;
   isLoadingAudio = true;
   updatePlaybackView();
   try {
@@ -672,7 +679,10 @@ async function togglePlayback(track, automatic = false) {
     if (failedSources.size >= 320) failedSources.delete(failedSources.values().next().value);
     failedSources.add(track.id);
     failedAudioId = track.id;
-    toast(`${SOURCE_LABEL[track.source] || 'This source'} could not play this recording. Try again or skip without voting.`);
+    failedAudioQuota = track.source === 'deezer' && error?.status === 429;
+    toast(failedAudioQuota
+      ? 'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without voting.'
+      : `${SOURCE_LABEL[track.source] || 'This source'} could not play this recording. Try again or skip without voting.`);
     if (automatic && continuousListening && generation === audioGeneration) {
       consecutivePlaybackFailures++;
       if (consecutivePlaybackFailures >= 3) { continuousListening = false; toast('Several tracks could not play. Continuous listening stopped.'); }
@@ -714,11 +724,20 @@ function updatePlaybackView() {
     if (fill) fill.style.width = `${seconds / previewLength * 100}%`;
     if (time) time.textContent = `0:${String(Math.floor(seconds)).padStart(2, '0')} / 0:${previewLength}`;
     const status = $('#audio-status');
-    setTextIfChanged(status, isLoadingAudio ? 'Finding the recording…' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? 'Stream unavailable — try another song or source' : 'Press play to sample this track');
+    setTextIfChanged(status, isLoadingAudio ? 'Finding the recording…' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? (failedAudioQuota ? 'Deezer requests limited — wait before retrying' : 'Stream unavailable — try another song or source') : 'Press play to sample this track');
   }
   // Recoverable failure controls belong to the discovery card, never the saved collection.
   const recovery=$('#preview-recovery');
-  if(recovery && current) recovery.hidden = isLoadingAudio || failedAudioId !== current.id;
+  if(recovery && current) {
+    recovery.hidden = isLoadingAudio || failedAudioId !== current.id;
+    if (!recovery.hidden && current.source === 'deezer') {
+      // Recovery UI is retained while retrying. Never leave an old quota
+      // warning on screen after the new request fails for another reason.
+      setTextIfChanged(recovery.querySelector('p'), failedAudioQuota
+        ? 'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without counting it as a Pass.'
+        : 'This Deezer preview is unavailable. Retry a fresh provider link or skip without counting it as a Pass.');
+    }
+  }
   const skipRecovery=$('#preview-skip');
   if(skipRecovery) skipRecovery.hidden=Boolean(challengeIds.length);
   // Tournament previews have their own, quiet status bar. Never accidentally
