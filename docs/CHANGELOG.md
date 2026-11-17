@@ -1,3 +1,9 @@
+## v0.12 development — Safer browser-data recovery verification (November 16, 2026)
+
+- Added genuine Chromium and Firefox file download/import tests for versioned progress backups with a saved favorite, listening decision, volume, Tune Lab record, favorite artist, imported-playlist metadata and lyric offset.
+- Both browsers now verify that an invalid format version is rejected without modifying saved data, and that restoring the exported file after intentionally clearing progress rehydrates the browser and shows the saved song in Collection.
+- This is automated fixture testing; transferring a backup between physical devices, real music-provider availability and accessibility with assistive technology remain separate manual checks.
+
 ## v0.12 development — One clear retry when music is unavailable (November 16, 2026)
 
 - When the current discovery path has **no playable song** and the provider fails, the empty state now owns the error announcement and displays one clearly labelled **Retry Discovery** action instead of repeating the same error above the page and showing a second **Find More Songs** button.
