@@ -849,6 +849,13 @@ function changeDiscoveryPath(mode) {
   if(mode!=='explore') void warmRelatedFromSaved(seedVersion);
 }
 
+/** JavaScript-triggered scrolling must honor reduced-motion preferences too.
+ * CSS media rules alone do not override scrollIntoView({behavior:'smooth'}).
+ */
+function motionSafeScroll() {
+  return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
 function goTo(nextView) {
   setThemeMenuOpen(false);
   if (!['discover', 'collection', 'taste', 'challenges', 'quiz', 'duels'].includes(nextView)) return;
@@ -1359,7 +1366,7 @@ function registerTournament(event) {
   if(!writeDuelArchive([...duelTournaments,event]))return;
   setDuelSelection(event.id);
   stopContinuous();render();
-  document.querySelector('#duel-active-event')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.querySelector('#duel-active-event')?.scrollIntoView({behavior:motionSafeScroll(),block:'start'});
 }
 function createDuelId() {
   return 'duel_'+crypto.randomUUID().replaceAll('-','').slice(0,24);
@@ -1607,7 +1614,7 @@ document.addEventListener('click', async (event) => {
       if(!input) return;
       const body=$('#sidebar-filter-body');
       if(body?.hidden) body.hidden=false;
-      input.scrollIntoView({behavior:'smooth',block:'center'});
+      input.scrollIntoView({behavior:motionSafeScroll(),block:'center'});
       input.focus({preventScroll:true});
       return;
     }
@@ -1634,7 +1641,7 @@ document.addEventListener('click', async (event) => {
       if (route === 'quiz') return goTo('quiz');
       if (route === 'discover') {
         if (view !== 'discover') return goTo('discover');
-        $('#listening-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+        $('#listening-card')?.scrollIntoView({behavior:motionSafeScroll(),block:'center'});
         return;
       }
       if (['balanced','familiar','explore'].includes(route)) changeDiscoveryPath(route);
