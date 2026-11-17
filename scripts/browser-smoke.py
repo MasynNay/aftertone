@@ -611,6 +611,153 @@ def check_catalog_outage_recovery(browser, base):
         context.close()
 
 
+
+def check_backup_restore_cross_browser(browser, base):
+    """Real export / rejected import / restore / refresh in both browser engines."""
+    context = browser.new_context(
+        viewport={"width": 1024, "height": 800}, accept_downloads=True,
+        service_workers="block")
+    origin = urlsplit(base).netloc
+    context.route("**/*", lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc == origin else route.abort())
+    context.route("https://api.deezer.com/**", mock_deezer)
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    label = f"backup-restore-{browser.browser_type.name}"
+    try:
+        page.goto(base + "/demo/", wait_until="load", timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible", timeout=TIMEOUT)
+        close = page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        page.locator('[data-action="backup-progress"]').wait_for(
+            state="visible", timeout=TIMEOUT)
+
+        # Seed nonempty, realistic saved progress: unlike the original Chromium
+        # smoke, these checks prove a favorite and listening decision survive.
+        page.evaluate("""() => {
+            const key='aftertone:session:v1';
+            const session=JSON.parse(localStorage.getItem(key));
+            const id='deezer:9100001';
+            session.favorites=[id];
+            session.savedTracks=[{
+                id,source:'deezer',title:'Fixture Melody 01',
+                artist:'Fixture Artist 01',genre:'unknown',mood:'Fresh'
+            }];
+            session.history=[{
+                id,action:'like',artist:'Fixture Artist 01',
+                genre:'unknown',context:'discovery',route:'balanced',
+                recognized:true,correct:null,mood:'Fresh',at:1730000000000
+            }];
+            session.volume=62;
+            localStorage.setItem(key,JSON.stringify(session));
+            localStorage.setItem('aftertone:tune-lab:v1',
+                JSON.stringify({answered:2,correct:1}));
+            localStorage.setItem('aftertone:favorite-artists:v1',
+                JSON.stringify(['Fixture Artist 01']));
+            localStorage.setItem('aftertone:optional-playlist:v1',
+                JSON.stringify({tracks:[{artist:'Fixture Artist 01',title:'Fixture Melody 01'}]}));
+            localStorage.setItem('aftertone:lyric-offsets:v1',
+                JSON.stringify({'deezer:9100001':37}));
+        }""")
+        with page.expect_download(timeout=TIMEOUT) as exported:
+            page.locator('[data-action="backup-progress"]').click()
+        download=exported.value
+        require(download.suggested_filename.startswith("aftertone-progress-"),
+                "Backup download filename is missing")
+        backup=json.loads(Path(download.path()).read_text(encoding="utf-8"))
+        require(backup["format"]=="aftertone-progress" and backup["version"]==2,
+                "Backup has wrong format or version")
+        require(backup["session"]["favorites"]==["deezer:9100001"] and
+                len(backup["session"]["history"])==1 and
+                backup["session"]["volume"]==62,
+                "Saved song, decision or volume missing from real browser export")
+        require(backup["quiz"]["correct"]==1 and
+                backup["artists"]==["Fixture Artist 01"],
+                "Tune Lab or favorite artists missing from backup")
+        require(backup["playlist"]["tracks"][0]["title"]=="Fixture Melody 01" and
+                backup["lyricOffsets"]["deezer:9100001"]==37,
+                "Imported playlist or lyric timing missing from backup")
+        keys=[
+            'aftertone:session:v1','aftertone:duels:v1',
+            'aftertone:tune-lab:v1','aftertone:favorite-artists:v1',
+            'aftertone:optional-playlist:v1','aftertone:lyric-offsets:v1',
+        ]
+        before=page.evaluate("(keys) => keys.map(k => localStorage.getItem(k))", keys)
+        malformed=dict(backup)
+        malformed["version"]=999
+        page.locator("#progress-backup-file").set_input_files({
+            "name":"invalid-aftertone-progress.json",
+            "mimeType":"application/json",
+            "buffer":json.dumps(malformed).encode("utf-8"),
+        })
+        page.wait_for_function("""() => document.querySelector('#toast')?.
+            textContent?.includes('not a supported AFTERTONE progress backup')""",
+            timeout=TIMEOUT)
+        after_invalid=page.evaluate(
+            "(keys) => keys.map(k => localStorage.getItem(k))", keys)
+        require(after_invalid==before,
+                "Invalid backup changed saved data before user confirmation")
+        # Replace the storage with valid but empty data. Then restore through
+        # the actual HTML file input and its destructive confirmation dialog.
+        page.evaluate("""() => {
+            const key='aftertone:session:v1';
+            const session=JSON.parse(localStorage.getItem(key));
+            session.favorites=[];
+            session.savedTracks=[];
+            session.history=[];
+            localStorage.setItem(key,JSON.stringify(session));
+            localStorage.removeItem('aftertone:optional-playlist:v1');
+            localStorage.setItem('aftertone:lyric-offsets:v1','{}');
+            localStorage.setItem('aftertone:tune-lab:v1',
+                JSON.stringify({answered:0,correct:0}));
+            localStorage.setItem('aftertone:favorite-artists:v1','[]');
+        }""")
+        page.once("dialog", lambda dialog: dialog.accept())
+        page.locator("#progress-backup-file").set_input_files({
+            "name":download.suggested_filename,
+            "mimeType":"application/json",
+            "buffer":json.dumps(backup).encode("utf-8"),
+        })
+        page.wait_for_function("""() => {
+            try {
+                const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+                return s?.favorites?.includes('deezer:9100001') &&
+                       s?.history?.length===1;
+            } catch {return false;}
+        }""",timeout=TIMEOUT)
+        page.locator("#main-content .discovery-paths").wait_for(
+            state="attached",timeout=TIMEOUT)
+        restored=page.evaluate("""() => ({
+            session:JSON.parse(localStorage.getItem('aftertone:session:v1')),
+            playlist:JSON.parse(localStorage.getItem('aftertone:optional-playlist:v1')),
+            offsets:JSON.parse(localStorage.getItem('aftertone:lyric-offsets:v1')),
+            quiz:JSON.parse(localStorage.getItem('aftertone:tune-lab:v1')),
+            artists:JSON.parse(localStorage.getItem('aftertone:favorite-artists:v1'))
+        })""")
+        require(restored["session"]["favorites"]==backup["session"]["favorites"] and
+                restored["session"]["history"]==backup["session"]["history"] and
+                restored["session"]["savedTracks"]==backup["session"]["savedTracks"],
+                "Restore did not preserve the user's favorite, track and history")
+        require(restored["playlist"]==backup["playlist"] and
+                restored["offsets"]==backup["lyricOffsets"] and
+                restored["quiz"]==backup["quiz"] and
+                restored["artists"]==backup["artists"],
+                "Restore lost optional progress, playlist, quiz or lyric data")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require("Fixture Melody 01" in page.locator("#main-content").inner_text(),
+                "Restored favorite is missing from the visible Collection")
+        require(not errors, "Browser exceptions during backup/restore: "+"; ".join(errors))
+        print(f"PASS {label}: export, reject invalid, restore favorites/history, display collection")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -619,6 +766,7 @@ def firefox_main():
             firefox_case(browser, base, 390, 844)
             firefox_case(browser, base, 320, 740)
             check_catalog_outage_recovery(browser, base)
+            check_backup_restore_cross_browser(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -633,6 +781,7 @@ def main():
             browser_case(browser, base, 320, 740)
             check_product_deep_links(browser, base)
             check_catalog_outage_recovery(browser, base)
+            check_backup_restore_cross_browser(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
