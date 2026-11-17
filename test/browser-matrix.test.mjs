@@ -95,3 +95,13 @@ test('real reduced-motion smoke checks scripted search scrolling, not just CSS',
   assert.match(browser,/scrollIntoView=function\(options\)/);
   assert.match(browser,/item\["id"\]=="music-search" and item\["behavior"\]=="auto"/);
 });
+
+test('both browser engines test Pass, Undo and Keep keyboard focus restoration',()=>{
+  assert.match(browser,/def check_choice_keyboard_focus\(browser, base\):/);
+  assert.match(browser,/document.activeElement\?\.dataset\?\.action === 'pass'/);
+  assert.match(browser,/document.activeElement\?\.id === 'main-content'/);
+  assert.match(browser,/document.activeElement\?\.dataset\?\.action === 'like'/);
+  assert.match(browser,/history\.length === 0/);
+  assert.equal(browser.split('check_choice_keyboard_focus(browser, base)').length-1,3,
+    'One definition and one run per browser');
+});
