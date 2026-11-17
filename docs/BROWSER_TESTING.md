@@ -6,6 +6,8 @@ The published AFTERTONE site has two entry points: the portfolio homepage at / a
 
 The GitHub Pages workflow builds the site with `npm run check`, installs Playwright, Chromium and Firefox, then runs both `python scripts/browser-smoke.py` and `python scripts/browser-smoke.py --firefox` before uploading the Pages artifact.
 
+The backup regression suite also transfers a real downloaded progress file into an entirely **new browser context** in Chromium and Firefox separately, with independent localStorage. It verifies the import confirmation and all backed-up data after reload. This is stronger than clearing the same session, but it does not simulate two physical devices or a transfer between browser engines.
+
 The app's build validation also checks local CSS `url()` references inside `dist/` using `scripts/check-css-assets.mjs`. The existing styles currently have no local asset URL references, so focused fixture tests ensure missing assets and traversal are rejected when encountered. This check never downloads remote resources.
 
 The script serves the actual generated dist/ directory through a localhost HTTP server. In desktop Chromium (1440×900) and mobile Chromium (390×844 and 320×740) it checks homepage styling and the direct listening link, navigates into the real app, verifies the listening card and three discovery paths, and checks Collection and Music Duels navigation on desktop. It also checks keyboard dialog focus cycling/return, narrow-phone overflow, and 44px hit rectangles for the Filters/theme/sound/help controls and all six navigation buttons on 390px and 320px screens. Missing local assets, HTTP errors and uncaught JavaScript exceptions cause a failure.
