@@ -39,7 +39,8 @@ test('temporary provider failures have actionable status and do not replace save
   const markup=render({feed:{error,hasMore:true}});
   assert.match(markup,/Music Is Temporarily Unavailable/);
   assert.match(markup,/Network &lt;unavailable&gt;/);
-  assert.match(markup,/Find More Songs/);
+  assert.match(markup,/>Retry Discovery<\/button>/);
+  assert.equal((markup.match(/data-action="load-more"/g)||[]).length,1);
   assert.match(markup,/Search for an Artist/);
   assert.match(markup,/role="status" aria-live="polite"/);
   assert.doesNotMatch(markup,/data-action="reset-listens"/);
