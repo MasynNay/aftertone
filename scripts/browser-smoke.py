@@ -201,6 +201,12 @@ def browser_case(browser, base, width, height):
                 "Single-page navigation did not move focus to new content")
         require(page.locator('#main-nav button[data-view="collection"]').get_attribute("aria-current") == "page",
                 "Active navigation section not announced to assistive technology")
+        require(page.locator("#main-content").get_attribute("aria-label") == "Collection section",
+                "Focused main landmark should announce the collection name")
+        require(page.title() == "Collection — AFTERTONE",
+                "Browser title should identify the current app section")
+        require(page.locator("#main-content").get_attribute("aria-live") is None,
+                "Whole-screen rerenders must not use an aria-live region")
         page.locator('#main-nav button[data-view="discover"]').click()
         page.locator("#listening-card").wait_for(state="attached",timeout=TIMEOUT)
         require(page.locator('link[rel="stylesheet"]').first.evaluate("(el) => Boolean(el.sheet)"),
