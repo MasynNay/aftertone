@@ -93,7 +93,7 @@ async function routeApi(url){
     }
     return json({error:'Endpoint unavailable on static hosting.'},404);
   }catch(error){
-    const code=error?.code==='SPOTIFY_AUTH_REQUIRED'?422:502;
+    const code=error?.status===429 ? 429 : error?.code==='SPOTIFY_AUTH_REQUIRED'?422:502;
     return json({error:String(error?.message||'Music service unavailable').slice(0,260)},code);
   }
 }
