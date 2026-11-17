@@ -92,6 +92,7 @@ The public app needs no user account. Local collections and game state are store
 
 - [Roadmap](docs/ROADMAP.md)
 - [Changelog](docs/CHANGELOG.md)
+- [Release verification checklist](docs/RELEASE_CHECKLIST.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Browser testing](docs/BROWSER_TESTING.md)
 - [Accessibility and mobile verification](docs/ACCESSIBILITY.md)
