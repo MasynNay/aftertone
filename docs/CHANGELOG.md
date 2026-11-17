@@ -1,3 +1,9 @@
+## v0.12 development — Real Music Duels bracket and podium in the product README (November 16, 2026)
+
+- Added permanent, verified WebP screenshots of an in-progress four-track Music Duels semifinal and the complete podium / Hall of Fame / tournament-history screen, alongside the existing real Discover, Collection and Duels setup captures. All screenshots use fictional test songs and placeholder artwork.
+- Verified the source browser PNGs through GitHub Actions, regenerated both images with a temporary restricted capture workflow, then removed that workflow before merging. Added an automated test for valid WebP image signatures, reasonable sizes, README links and screenshot provenance.
+- Documented reproduction instructions and evidence boundaries in [SCREENSHOT_PROVENANCE.md](SCREENSHOT_PROVENANCE.md). This completes the engineering and documentation work for issue #8; screenshot accuracy still needs maintenance if the UI changes, and no media rights or actual Deezer playback is implied.
+
 ## v0.12 development — Verifiable in-progress Music Duels screenshot (November 16, 2026)
 
 - Browser smoke testing now captures an actual **in-progress Music Duels bracket** after clicking Create Bracket and before the first vote; previously the captured Duels evidence was limited to setup and the completed podium.
