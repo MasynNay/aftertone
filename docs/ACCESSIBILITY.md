@@ -20,6 +20,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - [GitHub Actions run 43998680847](https://github.com/MasynNay/aftertone/actions/runs/43998680847) passed **269 Node tests** and **Chromium 1440×900, 390×844 and 320×740**. The browser tests measure all ten primary phone hit rectangles rather than merely matching selectors in CSS.
 - Touch hardware, 200% browser zoom, screen readers and Firefox still require separate manual checks. No complete WCAG conformance claim is made.
 
+## Screen-reader navigation follow-up
+
+- Active sections now give the focused main landmark a concise accessible name and update the browser tab title, so moving between Discover, Collection, Taste Map, Tune Lab, Music Duels and Challenges identifies the destination.
+- Removed `aria-live` from the repeatedly replaced main view and dialog wrapper. The separate toast remains a polite status region, and dialogs retain their own accessible names and focus management. This avoids attempting to announce an entire rerendered page or modal body on every update.
+- Added Node and real Chromium assertions for these behaviors. A manual screen-reader review is **still required** before claiming screen-reader compatibility or WCAG conformance.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:

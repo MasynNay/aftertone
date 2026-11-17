@@ -12,11 +12,19 @@ test('app exposes a keyboard-first skip link to its focusable main content',()=>
   assert.match(index,/<nav class="primary-nav" id="main-nav" aria-label="App sections"/);
   assert.match(css,/\.skip-to-content:focus-visible/);
 });
+test('screen-reader navigation announces a named section without live-reading the whole app',()=>{
+  assert.ok(index.includes('<main id="main-content" tabindex="-1" aria-label="Discover section"></main>'));
+  assert.doesNotMatch(index, /<main[^>]*aria-live=/);
+  assert.doesNotMatch(index, /<div id="modal-root"[^>]*aria-live=/);
+  assert.match(index, /id="toast"[^>]*role="status" aria-live="polite"/);
+  assert.ok(main.includes("main.setAttribute('aria-label', \`${viewLabel} section\`)"));
+  assert.ok(main.includes("document.title = \`${viewLabel} — AFTERTONE\`"));
+});
 test('app navigation exposes the current view and moves keyboard focus to its content',()=>{
   assert.match(main,/button\.setAttribute\('aria-current',active\?'page':'false'\)/);
   const go=main.match(/function goTo\(nextView\) \{([\s\S]*?)\n\}/)?.[1];
   assert.ok(go);
-  assert.match(go,/render\(\);\s*\/\/ Route changes/);
+  assert.match(go,/render\(\);[\s\S]*main\.focus\(\{preventScroll:true\}\)/);
   assert.match(go,/main\.focus\(\{preventScroll:true\}\)/);
   assert.match(go,/prefers-reduced-motion: reduce/);
 });
