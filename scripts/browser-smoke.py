@@ -551,7 +551,7 @@ def check_catalog_outage_recovery(browser, base):
             return mock_deezer(route)
         parsed = urlsplit(route.request.url)
         callback = parse_qs(parsed.query).get("callback", [""])[0]
-        if not re.fullmatch(r"__aftertoneDeezer_\\d+", callback):
+        if not re.fullmatch(r"__aftertoneDeezer_\d+", callback):
             route.abort()
             return
         state["failed"] += 1
