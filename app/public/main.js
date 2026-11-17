@@ -472,7 +472,11 @@ function updateChrome() {
     button.classList.toggle('active',active);
     if(button.matches('#main-nav button'))button.setAttribute('aria-current',active?'page':'false');
   });
-  $('#current-view-label').textContent = ({ discover: 'DISCOVER', collection: 'COLLECTION', taste: 'TASTE MAP', challenges: 'CHALLENGES', quiz: 'TUNE LAB', duels: 'MUSIC DUELS' })[view];
+  const viewLabel = ({ discover: 'Discover', collection: 'Collection', taste: 'Taste Map', challenges: 'Challenges', quiz: 'Tune Lab', duels: 'Music Duels' })[view];
+  $('#current-view-label').textContent = viewLabel.toUpperCase();
+  // Name only the focused landmark, not every dynamically rendered descendant.
+  main.setAttribute('aria-label', `${viewLabel} section`);
+  document.title = `${viewLabel} — AFTERTONE`;
   $('#sidebar-saves').textContent = String(state.favorites.length);
   const sound = $('#sound-toggle');
   sound.textContent = state.sound ? '♫' : '♪';
@@ -844,7 +848,7 @@ function goTo(nextView) {
   view = nextView;
   document.body.classList.remove('mobile-filters-open');
   render();
-  // Route changes should announce the new content to keyboard and screen-reader users.
+  // Moving focus to the named main landmark announces the destination once.
   main.focus({preventScroll:true});
   window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
