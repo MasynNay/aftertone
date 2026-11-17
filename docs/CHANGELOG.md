@@ -1,3 +1,9 @@
+## v0.12 development — Preserve future mixed-source recovery after temporary outages (November 16, 2026)
+
+- Fixed a latent discovery bug: a failed Audius/Jamendo/Commons/Jellyfin request in mixed-source mode incorrectly marked its entire catalog permanently exhausted. That provider is now skipped only for the current fetch batch, with existing bounded background backoff and explicit Retry Discovery behavior preserved.
+- Added deterministic regression checks for one-source failure, several simultaneous outages, an all-sources-down batch and subsequent recovery, without mutating truly exhausted pagination state.
+- **Current public and main app startup defaults to Deezer-only**; this change hardens the dormant mixed-source fetch path rather than enabling additional third-party integrations or verifying their authorization. Actual upstream recovery and permissions remain unverified.
+
 ## v0.12 development — Keep, Pass and Undo keyboard continuity (November 17, 2026)
 
 - When a keyboard user activates Keep or Pass, AFTERTONE now returns focus to the same visible decision on the next song rather than losing focus when the old card is replaced. Undo returns focus to its new control when enabled, or to the named main region when Undo becomes disabled.
