@@ -125,6 +125,18 @@ def browser_case(browser, base, width, height):
         require(page.locator(".skip-to-content").count() == 1,
                 "Accessible skip-to-content link missing")
         if width < 600:
+            # Check actual rendered hit areas, not just matching CSS declarations.
+            targets = ["#mobile-refine-toggle", "#theme-menu-toggle",
+                       "#sound-toggle", "#help-button"]
+            targets += ['#main-nav button[data-view="' + mode + '"]'
+                        for mode in ("discover", "collection", "taste",
+                                     "quiz", "duels", "challenges")]
+            for selector in targets:
+                rect = page.locator(selector).bounding_box()
+                require(rect and rect["width"] >= 43.5 and rect["height"] >= 43.5,
+                        f"Phone tap target is smaller than 44px: {selector}: {rect}")
+            require(page.locator("#main-nav button[data-view]").count() == 6,
+                    "All six mobile navigation destinations must remain visible")
             app_layout = page.evaluate("""() => ({
                 viewport: innerWidth,
                 scrollWidth: document.documentElement.scrollWidth,

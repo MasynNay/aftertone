@@ -2769,3 +2769,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .playback-time {flex:0 0 auto;}
   .player-shortcuts {flex-wrap:wrap;gap:8px;}
 }
+
+/* v0.12: comfortable touch targets on phones without horizontal overflow.
+   Preserve all six tabs; compact screens can omit redundant breadcrumb text. */
+@media(max-width:650px) {
+  .topbar-actions .icon-button {width:44px;height:44px;min-width:44px;}
+  #mobile-refine-toggle {min-height:44px;}
+  .primary-nav .nav-link {min-height:44px;}
+  .preview-recovery-actions button,
+  .collection-header-actions .secondary-button,
+  .duel-availability-row>[data-duel-action="discover-more"] {min-height:44px;}
+}
+@media(max-width:360px) {
+  .topbar-crumb {display:none;}
+}
