@@ -1,3 +1,9 @@
+## v0.12 development — Respect reduced motion during in-app scroll shortcuts (November 16, 2026)
+
+- Search for an Artist, the Discover passport shortcut and entering a newly created Music Duels bracket no longer force smooth JavaScript scrolling when reduced motion is enabled. Normal-motion users retain the existing smooth transitions.
+- Added automated Chromium/Firefox checks for real search-shortcut scrolling with reduced motion enabled at 720px and 360px, plus static guards for all three app-controlled scroll destinations.
+- Actual human accessibility/device checks remain outstanding under issue #7.
+
 ## v0.12 development — Keyboard-safe preview failure controls (November 16, 2026)
 
 - **Retry Preview** now transfers keyboard focus from the soon-to-be-hidden recovery buttons to the persistent Play/Pause control. **Skip Without Voting** moves focus to the next track's Play control, or the labelled main region if the feed is empty.

@@ -48,6 +48,11 @@ This milestone addresses specific barriers discovered in the original browser ap
 - When Retry Preview hides the recovery buttons during an audio reload, focus now returns to the persistent Play/Pause control instead of remaining on a hidden button. A neutral Skip Without Voting restores focus to the next song's Play button, or to the named main area when the feed is empty.
 - Chromium and Firefox now simulate a **blocked CDN preview** against fictional provider metadata, retry for a fresh preview URL, and skip without changing listening history or favorites. This is automated focus/recovery evidence, **not** a screen-reader audit or confirmation of live media playback rights.
 
+## Reduced-motion scripted navigation follow-up
+
+- The Search for an Artist shortcut, Discover passport jump and newly created Music Duels bracket now choose instantaneous scrolling whenever the device advertises `prefers-reduced-motion: reduce`. CSS-only reduced-motion rules were insufficient because JavaScript explicitly requested smooth scrolling in these three places.
+- The built-app Chromium/Firefox reduced-motion tests now intercept a real Search for an Artist click at 720px and 360px and assert that the browser receives `behavior: 'auto'`. This is automated motion-respect verification, not a human photosensitivity or screen-reader audit.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:

@@ -806,6 +806,23 @@ def check_reflow_reduced_motion(browser, base, width, height):
                        amount <= (value.endsWith('ms') ? 0.1 : 0.0001);
             });
         }"""),"Listening card animations still run despite reduced-motion preference")
+        # CSS scroll rules do not override an explicit JS 'smooth' option.
+        # Exercise the real Search for an Artist action with motion reduction.
+        page.evaluate("""() => {
+            window.__aftertoneScrollLog=[];
+            const original=Element.prototype.scrollIntoView;
+            Element.prototype.scrollIntoView=function(options) {
+                window.__aftertoneScrollLog.push({
+                    id:this.id, behavior:options?.behavior
+                });
+                return original.call(this,options);
+            };
+        }""")
+        page.locator('[data-action="focus-music-search"]').first.click()
+        scroll_requests=page.evaluate("window.__aftertoneScrollLog")
+        require(any(item["id"]=="music-search" and item["behavior"]=="auto"
+                    for item in scroll_requests),
+                f"Search jump requested smooth scrolling despite reduced motion: {scroll_requests}")
         for mode, name in (("discover","Discover"),("collection","Collection"),
                            ("taste","Taste Map"),("quiz","Tune Lab"),
                            ("duels","Music Duels"),("challenges","Challenges")):
