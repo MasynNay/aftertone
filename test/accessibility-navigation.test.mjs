@@ -60,3 +60,11 @@ test('phone music controls expose touch-friendly sizes without hiding six naviga
   assert.match(css,/\.primary-nav \.nav-link \{min-height:44px;\}/);
   assert.match(css,/@media\(max-width:360px\)\s*\{\s*\.topbar-crumb \{display:none;\}/);
 });
+
+test('scripted scroll targets obey the user reduced-motion preference',()=>{
+  assert.match(main,/function motionSafeScroll\(\) \{\s*return matchMedia\('\(prefers-reduced-motion: reduce\)'\)\.matches \? 'auto' : 'smooth';/);
+  assert.equal((main.match(/scrollIntoView\(\{behavior:motionSafeScroll\(\)/g)||[]).length,3,
+    'Search, listening passport and Duels must each use the motion-aware helper');
+  assert.doesNotMatch(main,/scrollIntoView\(\{behavior:'smooth'/,
+    'Do not force smooth scrolling when the OS requests reduced motion');
+});
