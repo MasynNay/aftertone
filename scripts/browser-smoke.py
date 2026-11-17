@@ -925,6 +925,77 @@ def check_preview_recovery_keyboard(browser, base):
         context.close()
 
 
+
+def check_choice_keyboard_focus(browser, base):
+    """Keep/Pass/Undo must not strand focus on a replaced listening card."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"choice-focus-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        old_id=page.locator("#listening-card").get_attribute("aria-label")
+        history_len=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history.length""")
+        require(history_len==0,"Fixture browser did not start with a clean listening history")
+        page.evaluate("window.__choiceFocusDocument='no-reload'")
+
+        pass_button=page.locator('#listening-card [data-action="pass"]')
+        pass_button.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history.length === 1""",
+            timeout=TIMEOUT)
+        page.wait_for_function("""() => document.activeElement?.dataset?.action === 'pass'""",
+            timeout=TIMEOUT)
+        require(page.locator("#listening-card").get_attribute("aria-label")!=old_id,
+                "Passing did not advance to the next discovery")
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).favorites.length""")==0,
+            "Pass must not add a favorite")
+
+        undo=page.locator('#listening-card [data-action="undo"]')
+        require(undo.is_enabled(),"Undo must become available after a choice")
+        undo.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history.length === 0""",
+            timeout=TIMEOUT)
+        require(page.locator("#listening-card").get_attribute("aria-label")==old_id,
+                "Undo did not restore the previous listening card")
+        require(page.evaluate("document.activeElement?.id === 'main-content'"),
+                "Undo returned focus to a now-disabled decision instead of named main area")
+
+        keep=page.locator('#listening-card [data-action="like"]')
+        keep.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => {
+            const session=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return session?.history?.length===1 && session?.favorites?.length===1;
+        }""",timeout=TIMEOUT)
+        page.wait_for_function("""() => document.activeElement?.dataset?.action === 'like'""",
+            timeout=TIMEOUT)
+        require(page.evaluate("window.__choiceFocusDocument")=="no-reload",
+                "Choice actions unexpectedly reloaded the application")
+        require(not errors, "Browser exception during keyboard decision flow: "+"; ".join(errors))
+        print(f"PASS {label}: Pass/Undo/Keep preserve keyboard context without reload")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -937,6 +1008,7 @@ def firefox_main():
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
+            check_choice_keyboard_focus(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -955,6 +1027,7 @@ def main():
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
+            check_choice_keyboard_focus(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
