@@ -762,6 +762,159 @@ def check_backup_restore_cross_browser(browser, base):
 
 
 
+
+def check_backup_transfer_new_profile(browser, base):
+    """Download a real backup, close the source profile, import into a fresh one.
+
+    This simulates separate browser storage profiles, not physical devices or a
+    transfer between different engines. No external provider/media is contacted.
+    """
+    origin=urlsplit(base).netloc
+    def context_fixture(context):
+        context.route("**/*",lambda route:route.continue_()
+                      if urlsplit(route.request.url).netloc==origin else route.abort())
+        context.route("https://api.deezer.com/**",mock_deezer)
+
+    source=browser.new_context(viewport={"width":1024,"height":800},
+                               accept_downloads=True,service_workers="block")
+    context_fixture(source)
+    exported_bytes=None
+    source_errors=[]
+    label=f"new-profile-backup-{browser.browser_type.name}"
+    try:
+        first=source.new_page()
+        first.on("pageerror",lambda error:source_errors.append(str(error)))
+        first.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        first.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=first.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        # Make an authentic Keep decision through the application, not by
+        # fabricating a stored session or copying its storage to the target.
+        first.locator('#listening-card [data-action="like"]').click()
+        first.wait_for_function("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return s.history?.length===1 && s.favorites?.length===1 &&
+                   s.savedTracks?.length===1;
+        }""",timeout=TIMEOUT)
+        first.evaluate("""() => {
+            localStorage.setItem('aftertone:tune-lab:v1',
+                JSON.stringify({answered:7,correct:5}));
+            localStorage.setItem('aftertone:favorite-artists:v1',
+                JSON.stringify(['Fixture Transfer Artist']));
+            localStorage.setItem('aftertone:optional-playlist:v1',
+                JSON.stringify({tracks:[
+                    {artist:'Fixture Transfer Artist',title:'Transfer Song'}
+                ]}));
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            localStorage.setItem('aftertone:lyric-offsets:v1',
+                JSON.stringify({[s.favorites[0]]:42}));
+        }""")
+        first.locator('#main-nav button[data-view="collection"]').click()
+        note=first.locator('.collection-backup-note').inner_text()
+        require("Version 2 backups include imported playlist song names" in note,
+                "Collection still falsely claims playlist/lyric offsets are omitted")
+        with first.expect_download(timeout=TIMEOUT) as result:
+            first.locator('[data-action="backup-progress"]').click()
+        download=result.value
+        require(download.suggested_filename.startswith('aftertone-progress-'),
+                "Actual backup download did not have the expected filename")
+        exported_bytes=Path(download.path()).read_bytes()
+        backup=json.loads(exported_bytes.decode("utf-8"))
+        require(backup["version"]==2 and backup["format"]=="aftertone-progress",
+                "Export format must be the supported portable v2 JSON")
+        require(len(backup["session"]["favorites"])==1 and
+                len(backup["session"]["history"])==1 and
+                len(backup["session"]["savedTracks"])==1,
+                "Real Keep decision was missing from exported transfer file")
+        require(backup["quiz"]=={"answered":7,"correct":5} and
+                backup["artists"]==["Fixture Transfer Artist"],
+                "Tune Lab or selected artist data missing from export")
+        require(backup["playlist"]["tracks"][0]["title"]=="Transfer Song" and
+                list(backup["lyricOffsets"].values())==[42],
+                "Imported playlist or lyric offset missing from export")
+        require(not source_errors,"Source browser failed: "+"; ".join(source_errors))
+    finally:
+        source.close()  # Source is gone BEFORE the destination is created.
+
+    # This browser context shares no localStorage, cookies, or session state
+    # with the source. The only transfer is the downloaded JSON file bytes.
+    target=browser.new_context(viewport={"width":1024,"height":800},
+                               service_workers="block")
+    context_fixture(target)
+    destination_errors=[]
+    try:
+        page=target.new_page()
+        page.on("pageerror",lambda error:destination_errors.append(str(error)))
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        fresh=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {
+                favorites:s.favorites||[],history:s.history||[],
+                quiz:localStorage.getItem('aftertone:tune-lab:v1'),
+                playlist:localStorage.getItem('aftertone:optional-playlist:v1')
+            };
+        }""")
+        require(not fresh["favorites"] and not fresh["history"] and
+                fresh["playlist"] is None,
+                "Fresh browser context inherited the source's collection or playlist")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        confirmation=[]
+        def accept_import(dialog):
+            confirmation.append(dialog.message)
+            dialog.accept()
+        page.once("dialog",accept_import)
+        page.locator("#progress-backup-file").set_input_files({
+            "name":"aftertone-transfer.json",
+            "mimeType":"application/json",
+            "buffer":exported_bytes,
+        })
+        page.wait_for_function("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return s.favorites?.length===1 && s.history?.length===1 &&
+                   document.querySelector('#main-nav button[data-view="collection"]');
+        }""",timeout=TIMEOUT)
+        require(len(confirmation)==1 and
+                "1 favorite artists and Tune Lab 5/7 correct" in confirmation[0],
+                f"Restore confirmation did not disclose Tune Lab and favorite artists: {confirmation}")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        saved=backup["session"]["savedTracks"][0]
+        require(saved["title"] in page.locator("#main-content").inner_text(),
+                "Restored song missing from new browser profile Collection")
+        # Reload again, independent of the restore-triggered refresh, and
+        # verify every main backup section survived source context destruction.
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        restored=page.evaluate("""() => ({
+            session:JSON.parse(localStorage.getItem('aftertone:session:v1')),
+            quiz:JSON.parse(localStorage.getItem('aftertone:tune-lab:v1')),
+            artists:JSON.parse(localStorage.getItem('aftertone:favorite-artists:v1')),
+            playlist:JSON.parse(localStorage.getItem('aftertone:optional-playlist:v1')),
+            offsets:JSON.parse(localStorage.getItem('aftertone:lyric-offsets:v1'))
+        })""")
+        require(restored["session"]["favorites"]==backup["session"]["favorites"] and
+                restored["session"]["history"]==backup["session"]["history"] and
+                restored["session"]["savedTracks"]==backup["session"]["savedTracks"],
+                "Isolated destination lost history, savedTracks or favorites after reload")
+        require(restored["quiz"]==backup["quiz"] and
+                restored["artists"]==backup["artists"] and
+                restored["playlist"]==backup["playlist"] and
+                restored["offsets"]==backup["lyricOffsets"],
+                "Isolated destination lost Tune Lab, artist, playlist or lyric settings")
+        require(not destination_errors,
+                "New browser profile JS errors: "+"; ".join(destination_errors))
+        print(f"PASS {label}: real download to independent profile, confirmation, full restore after reload")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        target.close()
+
+
 def check_reflow_reduced_motion(browser, base, width, height):
     """Audit CSS reflow at zoom-equivalent widths with reduced motion enabled.
 
@@ -1138,6 +1291,7 @@ def firefox_main():
             firefox_case(browser, base, 320, 740)
             check_catalog_outage_recovery(browser, base)
             check_backup_restore_cross_browser(browser, base)
+            check_backup_transfer_new_profile(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
@@ -1159,6 +1313,7 @@ def main():
             check_product_deep_links(browser, base)
             check_catalog_outage_recovery(browser, base)
             check_backup_restore_cross_browser(browser, base)
+            check_backup_transfer_new_profile(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
