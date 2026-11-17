@@ -535,6 +535,75 @@ def firefox_case(browser, base, width, height):
         context.close()
 
 
+
+def check_catalog_outage_recovery(browser, base):
+    """Simulate a Deezer error envelope, then retry in-place after recovery."""
+    context = browser.new_context(viewport={"width": 1024, "height": 800},
+                                  service_workers="block")
+    origin = urlsplit(base).netloc
+    state = {"online": False, "failed": 0}
+    errors = []
+    context.route("**/*", lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc == origin else route.abort())
+
+    def flaky_deezer(route):
+        if state["online"]:
+            return mock_deezer(route)
+        parsed = urlsplit(route.request.url)
+        callback = parse_qs(parsed.query).get("callback", [""])[0]
+        if not re.fullmatch(r"__aftertoneDeezer_\\d+", callback):
+            route.abort()
+            return
+        state["failed"] += 1
+        body = {"error": {"code": 429, "message": "Temporary provider outage (fictional fixture)"}}
+        route.fulfill(status=200, content_type="application/javascript",
+                      body=f"window[{json.dumps(callback)}]({json.dumps(body)});")
+
+    context.route("https://api.deezer.com/**", flaky_deezer)
+    page = context.new_page()
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    try:
+        page.goto(base + "/demo/", wait_until="load", timeout=TIMEOUT)
+        close = page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        empty = page.locator("#main-content .discovery-empty-state")
+        empty.wait_for(state="visible", timeout=TIMEOUT)
+        require("Music Is Temporarily Unavailable" in empty.inner_text(),
+                "A failed Deezer request must show a recoverable error, not a blank app")
+        retry = page.locator('#main-content [data-action="load-more"]')
+        require(retry.is_visible() and retry.is_enabled(),
+                "Deezer outage should provide an enabled in-app retry control")
+        require(state["failed"] >= 1, "The test must actually exercise a provider rejection")
+        require(page.locator("#listening-card").count() == 0,
+                "An unavailable provider must not invent a playable song")
+        saved_before = page.evaluate("""() => {
+            const state = JSON.parse(localStorage.getItem('aftertone:session:v1') || '{}');
+            return {favorites: state.favorites || [], history: state.history || []};
+        }""")
+        page.evaluate("window.__aftertoneRecoveryProbe = 'same-document'")
+        state["online"] = True
+        retry.click()
+        page.locator("#listening-card").wait_for(state="visible", timeout=TIMEOUT)
+        require("Fixture Melody" in page.locator("#listening-card").inner_text(),
+                "Retry should restore fixture discovery after provider recovery")
+        require(page.evaluate("window.__aftertoneRecoveryProbe") == "same-document",
+                "Recovering from Deezer outage unexpectedly reloaded the whole app")
+        saved_after = page.evaluate("""() => {
+            const state = JSON.parse(localStorage.getItem('aftertone:session:v1') || '{}');
+            return {favorites: state.favorites || [], history: state.history || []};
+        }""")
+        require(saved_after == saved_before,
+                "Provider outage/retry must not count as a listening vote or modify favorites")
+        require(not errors, "Browser exceptions during outage/retry: " + "; ".join(errors))
+        print(f"PASS {browser.browser_type.name} Deezer outage -> Retry Discovery -> recovered, no reload or votes")
+    except Exception:
+        screenshot(page, f"FAILED-provider-recovery-{browser.browser_type.name}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -542,6 +611,7 @@ def firefox_main():
             firefox_case(browser, base, 1440, 900)
             firefox_case(browser, base, 390, 844)
             firefox_case(browser, base, 320, 740)
+            check_catalog_outage_recovery(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -555,6 +625,7 @@ def main():
             browser_case(browser, base, 390, 844)
             browser_case(browser, base, 320, 740)
             check_product_deep_links(browser, base)
+            check_catalog_outage_recovery(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
