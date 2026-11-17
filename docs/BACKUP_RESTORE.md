@@ -20,6 +20,8 @@ The backup includes saved favorites and track metadata, Keep/Pass listening hist
 4. Confirm only if you want to **replace** the current browser's progress. Existing data is not automatically merged.
 5. AFTERTONE reloads with the restored data.
 
+**If Backup Progress reports damaged saved data**, AFTERTONE stops instead of silently creating an apparently valid but incomplete backup. This protects the original browser storage; it does **not** repair the damaged record. Keep the browser data intact, retain an earlier trusted backup if available, and avoid replacing progress with a newly generated empty backup.
+
 **Before restoring, export a backup of your current progress.** If a file is malformed or its format is unsupported, AFTERTONE rejects it without writing data. If browser storage fails mid-restore, the app attempts to roll back changes; some storage failures can also prevent complete rollback.
 
 ## Privacy and compatibility

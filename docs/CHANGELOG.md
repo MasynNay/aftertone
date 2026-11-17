@@ -1,3 +1,10 @@
+## v0.12 development — Prevent silent loss during progress backup export (November 16, 2026)
+
+- Backup Progress now **refuses export** when an existing listening session, tournament archive, Tune Lab record or favorite-artist record is malformed or unsupported, instead of silently replacing that source with an empty/default record. The original browser storage is left untouched.
+- Fresh browsers can still export empty, valid backups; legacy version-1 listening sessions without `savedTracks` remain supported without changing the stored record.
+- Added regression coverage for corrupt JSON, invalid saved tracks, invalid tournament metadata, damaged quiz counters, duplicate artist choices, fresh sessions and the legacy schema.
+- This prevents misleading backups; it does not repair damaged local data or substitute for retaining an earlier known-good backup.
+
 ## v0.12 development — Zoom-equivalent reflow and reduced-motion browser audits (November 16, 2026)
 
 - Added built-site Chromium **and Firefox** checks at 720px and 360px with reduced-motion preferences enabled, covering the marketing page, all six app sections, named landmarks, visible primary controls, animation suppression and horizontal overflow.

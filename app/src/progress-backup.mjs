@@ -24,9 +24,17 @@ function boundedCount(value,label) {
     throw new Error('Invalid '+label+' in backup.');
   return value;
 }
-function readJSON(storage,key,fallback) {
-  try {return JSON.parse(storage.getItem(key)||'null')??fallback;}
-  catch {return fallback;}
+/** A backup must never silently export empty defaults for damaged local data.
+ * The running app may recover defensively for display; an archival export must
+ * instead preserve evidence that the stored record could not be recovered.
+ */
+function readValidatedLocalJSON(storage,key,label,empty,validate) {
+  const raw=storage.getItem(key);
+  if(raw===null) return empty; // A genuinely fresh browser is not corrupt.
+  try {return validate(JSON.parse(raw));}
+  catch {
+    throw new Error(label+' data in this browser is damaged; backup was not created. Existing saved data was not changed.');
+  }
 }
 function safeQuiz(value) {
   if (!value || typeof value!=='object' || Array.isArray(value)) throw new Error('Invalid Tune Lab results.');
@@ -133,12 +141,28 @@ function readOptionalJSON(storage,key,label) {
 
 /** Generate a portable JSON file of all supported local progress (format v2). */
 export function createProgressBackup(storage,exportedAt=new Date().toISOString()) {
-  const session=loadState(storage);
-  const tournaments=loadDuelStore(storage);
-  const rawQuiz=readJSON(storage,QUIZ_KEY,{answered:0,correct:0});
-  const rawArtists=readJSON(storage,ARTISTS_KEY,[]);
-  const quiz=safeQuiz({answered:Number(rawQuiz?.answered)||0,correct:Number(rawQuiz?.correct)||0});
-  const artists=parseFavoriteArtists(rawArtists);
+  const session=readValidatedLocalJSON(storage,STORAGE_KEY,'Listening progress',
+    loadState(storage),raw=>safeSession(
+      // Early v1 sessions predate savedTracks; only *absent* is a valid legacy value.
+      raw && typeof raw==='object' && !Array.isArray(raw) &&
+      !Object.hasOwn(raw,'savedTracks') ? {...raw,savedTracks:[]} : raw));
+  const tournaments=readValidatedLocalJSON(storage,DUEL_STORAGE_KEY,'Music Duels',
+    [],raw=>{
+      if(raw?.version!==1 || !Array.isArray(raw.tournaments))
+        throw new Error('Invalid tournament store');
+      return safeDuels(raw.tournaments);
+    });
+  const quiz=readValidatedLocalJSON(storage,QUIZ_KEY,'Tune Lab',
+    {answered:0,correct:0},raw=>{
+      if(!raw || typeof raw!=='object' || Array.isArray(raw))
+        throw new Error('Invalid quiz store');
+      return safeQuiz({
+        answered:Number(raw.answered ?? 0),
+        correct:Number(raw.correct ?? 0),
+      });
+    });
+  const artists=readValidatedLocalJSON(storage,ARTISTS_KEY,'Favorite artists',
+    [],safeArtists);
   // The original v1 backup missed these two separately stored features.
   // Include explicit empty values so restores can replace them predictably.
   const playlist=safePlaylist(readOptionalJSON(storage,PLAYLIST_KEY,'Imported playlist'));
