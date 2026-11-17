@@ -1325,6 +1325,101 @@ def check_deezer_preview_on_demand(browser, base):
         context.close()
 
 
+
+def check_safe_music_shortcuts(browser, base):
+    """Modified/repeated key presses must never create a Keep/Pass or start audio."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    requests={"track":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def counted_deezer(route):
+        if urlsplit(route.request.url).path.startswith("/track/"):
+            requests["track"]+=1
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",counted_deezer)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"safe-shortcuts-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.locator("#main-content").focus()
+        initial=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return {blind:s.blind,history:s.history,favorites:s.favorites};
+        }""")
+        # Use real DOM keyboard events so this checks AFTERTONE's window
+        # handler, not whether a browser/OS happens to intercept Ctrl+B.
+        page.evaluate("""() => {
+            const guarded=[
+                {key:'b',code:'KeyB',ctrlKey:true},
+                {key:'b',code:'KeyB',metaKey:true},
+                {key:'b',code:'KeyB',altKey:true},
+                {key:'B',code:'KeyB',shiftKey:true},
+                {key:'b',code:'KeyB',repeat:true},
+                {key:'ArrowLeft',code:'ArrowLeft',shiftKey:true},
+                {key:'ArrowRight',code:'ArrowRight',ctrlKey:true},
+                {key:'ArrowRight',code:'ArrowRight',repeat:true},
+                {key:' ',code:'Space',repeat:true},
+                {key:' ',code:'Space',ctrlKey:true},
+                {key:'b',code:'KeyB',isComposing:true}
+            ];
+            for (const item of guarded)
+                window.dispatchEvent(new KeyboardEvent('keydown',
+                    {bubbles:true,cancelable:true,...item}));
+            const prevented=new KeyboardEvent('keydown',
+                {key:'b',code:'KeyB',bubbles:true,cancelable:true});
+            prevented.preventDefault();
+            window.dispatchEvent(prevented);
+        }""")
+        page.wait_for_timeout(150)
+        after=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return {blind:s.blind,history:s.history,favorites:s.favorites};
+        }""")
+        require(after==initial,"Modified/repeated shortcuts changed listening history or blind mode")
+        require(requests["track"]==0,
+                "A held/modified Space shortcut unexpectedly requested preview playback")
+
+        # Ordinary unmodified shortcuts must still behave normally.
+        page.keyboard.press("b")
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).blind""")!=initial["blind"],
+            "Plain B no longer toggles blind mode")
+        page.keyboard.press("b")
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).blind""")==initial["blind"],
+            "Plain B did not toggle blind mode back")
+        page.keyboard.press("ArrowLeft")
+        page.wait_for_function("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history.length === 1""",
+            timeout=TIMEOUT)
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history[0].action""")=="pass",
+            "Plain left arrow no longer Passes a track")
+        page.locator("#main-content").focus()
+        page.evaluate("""() => window.dispatchEvent(new KeyboardEvent(
+            'keydown',{key:'ArrowLeft',code:'ArrowLeft',repeat:true,
+                      bubbles:true,cancelable:true}))""")
+        page.wait_for_timeout(260)
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history.length""")==1,
+            "Holding an arrow rated a second song without another deliberate press")
+        require(not errors,"Browser exceptions during shortcut test: "+"; ".join(errors))
+        print(f"PASS {label}: modified and held keys ignored, normal B/Pass still work")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1341,6 +1436,7 @@ def firefox_main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
+            check_safe_music_shortcuts(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1363,6 +1459,7 @@ def main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
+            check_safe_music_shortcuts(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
