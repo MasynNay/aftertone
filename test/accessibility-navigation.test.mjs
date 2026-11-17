@@ -45,3 +45,10 @@ test('focus visibility and reduced-motion rules cover app interactions',()=>{
   assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
   assert.match(css,/animation-duration:0\.01ms!important/);
 });
+
+test('phone music controls expose touch-friendly sizes without hiding six navigation tabs',()=>{
+  assert.match(css,/@media\(max-width:650px\)\s*\{[\s\S]*?\.topbar-actions \.icon-button \{width:44px;height:44px;min-width:44px;\}/);
+  assert.match(css,/#mobile-refine-toggle \{min-height:44px;\}/);
+  assert.match(css,/\.primary-nav \.nav-link \{min-height:44px;\}/);
+  assert.match(css,/@media\(max-width:360px\)\s*\{\s*\.topbar-crumb \{display:none;\}/);
+});
