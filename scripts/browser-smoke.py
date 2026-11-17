@@ -881,6 +881,11 @@ def check_backup_transfer_new_profile(browser, base):
         require(len(confirmation)==1 and
                 "1 favorite artist and Tune Lab 5/7 correct" in confirmation[0],
                 f"Restore confirmation did not disclose Tune Lab and favorite artists: {confirmation}")
+        # Storage writes happen before window.location.reload(). A quick
+        # localStorage assertion alone can complete on the old document.
+        # Wait for the rehydrated Discover page before inspecting Collection.
+        page.locator("#main-content .discovery-paths").wait_for(
+            state="attached",timeout=TIMEOUT)
         page.locator('#main-nav button[data-view="collection"]').click()
         saved=backup["session"]["savedTracks"][0]
         require(saved["title"] in page.locator("#main-content").inner_text(),
