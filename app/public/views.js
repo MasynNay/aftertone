@@ -36,7 +36,7 @@ function renderListeningCard() {
       'This listening path has no new matches right now. Try another path, broaden filters, or search an artist.';
     const actions=challengeDone ? '<button type="button" class="accent-button" data-action="exit-challenge">Back to Discovery →</button>' :
       `<div class="empty-actions">
-        <button type="button" class="accent-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Searching…' : searchQuery ? 'Retry Search ↻' : 'Find More Songs ↻'}</button>
+        <button type="button" class="accent-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Searching…' : feed.error ? 'Retry Discovery' : searchQuery ? 'Retry Search ↻' : 'Find More Songs ↻'}</button>
         ${!feed.loading && searchQuery ? '<button type="button" class="secondary-button" data-action="clear-search">Clear Search</button>' : ''}
         ${!feed.loading && narrowed ? '<button type="button" class="secondary-button" data-action="reset-discovery-filters">Broaden Filters</button>' : ''}
         ${!feed.loading ? `<button type="button" class="secondary-button" data-path="${otherPath}">Try ${otherName}</button>` : ''}
@@ -83,7 +83,7 @@ function renderDiscovery() {
       <p>Continuous listening begins after your first Play. You control the volume and can stop at any time.</p>
     </section>` : ''}
     ${seedInfo.active ? `<div class="discovery-mode-note">♫ ${seedInfo.kind==='artists'?'Your '+seedInfo.artists+' starting artists':'Your '+seedInfo.count+' imported songs'} · ${seedInfo.related ? seedInfo.related+' related artists found' : seedInfo.lookupStatus==='searching' ? 'Finding related artists…' : 'Mixing in chart discoveries'} <button data-action="fresh-discovery" class="secondary-button">Back to fresh</button></div>` : ''}
-    ${(feed.error) ? `<div class="discovery-mode-note" role="status">${html(feed.error)} <button type="button" class="secondary-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Retrying…' : 'Retry Discovery'}</button></div>` : ''}
+    ${(feed.error && current) ? `<div class="discovery-mode-note" role="status">${html(feed.error)} <button type="button" class="secondary-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Retrying…' : 'Retry Discovery'}</button></div>` : ''}
     <div class="discovery-paths" aria-label="Choose your discovery path"><div class="path-heading"><span class="eyebrow">PICK A PATH</span><span>Change direction whenever you want</span></div><div class="path-options">
       ${[['familiar','◎','Comfort Zone','Saved artists & neighbors'],['balanced','✳','New Territory','Related music + broad hits'],['explore','↗','Wild Card','Unfamiliar genres & voices']].map(([mode,icon,title,sub])=>`<button class="path-option ${state.discoveryMix===mode?'selected':''}" data-path="${mode}" aria-pressed="${state.discoveryMix===mode}"><span>${icon}</span><strong>${title}</strong><small>${sub}</small></button>`).join('')}
     </div><p class="path-explainer" role="status"><strong>${state.discoveryMix==='familiar'?'Comfort Zone':state.discoveryMix==='explore'?'Wild Card':'New Territory'}:</strong> ${html(PATH_DESCRIPTIONS[state.discoveryMix] || PATH_DESCRIPTIONS.balanced)} ${searchQuery ? 'You are searching manually; the path resumes when you clear the search.' : ''}</p></div>

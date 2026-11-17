@@ -52,3 +52,19 @@ test('preview recovery explains the active music source rather than always blami
     assert.match(view,/without counting it as a Pass/);
   }
 });
+
+test('empty provider outage has one understandable retry and one error announcement',()=>{
+  const error='Deezer did not respond.';
+  const markup=viewWith({current:null,feed:{loading:false,hasMore:true,available:0,error}});
+  assert.match(markup,/Music Is Temporarily Unavailable/);
+  assert.equal((markup.match(/data-action="load-more"/g)||[]).length,1,
+    'There should not be two different retry buttons for one empty-state outage');
+  assert.match(markup,/>Retry Discovery<\/button>/);
+  assert.doesNotMatch(markup,/Find More Songs/);
+  assert.equal(markup.split(error).length-1,1,'Provider error should only be announced once');
+  assert.doesNotMatch(markup,/class="discovery-mode-note" role="status"/,
+    'An empty-state error already has its own live status region');
+  const withSong=viewWith({feed:{loading:false,hasMore:true,available:1,error}});
+  assert.match(withSong,/class="discovery-mode-note" role="status"/,
+    'While a song is visible, preserve the provider retry banner without replacing it');
+});

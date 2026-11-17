@@ -368,9 +368,14 @@ def browser_case(browser, base, width, height):
             # intentionally shows a toast, which is not part of the podium UI.
             page.evaluate("""() => {
                 document.activeElement?.blur?.();
-                window.scrollTo({top:0,behavior:'instant'});
+                // The app intentionally uses smooth scrolling. Disable it only
+                // for the evidence capture so screenshots are deterministic.
+                document.documentElement.style.setProperty('scroll-behavior','auto','important');
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                window.scrollTo(0, 0);
             }""")
-            page.wait_for_function("window.scrollY === 0",timeout=TIMEOUT)
+            page.wait_for_function("() => Math.abs(window.scrollY) <= 2",timeout=TIMEOUT)
             # Winning the final also shows a toast. Wait for its CSS fade to
             # finish, rather than merely waiting for the 'show' class to clear.
             page.wait_for_function("""() => {
