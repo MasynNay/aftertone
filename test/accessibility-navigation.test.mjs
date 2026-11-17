@@ -24,7 +24,7 @@ test('app navigation exposes the current view and moves keyboard focus to its co
   assert.match(main,/button\.setAttribute\('aria-current',active\?'page':'false'\)/);
   const go=main.match(/function goTo\(nextView\) \{([\s\S]*?)\n\}/)?.[1];
   assert.ok(go);
-  assert.match(go,/render\(\);\s*\/\/ Route changes/);
+  assert.match(go,/render\(\);[\s\S]*main\.focus\(\{preventScroll:true\}\)/);
   assert.match(go,/main\.focus\(\{preventScroll:true\}\)/);
   assert.match(go,/prefers-reduced-motion: reduce/);
 });
