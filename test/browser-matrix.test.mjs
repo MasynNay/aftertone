@@ -126,3 +126,14 @@ test('Deezer metadata is fetched only after Play in both browser engines',()=>{
   assert.equal(browser.split('check_deezer_preview_on_demand(browser, base)').length-1,3,
     'One definition plus Chromium and Firefox calls are required');
 });
+
+test('portable progress really transfers into an isolated new browser profile',()=>{
+  assert.match(browser,/def check_backup_transfer_new_profile\(browser, base\):/);
+  assert.match(browser,/source\.close\(\)/);
+  assert.match(browser,/target=browser\.new_context/);
+  assert.match(browser,/exported_bytes=Path\(download\.path\(\)\)\.read_bytes\(\)/);
+  assert.match(browser,/document\.querySelector\('#main-nav button\[data-view="collection"\]'\)/);
+  assert.match(browser,/Isolated destination lost history, savedTracks or favorites after reload/);
+  assert.equal(browser.split('check_backup_transfer_new_profile(browser, base)').length-1,3,
+    'One definition and a separate Chromium/Firefox test run required');
+});
