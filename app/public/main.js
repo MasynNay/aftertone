@@ -1547,7 +1547,7 @@ async function importProgressBackupFile(file) {
         preview.lyricOffsets+' lyric timing adjustments.';
     const message='Restore '+preview.favorites+' saved tracks, '+preview.decisions+
       ' listening choices, '+preview.tournaments+' tournaments, '+
-      preview.artists+' favorite artists and Tune Lab '+preview.quizCorrect+
+      preview.artists+' favorite artist'+(preview.artists===1?'':'s')+' and Tune Lab '+preview.quizCorrect+
       '/'+preview.quizAnswered+' correct?\n\n'+optional+'\n\n'+
       'This replaces your current AFTERTONE progress. Export a backup of your current progress first.';
     if(!window.confirm(message))return;
