@@ -1,4 +1,4 @@
-## v0.12 development — Keyboard continuity when discovery is empty (November 17, 2026)
+undefined## v0.12 development — Keyboard continuity when discovery is empty (November 17, 2026)
 
 - Fixed a keyboard dead end after Retry Discovery replaced its own button with a loading state: focus now returns to the rebuilt Play control on success or the new enabled Retry action on another outage.
 - Applied focus continuity to Clear Search, Broaden Filters and keyboard-selected discovery-path changes, without stealing focus after pointer actions or after the user moves to another control while waiting.

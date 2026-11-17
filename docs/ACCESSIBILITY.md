@@ -80,6 +80,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Clear Search, Broaden Filters, and keyboard-activated listening-path changes use the same focus-aware recovery where appropriate. Focus is returned only when the action started from a focused control and the listener has not moved to something else while loading.
 - Both Chromium and Firefox browser scripts now simulate a provider outage, keyboard retry while the provider is still offline, and successful retry after recovery; saved votes and the document stay unchanged. This does not verify manual screen-reader speech output, real Deezer playback or mobile hardware behavior.
 
+## Modified and repeated keyboard shortcuts (v0.12 development)
+
+- Global music shortcuts ignore Control/Command, Alt, Shift, repeat, composition and events that were already handled. This protects browser and assistive-technology shortcuts and prevents holding a rating arrow from acting on successive songs.
+- Standalone B, Left/Right Arrow and Space remain available when focus is not in a native interactive control. The existing dialog and appearance-menu Escape handling is unchanged.
+- Chromium and Firefox scripted browser tests send synthetic modified/repeated key events, verify no unintended blind-mode changes, playback metadata requests or Keep/Pass records, and confirm ordinary B and Left Arrow still work. This is not a complete screen-reader or physical keyboard audit.
+
 ## Manual acceptance checklist (not yet verified)
 
 - [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.
