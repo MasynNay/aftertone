@@ -46,6 +46,12 @@ test('native keyboard activation takes priority over music hotkeys',()=>{
   assert.ok(keys.indexOf('if(interactive)return') < keys.indexOf("event.code === 'Space'"),
     'native keyboard guard should run before media shortcuts');
   assert.match(keys,/event\.key==='Escape'/);
+  for (const guard of ['event.defaultPrevented','event.isComposing','event.repeat',
+      'event.ctrlKey','event.metaKey','event.altKey','event.shiftKey']) {
+    assert.ok(keys.includes(guard),`Missing keyboard safety guard: ${guard}`);
+  }
+  assert.ok(keys.indexOf('event.ctrlKey') < keys.indexOf("if(interactive)return"),
+    'modified shortcuts must exit before both Discover and Duels handlers');
 });
 test('focus visibility and reduced-motion rules cover app interactions',()=>{
   assert.match(css,/button:focus-visible,a:focus-visible,input:focus-visible/);
