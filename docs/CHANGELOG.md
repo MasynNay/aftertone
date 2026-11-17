@@ -1,3 +1,9 @@
+## v0.12 development — Keep, Pass and Undo keyboard continuity (November 17, 2026)
+
+- When a keyboard user activates Keep or Pass, AFTERTONE now returns focus to the same visible decision on the next song rather than losing focus when the old card is replaced. Undo returns focus to its new control when enabled, or to the named main region when Undo becomes disabled.
+- Added real Chromium and Firefox button-activation regression tests for Pass → Undo → Keep, verifying history/favorites, current-card restoration, no page reload and correct focus targets.
+- Gesture/shortcut users retain their previous focus behavior. Manual screen-reader and device testing remains outstanding under #7.
+
 ## v0.12 development — Respect reduced motion during in-app scroll shortcuts (November 16, 2026)
 
 - Search for an Artist, the Discover passport shortcut and entering a newly created Music Duels bracket no longer force smooth JavaScript scrolling when reduced motion is enabled. Normal-motion users retain the existing smooth transitions.
