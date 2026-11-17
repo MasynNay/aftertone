@@ -207,3 +207,12 @@ Upon committing, confirm GitHub Actions succeeds and have user hard-refresh `htt
 - Deezer JSONP adapter `app/src/static-adapter.mjs` catches synchronous `document.head.append(script)` failure and passes the error into the existing cleanup, avoiding leaked globals and timers. `test/jsonp-failure-recovery.test.mjs` verifies cleanup and subsequent request reuse.
 - PR Actions run `43998075871` passed **268/268 Node tests** and Chromium smoke at desktop 1440×900, phones 390×844 and 320×740.
 - Superseded PRs #21 and #22 were commented on and closed, with links to #24. No new formal release tag was created. Real live Deezer playback/authorization remains unresolved (#2, #3). Next: check final Pages deployment, then continue issue #7 manual accessibility/zoom/touch and issue #8 portfolio proof, without claiming unverified browser or music rights tests.
+
+
+## v0.12 phone touch targets merged — November 16, 2026
+
+- After the CSS asset/Deezer cleanup milestone, worked on [PR #25](https://github.com/MasynNay/aftertone/pull/25) (`feature/v012-phone-touch-targets`). Squash merged as `f8849816ffa5f9682b0760178b35406e0efaf988`.
+- Ensured **44px min rendered width/height** for mobile header appearance, sound, help and Filters controls, and all six bottom navigation buttons. Recovery actions, Collection backup and Duels recovery received 44px min height on phones. Redundant breadcrumb hidden under 360px rather than squeezing controls.
+- Extended `scripts/browser-smoke.py` to measure ten actual phone touch rectangles at 390px and 320px, in addition to existing keyboard focus, no-overflow and full app smoke.
+- [Run 43998680847](https://github.com/MasynNay/aftertone/actions/runs/43998680847) passed **269 Node tests** and Chromium at **1440×900, 390×844, 320×740**. Desktop app and Deezer code unchanged from prior milestone. Existing v0.11.0 GitHub Release not modified.
+- Continue issue #7 manual hardware/Firefox/screen-reader/200%-zoom and broader per-component contrast review. Do not claim full WCAG compliance or media rights approval. Check latest Pages Actions success before describing new touch layout as live.

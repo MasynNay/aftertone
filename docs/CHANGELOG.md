@@ -1,3 +1,11 @@
+## v0.12 mobile usability — Primary touch target sizing (November 16, 2026)
+
+- Enlarged phone header theme, sound and help buttons, Filters, and all six navigation destinations to **at least 44 × 44 CSS pixels** at narrow widths. Key preview recovery, Collection and Duels recovery buttons now use a 44px minimum height.
+- Below 360px, hide the redundant header breadcrumb to keep all essential controls visible without introducing horizontal scrolling.
+- Extended the actual generated-site Chromium suite to measure **ten real rendered tap rectangles** at 390×844 and 320×740; preserve desktop 1440×900 and existing no-overflow, keyboard dialog, backup and tournament checks.
+- [PR #25](https://github.com/MasynNay/aftertone/pull/25) passed **269/269 Node tests** and all three Chromium viewport checks in [GitHub Actions](https://github.com/MasynNay/aftertone/actions/runs/43998680847). Manual device/zoom/assistive-technology verification remains open in [issue #7](https://github.com/MasynNay/aftertone/issues/7).
+- This is an incremental **v0.12 development milestone**, not a new tagged v0.12 release or a claim of complete accessibility compliance.
+
 ## v0.12 development — CSS publishing safeguards and Deezer request cleanup (November 16, 2026)
 
 - Combined two previously tested but conflict-prone PRs (#21, draft #22) into [PR #24](https://github.com/MasynNay/aftertone/pull/24), cleanly based on the latest accessibility and mobile fixes. The superseded PRs were closed after equivalent functional changes were merged.

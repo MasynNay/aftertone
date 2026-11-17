@@ -1,6 +1,6 @@
 # AFTERTONE v0.12 — Accessibility and Mobile Verification
 
-**Reviewed November 16, 2026** · [Roadmap issue #7](https://github.com/MasynNay/aftertone/issues/7) · [Implemented in PR #23](https://github.com/MasynNay/aftertone/pull/23)
+**Reviewed November 16, 2026** · [Roadmap issue #7](https://github.com/MasynNay/aftertone/issues/7) · [Keyboard/layout PR #23](https://github.com/MasynNay/aftertone/pull/23) · [Touch targets PR #25](https://github.com/MasynNay/aftertone/pull/25)
 
 ## Shipped improvements
 
@@ -12,6 +12,13 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Clear `:focus-visible` outlines and a reduced-motion mode affecting animations and smooth scrolling.
 - Narrow-viewport repairs: a topbar control group previously extended **8px** off a 390px screen; the listening card previously forced **54px** overflow at 320px. Responsive wrapping removes both overflow cases, while six navigation sections remain visible.
 - Palette token corrections: Sandstone muted text, Solarized muted and accent text. Added automated WCAG-style **4.5:1** contrast checks for the four common token combinations (main text on background, muted text on surface, accent text on surface, and button text on accent) across the 20 defined themes. This does not establish that every individual component meets accessibility criteria.
+
+## Phone touch target follow-up (PR #25)
+
+- At 650px or narrower, the appearance, sound, help, and Filters header controls and all six navigation destinations now have at least **44px** rendered width and height. Key recovery and Collection/Duels buttons also have a 44px minimum height.
+- On 360px or narrower screens, the top breadcrumb is hidden while accessible navigation remains available.
+- [GitHub Actions run 43998680847](https://github.com/MasynNay/aftertone/actions/runs/43998680847) passed **269 Node tests** and **Chromium 1440×900, 390×844 and 320×740**. The browser tests measure all ten primary phone hit rectangles rather than merely matching selectors in CSS.
+- Touch hardware, 200% browser zoom, screen readers and Firefox still require separate manual checks. No complete WCAG conformance claim is made.
 
 ## Automated evidence
 
