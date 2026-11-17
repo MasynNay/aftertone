@@ -16,6 +16,7 @@ import { belongsToDiscoveryFeed } from '/src/discovery/queue.mjs';
 import { selectRouteQueue, isActiveRequest } from '/src/discovery/route-session.mjs';
 import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/graph.mjs';
 import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
+import { eligibleProviders } from '/src/discovery/provider-availability.mjs';
 import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore, loadDuelSelection, saveDuelSelection } from '/src/duels.mjs';
 import { renderDuels } from './duels-view.js';
 import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
@@ -322,8 +323,11 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     // performers; New Territory requests graph neighbors and chart breadth.
     const likedLanes = !requestSearch && state.source==='deezer' ? likedArtistLanes(state.history) : [];
     const candidateKinds={seeds:groups.seeds,related:seedMode ? groups.related : seedRelated,liked:likedLanes};
+    // A failed source is skipped only within this request. Keep it eligible
+    // for the next manual Retry Discovery or the bounded background refill.
+    const failedThisBatch = new Set();
     for (let attempt = 0; attempt < (state.source==='deezer' && !requestSearch ? 6 : 5); attempt++) {
-      const providers = sourceOrder().filter(name => !feed.exhausted.has(name));
+      const providers = eligibleProviders(sourceOrder(), feed.exhausted, failedThisBatch);
       if (!providers.length) break;
       const source = providers[feed.requests % providers.length];
       const planned = source==='deezer' && !requestSearch
@@ -379,8 +383,9 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
         // never mark an otherwise useful artist lane permanently exhausted.
         feed.retryAt=Date.now()+20000;
         if (state.source !== 'mix') break;
-        // In mix mode skip this source for this fetch cycle, retry on the next request.
-        feed.exhausted.add(source);
+        // Only skip this source for the current fetch. A temporary outage
+        // must never make Retry Discovery permanently lose that provider.
+        failedThisBatch.add(source);
       }
       // A usable first page is enough to present a real mode-specific card.
       // The 3-second replenisher brings in deeper catalog pages afterward.
