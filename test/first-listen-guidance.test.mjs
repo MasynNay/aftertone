@@ -61,8 +61,25 @@ test('broaden filters action keeps listening history and saved favorites intact'
   const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   const reset=main.match(/case 'reset-discovery-filters':([\s\S]*?)case 'clear-search'/)?.[1];
   assert.ok(reset);
-  for(const expected of ["state.genre='all'","state.language='all'","state.era='any'","persist();","loadMore(state.genre,true)"])
+  for(const expected of ["state.genre='all'","state.language='all'","state.era='any'","persist();","loadMore(state.genre,true,false,restoreKeyboardFocus)"])
     assert.ok(reset.includes(expected),expected);
   assert.doesNotMatch(reset,/state\.history\s*=|state\.favorites\s*=|reset-listens|saveImportedPlaylist/);
-  assert.match(main,/changeDiscoveryPath\(path\.dataset\.path\)/);
+  assert.match(main,/changeDiscoveryPath\(path\.dataset\.path,document\.activeElement===path\)/);
+});
+
+test('empty-state keyboard recovery hands focus back to Play or Retry without stealing later focus',()=>{
+  const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const helper=main.match(/function focusDiscoveryRecovery\(\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(helper);
+  assert.match(helper,/#stage-play/);
+  assert.match(helper,/discovery-empty-state \[data-action="load-more"\]:not\(:disabled\)/);
+  assert.match(helper,/\.focus\(\{preventScroll:true\}\)/);
+  const retry=main.slice(main.indexOf("case 'load-more':"),main.indexOf("case 'toggle-blind':"));
+  assert.match(retry,/document\.activeElement===action/);
+  assert.match(retry,/main\.focus\(\{preventScroll:true\}\)/);
+  assert.match(retry,/loadMore\(state\.genre,true,false,restoreKeyboardFocus\)/);
+  assert.match(main,/document\.activeElement === main && requestSearch === searchQuery/);
+  const clear=main.slice(main.indexOf("case 'clear-search':"),main.indexOf("case 'pass':"));
+  assert.match(clear,/maybeTopUp\(restoreKeyboardFocus\)/);
+  assert.match(main,/changeDiscoveryPath\(mode, restoreKeyboardFocus = false\)/);
 });
