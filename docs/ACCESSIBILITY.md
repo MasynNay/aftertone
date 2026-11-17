@@ -68,6 +68,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Browser exercises skip-link presence, first-run dialog Shift+Tab/Tab wrapping, Escape close, opener focus restoration, appearance picker Escape behavior, native Space navigation, active navigation state, and mobile horizontal overflow.
 - Existing browser regression flow still covers the portfolio and actual app launch, backup/restore and Music Duels using fictitious provider metadata, **not live Deezer playback**.
 
+## Backup and restore keyboard continuity (v0.12 development)
+
+- Collection now warns that restore **replaces** local progress and backup JSON is **unencrypted**. The Restore button describes its warning, and a persistent polite status message reports validation errors, completed downloads, and canceled imports without depending on a short-lived toast.
+- Restore is temporarily disabled while the selected file is being checked to prevent simultaneous import attempts. After an invalid or canceled import, focus returns to the visible Restore Backup button instead of a hidden file input.
+- Chromium and Firefox browser checks exercise invalid-file rejection, explicit confirmation dismissal without writes, focus restoration, and subsequent confirmed restore of the same selected backup. This is automated keyboard-continuity evidence, not a real screen-reader review or physical-device transfer.
+
 ## Manual acceptance checklist (not yet verified)
 
 - [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.
