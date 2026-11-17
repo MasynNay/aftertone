@@ -194,3 +194,48 @@ test('writes to optional keys are rolled back after a late storage failure',()=>
   assert.throws(()=>restoreProgressBackup(storage,JSON.stringify(candidate)),/previous data was restored/);
   assert.deepEqual(dest.entries(),previous);
 });
+
+test('export refuses corrupt local progress instead of silently backing up an empty profile',()=>{
+  const corruptions=[
+    [STORAGE_KEY,'{',/Listening progress data .* damaged/],
+    [STORAGE_KEY,'null',/Listening progress data .* damaged/],
+    [STORAGE_KEY,JSON.stringify({...createInitialState(),favorites:['invalid:id']}),/Listening progress data .* damaged/],
+    [DUEL_STORAGE_KEY,'{',/Music Duels data .* damaged/],
+    [DUEL_STORAGE_KEY,JSON.stringify({version:1,tournaments:[{bad:true}]}),/Music Duels data .* damaged/],
+    ['aftertone:tune-lab:v1','{',/Tune Lab data .* damaged/],
+    ['aftertone:tune-lab:v1',JSON.stringify({answered:'not-a-number',correct:1}),/Tune Lab data .* damaged/],
+    ['aftertone:favorite-artists:v1','{',/Favorite artists data .* damaged/],
+    ['aftertone:favorite-artists:v1',JSON.stringify(['Same Artist','Same Artist']),/Favorite artists data .* damaged/],
+  ];
+  for(const [key,value,error] of corruptions){
+    const source=populated();
+    source.setItem(key,value);
+    const before=source.entries();
+    assert.throws(()=>createProgressBackup(source),error,
+      'Backup must not substitute empty defaults for damaged '+key);
+    assert.deepEqual(source.entries(),before,
+      'Failed backup must not change or delete corrupt user data in '+key);
+  }
+});
+
+test('fresh sessions and legacy v1 sessions without savedTracks remain exportable',()=>{
+  const empty=JSON.parse(createProgressBackup(storage()));
+  assert.equal(empty.version,BACKUP_VERSION);
+  assert.deepEqual(empty.session.favorites,[]);
+  assert.deepEqual(empty.tournaments,[]);
+  assert.deepEqual(empty.quiz,{answered:0,correct:0});
+  assert.deepEqual(empty.artists,[]);
+
+  const legacy=populated();
+  const raw=JSON.parse(legacy.getItem(STORAGE_KEY));
+  delete raw.savedTracks; // Older legitimate local sessions lacked this field.
+  legacy.setItem(STORAGE_KEY,JSON.stringify(raw));
+  const previous=legacy.entries();
+  const exported=JSON.parse(createProgressBackup(legacy));
+  assert.equal(exported.session.history.length,1);
+  assert.deepEqual(exported.session.favorites,[songs[0].id]);
+  assert.deepEqual(exported.session.savedTracks,[]);
+  assert.equal(exported.tournaments.length,1);
+  assert.deepEqual(legacy.entries(),previous,
+    'Export must not rewrite or migrate live saved records in place');
+});
