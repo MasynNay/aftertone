@@ -14,6 +14,8 @@ A separate Firefox smoke pass checks desktop 1440×900 and phone 390×844 / 320�
 
 Both browser passes intercept Deezer JSONP calls with deterministic fictional fixture metadata and block all other external requests. This tests our own routing and interface behavior; **it does not prove real Deezer availability, playback, usage permission, or media licensing**.
 
+**Successful pull-request builds** now attach a seven-day `aftertone-ui-evidence` artifact with browser-generated desktop captures of the marketing page, Discover, Music Duels setup, an **in-progress four-song bracket**, and the completed podium. These use fictional fixture tracks, real rendered application markup and blocked external requests. This makes feature screenshots reviewable before they are copied into permanent README assets. The existing failure artifact is separate. Images do not demonstrate live music provider playback, content permissions or a human accessibility audit.
+
 Pull requests run the same checks but **never deploy**. Main-branch pushes deploy only after the test job succeeds. Failure screenshots are uploaded to the aftertone-browser-debug workflow artifact for seven days.
 
 ## Local verification

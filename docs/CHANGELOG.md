@@ -1,3 +1,9 @@
+## v0.12 development — Verifiable in-progress Music Duels screenshot (November 16, 2026)
+
+- Browser smoke testing now captures an actual **in-progress Music Duels bracket** after clicking Create Bracket and before the first vote; previously the captured Duels evidence was limited to setup and the completed podium.
+- Successful pull requests upload a seven-day `aftertone-ui-evidence` artifact containing the rendered landing, Discover, Duels setup, in-progress bracket and podium screenshots. Missing evidence now fails PR CI instead of silently omitting the image.
+- Evidence uses synthetic track metadata and blocks real provider requests. Publishing a screenshot into the README still requires inspecting the captured image; no audio rights, playback or accessibility claims are implied.
+
 ## v0.12 development — Deezer preview provider errors (November 16, 2026)
 
 - Deezer can signal a rejected preview request in an HTTP-200 JSON or JSONP body. The preview resolver now distinguishes that provider error from an ordinary track without a playable preview, and handles malformed metadata without throwing an unrelated JavaScript TypeError.

@@ -335,6 +335,9 @@ def browser_case(browser, base, width, height):
             page.locator('[data-duel-action="create"]').click()
             page.locator('#duel-active-event [data-duel-vote]').first.wait_for(
                 state="visible",timeout=TIMEOUT)
+            # Preserve genuine browser evidence of a live, in-progress bracket,
+            # not just the tournament picker or a hand-composed marketing mockup.
+            screenshot(page, f"music-duels-bracket-{label}")
             selected = page.evaluate("localStorage.getItem('aftertone:duels:selection:v1')")
             require(selected and selected.startswith("duel_"),"Opened bracket was not saved")
             page.locator('#duel-active-event [data-duel-vote]').first.click()
@@ -361,12 +364,26 @@ def browser_case(browser, base, width, height):
                     "Match count did not reflect the completed tournament")
             require(page.locator(".duel-hall-leader").count() >= 1,
                     "Completed cup did not enter Hall of Fame")
+            # Capture the verified podium BEFORE requesting the CSV: Export
+            # intentionally shows a toast, which is not part of the podium UI.
+            page.evaluate("""() => {
+                document.activeElement?.blur?.();
+                window.scrollTo({top:0,behavior:'instant'});
+            }""")
+            page.wait_for_function("window.scrollY === 0",timeout=TIMEOUT)
+            # Winning the final also shows a toast. Wait for its CSS fade to
+            # finish, rather than merely waiting for the 'show' class to clear.
+            page.wait_for_function("""() => {
+                const toast=document.querySelector('#toast');
+                return !toast || (!toast.classList.contains('show') &&
+                    Number.parseFloat(getComputedStyle(toast).opacity) <= 0.01);
+            }""",timeout=TIMEOUT)
+            screenshot(page,f"music-duels-complete-{label}")
             with page.expect_download(timeout=TIMEOUT) as hall_download:
                 page.locator('[data-duel-action="export-hall"]').click()
             hall = Path(hall_download.value.path()).read_text(encoding="utf-8")
             require("Track Name" in hall and "Fixture Melody" in hall,
                     "Hall of Fame export must contain podium metadata")
-            screenshot(page,f"music-duels-complete-{label}")
             # Close stays closed on reload, and History can reopen the podium.
             page.locator('[data-duel-action="dismiss"]').click()
             page.reload(wait_until="load",timeout=TIMEOUT)

@@ -39,6 +39,19 @@ jobs:
           AFTERTONE_VISUAL_REVIEW: ${{ github.event_name == 'pull_request' && '1' || '0' }}
       - name: Smoke-test Firefox homepage, app navigation and keyboard access
         run: python scripts/browser-smoke.py --firefox
+      - name: Upload verified product screenshots for PR review
+        if: success() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: aftertone-ui-evidence
+          path: |
+            browser-smoke-artifacts/portfolio-1440x900.png
+            browser-smoke-artifacts/discover-1440x900.png
+            browser-smoke-artifacts/duels-1440x900.png
+            browser-smoke-artifacts/music-duels-bracket-1440x900.png
+            browser-smoke-artifacts/music-duels-complete-1440x900.png
+          if-no-files-found: error
+          retention-days: 7
       - name: Upload failure screenshots
         if: failure()
         uses: actions/upload-artifact@v4
