@@ -67,3 +67,14 @@ test('real backup and restore are exercised in Chromium and Firefox',()=>{
   const calls=[...browser.matchAll(/check_backup_restore_cross_browser\(browser, base\)/g)];
   assert.equal(calls.length,3,'One definition and one call in each real browser');
 });
+
+test('reduced-motion reflow audits all routes in both real browsers at zoom-equivalent widths',()=>{
+  assert.match(browser,/def check_reflow_reduced_motion\(browser, base, width, height\):/);
+  assert.match(browser,/reduced_motion="reduce"/);
+  assert.match(browser,/prefers-reduced-motion: reduce/);
+  assert.match(browser,/Listening card animations still run/);
+  assert.match(browser,/Horizontal document overflow in/);
+  assert.match(browser,/Navigation\/control clipped at/);
+  assert.equal(browser.split('check_reflow_reduced_motion(browser, base, 720, 900)').length-1,2);
+  assert.equal(browser.split('check_reflow_reduced_motion(browser, base, 360, 740)').length-1,2);
+});
