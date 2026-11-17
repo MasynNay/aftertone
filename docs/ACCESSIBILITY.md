@@ -53,6 +53,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - The Search for an Artist shortcut, Discover passport jump and newly created Music Duels bracket now choose instantaneous scrolling whenever the device advertises `prefers-reduced-motion: reduce`. CSS-only reduced-motion rules were insufficient because JavaScript explicitly requested smooth scrolling in these three places.
 - The built-app Chromium/Firefox reduced-motion tests now intercept a real Search for an Artist click at 720px and 360px and assert that the browser receives `behavior: 'auto'`. This is automated motion-respect verification, not a human photosensitivity or screen-reader audit.
 
+## Keyboard continuity for listening decisions (v0.12 development)
+
+- Keep and Pass replace the current card after a short animation. When activated from a focused button, keyboard focus now moves to the corresponding button on the next card, or the named main area if no song remains. Undo likewise restores the previous card and focuses the main area if Undo becomes disabled.
+- Real Chromium and Firefox tests activate Pass, Undo and Keep through the keyboard, verify history/favorites and no page reload, and assert the active element is never a removed or disabled decision control.
+- Gestures and keyboard shortcuts that did not start from a focused decision button do not receive an unexpected focus jump. Manual screen-reader testing remains outstanding.
+
 ## Automated evidence
 
 [Successful GitHub Actions run](https://github.com/MasynNay/aftertone/actions/runs/43982300690) on PR #23:

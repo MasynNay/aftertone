@@ -1196,11 +1196,21 @@ function closeModal() {
   if (wasChoice && choice.id) recordDecision(choice.id, 'like', { recognized: choice.recognized, correct: choice.correct, mood: choice.mood });
 }
 
+/** The decision buttons live inside a card replaced on Keep, Pass and Undo.
+ * Preserve focus only when the user actually activated one of those buttons;
+ * gesture/shortcut users should keep their current keyboard context.
+ */
+function restoreDecisionFocus(action) {
+  const button = current ? $('#listening-card [data-action="' + action + '"]') : null;
+  (button && !button.disabled ? button : main).focus({preventScroll:true});
+}
+
 function acceptChoice(action) {
   if (view !== 'discover' || !current || modal || animatingChoice) return;
   animatingChoice = true;
   const selected = current.id;
   const card = $('#listening-card');
+  const returnFocus = document.activeElement === card?.querySelector('[data-action="' + action + '"]');
   if (card) {
     const stamp = $('#decision-stamp', card);
     if (stamp) { stamp.textContent = action === 'like' ? '♥' : 'NOPE'; stamp.dataset.feedback = action; }
@@ -1211,6 +1221,7 @@ function acceptChoice(action) {
     animatingChoice = false;
     if (action === 'pass') recordDecision(selected, 'pass');
     else recordDecision(selected, 'like');
+    if (returnFocus) restoreDecisionFocus(action);
   };
   // One bounded timer per gesture; honor the reduced-motion preference.
   setTimeout(finish, matchMedia('(prefers-reduced-motion: reduce)').matches ? 15 : 190);
@@ -1662,9 +1673,18 @@ document.addEventListener('click', async (event) => {
     case 'clear-search': searchQuery = ''; searchDraft = ''; stopContinuous(); chooseNext(); render(); return maybeTopUp();
     case 'pass': return acceptChoice('pass');
     case 'like': return acceptChoice('like');
-    case 'undo':
+    case 'undo': {
       if (challengeIds.length || !state.history.length) return;
-      const lastId = state.history.at(-1).id; state = restoreLastChoice(state); persist(); stopContinuous(); current = lookup(lastId) || selectNext(catalog, state.history, state.genre); render(); return toast('Last choice undone.');
+      const returnFocus = document.activeElement === action;
+      const lastId = state.history.at(-1).id;
+      state = restoreLastChoice(state);
+      persist();
+      stopContinuous();
+      current = lookup(lastId) || selectNext(catalog, state.history, state.genre);
+      render();
+      if (returnFocus) restoreDecisionFocus('undo');
+      return toast('Last choice undone.');
+    }
     case 'remove-favorite': state = removeFavorite(state, id); persist(); render(); return toast('Removed from collection.');
     case 'export-json': return exportLibrary('json');
     case 'export-csv': return exportLibrary('csv');

@@ -68,3 +68,16 @@ test('scripted scroll targets obey the user reduced-motion preference',()=>{
   assert.doesNotMatch(main,/scrollIntoView\(\{behavior:'smooth'/,
     'Do not force smooth scrolling when the OS requests reduced motion');
 });
+
+test('Keep, Pass and Undo restore focus after replacing the decision controls',()=>{
+  const helper=main.match(/function restoreDecisionFocus\(action\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(helper,'Shared decision focus helper missing');
+  assert.match(helper,/\(button && !button\.disabled \? button : main\)\.focus\(\{preventScroll:true\}\)/);
+  const choice=main.match(/function acceptChoice\(action\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(choice);
+  assert.match(choice,/document\.activeElement === card\?\.querySelector/);
+  assert.match(choice,/recordDecision\(selected, 'pass'\)/);
+  assert.match(choice,/if \(returnFocus\) restoreDecisionFocus\(action\)/);
+  const undo=main.slice(main.indexOf("case 'undo':"),main.indexOf("case 'remove-favorite':"));
+  assert.match(undo,/if \(returnFocus\) restoreDecisionFocus\('undo'\)/);
+});
