@@ -371,6 +371,13 @@ def browser_case(browser, base, width, height):
                 window.scrollTo({top:0,behavior:'instant'});
             }""")
             page.wait_for_function("window.scrollY === 0",timeout=TIMEOUT)
+            # Winning the final also shows a toast. Wait for its CSS fade to
+            # finish, rather than merely waiting for the 'show' class to clear.
+            page.wait_for_function("""() => {
+                const toast=document.querySelector('#toast');
+                return !toast || (!toast.classList.contains('show') &&
+                    Number.parseFloat(getComputedStyle(toast).opacity) <= 0.01);
+            }""",timeout=TIMEOUT)
             screenshot(page,f"music-duels-complete-{label}")
             with page.expect_download(timeout=TIMEOUT) as hall_download:
                 page.locator('[data-duel-action="export-hall"]').click()
