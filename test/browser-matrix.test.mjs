@@ -43,3 +43,14 @@ test('successful PR runs retain browser-generated app screenshots including an a
   const voted=browser.indexOf("page.locator('#duel-active-event [data-duel-vote]').first.click()");
   assert.ok(created < bracket && bracket < voted,'Brackets must be captured after creation, before any votes');
 });
+
+test('Deezer outages recover from an API error without a page reload or false votes in both browsers',()=>{
+  assert.match(browser,/def check_catalog_outage_recovery\(browser, base\):/);
+  assert.match(browser,/Temporary provider outage \(fictional fixture\)/);
+  assert.match(browser,/state\["online"\] = True/);
+  assert.match(browser,/retry\.click\(\)/);
+  assert.match(browser,/window\.__aftertoneRecoveryProbe/);
+  assert.match(browser,/saved_after == saved_before/);
+  const uses=[...browser.matchAll(/check_catalog_outage_recovery\(browser, base\)/g)];
+  assert.equal(uses.length,3,'The outage test must run once in each browser plus its definition');
+});
