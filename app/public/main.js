@@ -1,5 +1,5 @@
 import {apiFetch} from './api-browser.js';
-import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
+import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
 import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, restoreProgressBackup } from '/src/progress-backup.mjs';
@@ -214,6 +214,8 @@ const sourceRemembered = () => { try { return Boolean(localStorage.getItem('afte
 let catalogLive = false;
 let collectionQuery = '';
 let collectionSort = 'recent';
+// Undo for the most recent removal remains visible while this tab is open.
+let lastRemovedFavorite = null;
 let pointerStart = null;
 let startedAt = Date.now();
 const initialChallenge = decodeChallenge(new URL(location.href).searchParams.get('challenge'));
@@ -930,7 +932,7 @@ function render() {
     ? {start:focusedSearch.selectionStart,end:focusedSearch.selectionEnd,direction:focusedSearch.selectionDirection}
     : null;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1807,7 +1809,27 @@ document.addEventListener('click', async (event) => {
       if (returnFocus) $('#collection-search')?.focus({preventScroll:true});
       return;
     }
-    case 'remove-favorite': state = removeFavorite(state, id); persist(); render(); return toast('Removed from collection.');
+    case 'remove-favorite': {
+      if (!state.favorites.includes(id)) return;
+      const returnFocus=document.activeElement===action;
+      lastRemovedFavorite={id,index:state.favorites.indexOf(id),title:lookup(id)?.title || 'Song'};
+      state=removeFavorite(state,id);
+      persist();
+      render();
+      if (returnFocus) ($('[data-action="undo-remove-favorite"]') || main).focus({preventScroll:true});
+      return;
+    }
+    case 'undo-remove-favorite': {
+      if (!lastRemovedFavorite) return;
+      const returnFocus=document.activeElement===action;
+      const {id:removedId,index}=lastRemovedFavorite;
+      lastRemovedFavorite=null;
+      const restored=restoreRemovedFavorite(state,removedId,index);
+      if (restored!==state) {state=restored;persist();}
+      render();
+      if (returnFocus) ($('#collection-search') || main).focus({preventScroll:true});
+      return;
+    }
     case 'export-json': return exportLibrary('json');
     case 'export-csv': return exportLibrary('csv');
     case 'backup-progress': return downloadProgressBackup();
