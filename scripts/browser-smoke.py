@@ -1911,6 +1911,152 @@ def check_mobile_filters_keyboard(browser, base, width):
         context.close()
 
 
+
+def check_swipe_pointer_safety(browser, base, width):
+    """Primary swipes count once; vertical, canceled and secondary drags never vote."""
+    context=browser.new_context(viewport={"width":width,"height":740},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"swipe-pointer-{browser.browser_type.name}-{width}"
+
+    def progress():
+        return page.evaluate("""() => {
+            const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {history:state.history||[],favorites:state.favorites||[]};
+        }""")
+
+    def anchor():
+        card=page.locator("#listening-card")
+        card.scroll_into_view_if_needed(timeout=TIMEOUT)
+        box=card.bounding_box()
+        require(box and box["width"]>160,"Listening card could not be hit-tested")
+        x=box["x"]+box["width"]*.34
+        y=max(85,min(545,box["y"]+110))
+        return x,y,box
+
+    def drag(dx,dy,button="left",release_outside=False):
+        x,y,box=anchor()
+        page.mouse.move(x,y)
+        page.mouse.down(button=button)
+        if release_outside:
+            endx=box["x"]+box["width"]+6
+            require(endx<width,"The pointer release target is outside the phone viewport")
+            page.mouse.move(endx,y,steps=8)
+        else:
+            page.mouse.move(x+dx,y+dy,steps=8)
+        page.mouse.up(button=button)
+
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.evaluate("window.__swipePointerDocument='same-document'")
+        before=progress()
+        require(not before["history"] and not before["favorites"],
+                "New swipe test profile must not contain saved votes")
+
+        drag(135,0,button="right")
+        page.keyboard.press("Escape")
+        require(progress()==before,"Right-button drag recorded a listening vote")
+        require(not page.locator("#listening-card").evaluate(
+            "(card)=>card.classList.contains('dragging')"),
+            "Right-button drag left the listening card in a drag state")
+
+        page.evaluate("""() => {
+            const target=document.querySelector('#listening-card .record-visual');
+            for(const [type,x] of [['pointerdown',100],['pointermove',280],['pointerup',280]]) {
+              target.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerId:86,
+                pointerType:'touch',button:0,isPrimary:false,clientX:x,clientY:185}));
+            }
+        }""")
+        require(progress()==before,"Secondary touch pointer recorded a vote")
+
+        drag(44,162)
+        require(progress()==before,"Mostly vertical motion was counted as a swipe")
+        require(not page.locator("#listening-card").evaluate(
+            "(card)=>card.classList.contains('dragging') || Boolean(card.style.transform)"),
+            "Vertical scroll gesture left stale swipe animation")
+        drag(59,0)
+        require(progress()==before,"Below-threshold horizontal drag rated a song")
+
+        # Cancel a genuine, primary mouse drag by simulating a browser pointer
+        # cancellation (as happens when the OS takes over touch scrolling).
+        x,y,_=anchor()
+        page.evaluate("""() => {
+            document.addEventListener('pointerdown',event=>{
+              window.__swipePointerId=event.pointerId;
+            },{capture:true,once:true});
+        }""")
+        page.mouse.move(x,y)
+        page.mouse.down()
+        page.mouse.move(x+105,y,steps=6)
+        require(page.locator("#listening-card").evaluate(
+            "(card)=>card.classList.contains('dragging')"),
+            "A deliberate horizontal drag did not show feedback")
+        page.evaluate("""() => {
+            const card=document.querySelector('#listening-card');
+            card.dispatchEvent(new PointerEvent('pointercancel',{
+                bubbles:true,pointerId:window.__swipePointerId,isPrimary:true,button:0}));
+        }""")
+        page.mouse.up()
+        require(progress()==before,"Canceled drag recorded a listening vote")
+        require(page.locator("#listening-card").evaluate(
+            "(card)=>!card.classList.contains('dragging') && !card.style.transform"),
+            "Pointer cancellation left a transformed card")
+
+        # Pointer capture keeps the release reliable even just outside the
+        # card's right edge, while still counting exactly one intentional Keep.
+        drag(0,0,release_outside=True)
+        page.wait_for_function("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return (s.history||[]).length===1;
+        }""",timeout=TIMEOUT)
+        liked=progress()
+        require(liked["history"][0]["action"]=="like" and len(liked["favorites"])==1,
+                "A deliberate right swipe did not keep exactly one song")
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+
+        drag(-140,0)
+        page.wait_for_function("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return (s.history||[]).length===2;
+        }""",timeout=TIMEOUT)
+        passed=progress()
+        require(passed["history"][-1]["action"]=="pass" and
+                passed["favorites"]==liked["favorites"],
+                "Left swipe did not Pass exactly once without deleting a favorite")
+
+        # A view transition during an active drag removes its original card.
+        # The later pointerup must not vote for the now-current/previous track.
+        x,y,_=anchor()
+        page.mouse.move(x,y)
+        page.mouse.down()
+        page.mouse.move(x+120,y,steps=6)
+        page.evaluate("""() => document.querySelector(
+            '#main-nav button[data-view="collection"]').click()""")
+        page.mouse.up()
+        require(progress()==passed,"Replaced card's delayed pointerup recorded a vote")
+        require(page.locator("#main-content").get_attribute("aria-label")=="Collection section",
+                "Navigation during drag failed to show Collection")
+        require(page.evaluate("window.__swipePointerDocument")=="same-document",
+                "Swipe gesture or view change reloaded the document")
+        require(not errors,"Swipe browser exception: "+"; ".join(errors))
+        print(f"PASS {label}: primary pointer capture, neutral cancels and exact Keep/Pass")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1935,6 +2081,8 @@ def firefox_main():
             check_artist_outage_without_fallback(browser, base)
             check_mobile_filters_keyboard(browser, base, 390)
             check_mobile_filters_keyboard(browser, base, 320)
+            check_swipe_pointer_safety(browser, base, 390)
+            check_swipe_pointer_safety(browser, base, 320)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1965,6 +2113,8 @@ def main():
             check_artist_outage_without_fallback(browser, base)
             check_mobile_filters_keyboard(browser, base, 390)
             check_mobile_filters_keyboard(browser, base, 320)
+            check_swipe_pointer_safety(browser, base, 390)
+            check_swipe_pointer_safety(browser, base, 320)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
