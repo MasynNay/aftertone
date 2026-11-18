@@ -98,6 +98,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Clearing an active Collection filter restores keyboard focus to the saved-music search box if the action began there; sorting restores focus to the new dropdown after rerendering rather than leaving users on a removed element. Search selection direction and range are preserved during live filtering.
 - Browser checks in Chromium and Firefox save a fictional song, enter a query that yields zero matches, clear it by keyboard, sort the recovered result and verify that favorite data and browser document identity remain unchanged. This is not a manual screen-reader audit.
 
+## Collection removal recovery and focus (v0.12 development)
+
+- Removing a saved song now shows a persistent in-page **Undo Remove** control, including when the final saved track disappears. The status text is separately announced, and the action has a 44px minimum touch height.
+- Keyboard users activating the focused Remove control are moved to Undo instead of being stranded on the deleted tile. Activating Undo returns focus to the search field (or named main area) while restoring the favorite's exact saved position. The user's listening history and saved track metadata are not rewritten.
+- Node tests check order, duplicate prevention, unchanged history and last-song recovery. Chromium and Firefox test Remove → Undo → reload with fictional music fixtures. The one-step recovery is available only while the browser tab remains open; it is not a substitute for an exported progress backup or a manual screen-reader audit.
+
 ## Manual acceptance checklist (not yet verified)
 
 - [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.
