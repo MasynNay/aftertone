@@ -1931,17 +1931,25 @@ def check_swipe_pointer_safety(browser, base, width):
             return {history:state.history||[],favorites:state.favorites||[]};
         }""")
 
-    def anchor():
+    def anchor(from_right=False):
         card=page.locator("#listening-card")
         card.scroll_into_view_if_needed(timeout=TIMEOUT)
         box=card.bounding_box()
         require(box and box["width"]>160,"Listening card could not be hit-tested")
-        x=box["x"]+box["width"]*.34
+        # Start from the unoccupied card padding, never the artwork (which
+        # browsers may drag natively) or the playback buttons at narrow widths.
+        x=box["x"]+box["width"]-12 if from_right else box["x"]+12
         y=max(85,min(545,box["y"]+110))
+        safe=page.evaluate("""([x,y]) => {
+          const el=document.elementFromPoint(x,y);
+          return Boolean(el?.closest('#listening-card')) &&
+            !Boolean(el?.closest('button,input,select,textarea,a,label'));
+        }""",[x,y])
+        require(safe,f"Swipe origin hit an interactive/covered element: {x:.1f},{y:.1f}")
         return x,y,box
 
     def drag(dx,dy,button="left",release_outside=False):
-        x,y,box=anchor()
+        x,y,box=anchor(from_right=dx<0)
         page.mouse.move(x,y)
         page.mouse.down(button=button)
         if release_outside:
