@@ -79,10 +79,15 @@ function deezerRejected(payload, context) {
     : String(payload?.code ?? 'unavailable').slice(0, 40);
   const error = new Error(`Deezer rejected the ${context}: ${detail}` +
     (Number(payload?.code) === 429 ? '. Requests are temporarily limited. Wait a moment, then retry.' : ''));
-  if (Number(payload?.code) === 429) error.status = 429;
+  if ([400,404,429].includes(Number(payload?.code))) error.status = Number(payload.code);
   return error;
 }
-const isDeezerRateLimited = error => error?.status === 429;
+/** Only missing/unsupported artist endpoints justify a ranked search fallback.
+ * Timeouts, HTTP 5xx, network failures, aborts and quota errors should
+ * surface to Retry Discovery instead of doubling provider traffic.
+ */
+const canFallbackToRankedSearch = error =>
+  error?.status === 400 || error?.status === 404;
 
 async function deezerGet(path, params, fetcher) {
   const url = new URL(`${API}/${path}`);
@@ -92,7 +97,7 @@ async function deezerGet(path, params, fetcher) {
     const error = new Error(`Deezer returned HTTP ${response.status}. ` +
       (response.status === 429 ? 'Requests are temporarily limited. Wait a moment, then retry.' :
         'The public catalog may be unavailable in your region or network.'));
-    if (response.status === 429) error.status = 429;
+    error.status = response.status;
     throw error;
   }
   const result=await response.json();
@@ -140,10 +145,9 @@ async function fetchArtistTracks(name,page,fetcher,knownArtist=null) {
     const artist=knownArtist || await findExactArtist(name,fetcher);
     if(artist) direct=await deezerGet(`artist/${artist.id}/top`,{limit:PAGE_SIZE,index:offset},fetcher);
   } catch (error) {
-    // A 429 is not a missing artist. Do not amplify quota exhaustion by
-    // immediately launching another search request.
-    if (isDeezerRateLimited(error)) throw error;
-    // Otherwise retain the existing ranked-search fallback.
+    // Only an unavailable artist endpoint warrants trying ranked search.
+    // A slow/offline provider must not trigger another immediate request.
+    if (!canFallbackToRankedSearch(error)) throw error;
   }
   // An artist's top list can have no previews in a particular market. Don't
   // leave the listener staring at an empty route when ranked search works.
@@ -173,7 +177,7 @@ export async function fetchDeezerPage(genre='all', cursor='0', fetcher=fetch, qu
     // Song-title searches still use ranked Deezer track search.
     const eligible=/^[\p{L}\p{N} .&'’_-]{2,75}$/u.test(search);
     const artist=eligible ? await findExactArtist(search,fetcher).catch(error=>{
-      if (isDeezerRateLimited(error)) throw error;
+      if (!canFallbackToRankedSearch(error)) throw error;
       return null;
     }) : null;
     if(artist) {
