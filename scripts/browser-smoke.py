@@ -1934,19 +1934,30 @@ def check_swipe_pointer_safety(browser, base, width):
     def anchor(from_right=False):
         card=page.locator("#listening-card")
         card.scroll_into_view_if_needed(timeout=TIMEOUT)
-        box=card.bounding_box()
-        require(box and box["width"]>160,"Listening card could not be hit-tested")
-        # Start from the unoccupied card padding, never the artwork (which
-        # browsers may drag natively) or the playback buttons at narrow widths.
-        x=box["x"]+box["width"]-12 if from_right else box["x"]+12
-        y=max(85,min(545,box["y"]+110))
-        safe=page.evaluate("""([x,y]) => {
-          const el=document.elementFromPoint(x,y);
-          return Boolean(el?.closest('#listening-card')) &&
-            !Boolean(el?.closest('button,input,select,textarea,a,label'));
-        }""",[x,y])
-        require(safe,f"Swipe origin hit an interactive/covered element: {x:.1f},{y:.1f}")
-        return x,y,box
+        # After a neutral drag, CSS briefly animates the card back to rest.
+        # Probe the actual element under several well-inset points instead of
+        # blindly clicking a stale box edge during that transition.
+        found=page.evaluate("""(fromRight) => {
+          const card=document.querySelector('#listening-card');
+          const r=card.getBoundingClientRect();
+          const xs=fromRight?[r.right-45,r.right-65,r.right-30]:
+                              [r.left+45,r.left+65,r.left+30];
+          const ys=[r.top+85,r.top+115,r.top+180,r.top+240,r.top+45];
+          for(const y of ys) {
+            if(y<35 || y>innerHeight-95)continue;
+            for(const x of xs) {
+              if(x<5 || x>innerWidth-5)continue;
+              const hit=document.elementFromPoint(x,y);
+              if(card.contains(hit) &&
+                 !hit?.closest('button,input,select,textarea,a,label,img,[draggable]'))
+                return {x,y,box:{x:r.left,y:r.top,width:r.width,height:r.height}};
+            }
+          }
+          return null;
+        }""",from_right)
+        require(found is not None,
+                "Could not locate an unobstructed card swipe origin at phone width")
+        return found["x"],found["y"],found["box"]
 
     def drag(dx,dy,button="left",release_outside=False):
         x,y,box=anchor(from_right=dx<0)
