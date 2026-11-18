@@ -134,3 +134,24 @@ test('filter redraws retain focus on active select boxes',()=>{
     assert.match(render,new RegExp(id));
   assert.match(render,/\$\('#'\+focusedFilterId\)\?\.focus\(\{preventScroll:true\}\)/);
 });
+
+
+test('swipe gestures record decisions only for a primary pointer on the original card',()=>{
+  const swipe=main.slice(main.indexOf('function clearSwipeGesture('),main.indexOf('async function init()'));
+  assert.match(swipe,/pointerStart=null/);
+  assert.match(swipe,/card\.releasePointerCapture\(gesture\.pointer\)/);
+  assert.match(swipe,/event\.isPrimary===false \|\| event\.button!==0/);
+  assert.match(swipe,/card\.setPointerCapture\?\.\(event\.pointerId\)/);
+  assert.match(swipe,/trackId:current\.id/);
+  assert.match(swipe,/!gesture\.card\.isConnected \|\| current\?\.id!==gesture\.trackId/);
+  assert.match(swipe,/clearSwipeGesture\(event\.pointerId\)/);
+  assert.match(swipe,/Math\.abs\(dx\)>75 && Math\.abs\(dx\)>Math\.abs\(dy\)\*1\.6/);
+  assert.match(swipe,/main\.addEventListener\('pointercancel'/);
+  assert.match(swipe,/main\.addEventListener\('lostpointercapture'/);
+  assert.match(swipe,/window\.addEventListener\('blur'/);
+  const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
+  assert.match(render,/clearSwipeGesture\(\)/,
+    'Rebuilding the active card must invalidate a pending drag');
+  assert.match(css,/touch-action: pan-y/,
+    'Vertical touch scrolling must remain native');
+});
