@@ -226,3 +226,18 @@ test('CI caches only the exact pinned Linux browser engines without removing dep
   assert.match(workflow,/if: github\.event_name != 'pull_request'/,
     'Pages uploads and production deployment must stay gated separately');
 });
+
+
+test('mobile Filters keyboard recovery is checked at 390px and 320px in both browser engines',()=>{
+  assert.match(browser,/def check_mobile_filters_keyboard\(browser, base, width\):/);
+  for(const marker of [
+    'Opening Filters did not focus a visible keyboard-safe close action',
+    'Escape failed to restore focus to the Filters opener',
+    'Rerendering a mobile filter stranded focus on a removed select',
+    'Search submission left mobile Filters covering the results',
+    'Navigation away left a hidden Filters drawer marked expanded',
+    'Mobile filter interactions fabricated listening votes or favorites',
+  ]) assert.ok(browser.includes(marker),'Missing mobile Filters regression: '+marker);
+  assert.equal(browser.split('check_mobile_filters_keyboard(browser, base, 390)').length-1,2);
+  assert.equal(browser.split('check_mobile_filters_keyboard(browser, base, 320)').length-1,2);
+});
