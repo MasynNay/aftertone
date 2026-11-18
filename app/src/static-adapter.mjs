@@ -102,9 +102,10 @@ const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:
 
 async function routeApi(url,options={}){
   const p=url.searchParams;
-  // Preserve caller cancellation through Deezer's nested artist/chart lookups.
-  // Each lookup also owns a short timeout: either signal can stop the JSONP.
-  const discoveryFetcher=(input,requestOptions={})=>deezerFetch(input,{
+  // Preserve caller cancellation through every Deezer lookup, including
+  // on-demand previews, imported playlists and related-artist lookups.
+  // Combine it with each provider helper's own per-request timeout.
+  const providerFetcher=(input,requestOptions={})=>deezerFetch(input,{
     ...requestOptions,
     signal:options.signal
       ? AbortSignal.any([options.signal,requestOptions.signal].filter(Boolean))
@@ -115,16 +116,16 @@ async function routeApi(url,options={}){
     if(url.pathname==='/api/catalog')return json({tracks:STARTER_TRACKS,count:STARTER_TRACKS.length,live:true,genres:GENRES,provider:'deezer',providers:['deezer'],expandable:true,youtubeConfigured:false,featuredCount:0,note:'Live Deezer catalog metadata; on-demand preview audio from Deezer. No music files are hosted by AFTERTONE.'});
     if(url.pathname==='/api/discover'){
       if((p.get('source')||'deezer')!=='deezer')return json({error:'Only Deezer discovery is configured on this public site.'},400);
-      const result=await fetchDeezerPage(p.get('genre')||'all',p.get('cursor')||'0',discoveryFetcher,p.get('q')||'',p.get('language')||'all',p.get('era')||'any',p.get('seed_artist')||'');
+      const result=await fetchDeezerPage(p.get('genre')||'all',p.get('cursor')||'0',providerFetcher,p.get('q')||'',p.get('language')||'all',p.get('era')||'any',p.get('seed_artist')||'');
       return json(result);
     }
     if(url.pathname==='/api/audio'){
       const id=p.get('id')||'';
       if(!/^deezer:[1-9]\d{0,19}$/.test(id))return json({error:'Preview unavailable for this track.'},404);
-      return json(await resolveDeezerPreview(id.slice(7),deezerFetch));
+      return json(await resolveDeezerPreview(id.slice(7),providerFetcher));
     }
-    if(url.pathname==='/api/related-artists')return json(await fetchDeezerRelatedArtists(p.get('artist')||'',deezerFetch));
-    if(url.pathname==='/api/playlist-link')return json(await importPlaylistLink(p.get('url')||'',deezerFetch));
+    if(url.pathname==='/api/related-artists')return json(await fetchDeezerRelatedArtists(p.get('artist')||'',providerFetcher));
+    if(url.pathname==='/api/playlist-link')return json(await importPlaylistLink(p.get('url')||'',providerFetcher));
     if(url.pathname==='/api/lyrics'){
       // Browser-safe public LRCLIB calls, no embedded key or restricted headers.
       const fetcher=(link,options={})=>fetch(link,{headers:{Accept:'application/json','Lrclib-Client':'AFTERTONE/0.10'},signal:options.signal});
