@@ -1774,10 +1774,9 @@ def check_artist_outage_without_fallback(browser, base):
         field=page.locator("#music-search")
         field.fill("Unavailable Artist")
         field.press("Enter")
+        page.get_by_role("heading",name="Music Is Temporarily Unavailable").wait_for(
+            state="visible",timeout=TIMEOUT)
         empty=page.locator(".discovery-empty-state")
-        empty.wait_for(state="visible",timeout=TIMEOUT)
-        require("Music Is Temporarily Unavailable" in empty.inner_text(),
-                "Failed artist lookup did not show a recoverable error state")
         require("Catalog fixture temporarily unavailable" in empty.inner_text(),
                 "A provider error was obscured by a fallback response")
         require(state["failed_lookup"]==1 and state["ranked_fallback"]==0,
