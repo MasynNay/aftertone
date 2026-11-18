@@ -200,3 +200,14 @@ test('real browsers cancel obsolete artist JSONP when queries or paths switch',(
   assert.equal(browser.split('check_cancel_stale_discovery(browser, base)').length-1,3,
     'Stale provider cancellation must be checked in Chromium and Firefox');
 });
+
+test('both browser engines reject ranked-search retry storms during artist lookup outages',()=>{
+  assert.match(browser,/def check_artist_outage_without_fallback\(browser, base\):/);
+  assert.match(browser,/Catalog fixture temporarily unavailable/);
+  assert.match(browser,/state\["failed_lookup"\]==1 and state\["ranked_fallback"\]==0/);
+  assert.match(browser,/Artist lookup outage incorrectly launched a second ranked search/);
+  assert.match(browser,/Retry after provider recovery did not present fixture songs/);
+  assert.match(browser,/Artist outage\/recovery modified favorites or listening votes/);
+  assert.equal(browser.split('check_artist_outage_without_fallback(browser, base)').length-1,3,
+    'Outage/recovery must run once in Chromium, once in Firefox');
+});
