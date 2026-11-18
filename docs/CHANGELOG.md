@@ -1,3 +1,9 @@
+## v0.12 development — Cancel stale Deezer discovery requests (November 18, 2026)
+
+- When a listener submits another search or changes listening paths/filters while discovery is still fetching, cancel the obsolete request instead of allowing it to update shared catalog metadata or fire additional fallback lookups.
+- Forward the browser's AbortSignal through Deezer JSONP chart and artist-resolution requests while retaining the per-lookup timeout. Cancellation removes the obsolete JSONP script and callback and does not appear as a provider error or a false listening vote.
+- Preserve an interrupted path's unprimed state so reopening it still fetches its own real first page. Added Node cancellation tests and Chromium/Firefox checks that hold an old request unanswered while a newer search completes, with fictional provider records.
+
 ## v0.12 development — Undo accidental Collection removals (November 17, 2026)
 
 - Added a persistent **Undo Remove** action whenever a song is removed from Collection, including the final saved song. The last removed track can be restored in the same browser tab until another removal supersedes it or the tab reloads.
