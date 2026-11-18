@@ -55,6 +55,7 @@ export function deezerJSONP(input,{signal,timeoutMs=TIMEOUT_MS}={}){
   }
   if(signal?.aborted) return Promise.reject(new DOMException('Request canceled','AbortError'));
   const callback=`__aftertoneDeezer_${++requestSerial}`;
+  const scope=window;
   u.searchParams.set('output','jsonp');u.searchParams.set('callback',callback);
   // Each caller owns its own callback, timeout and abort lifecycle.
   // Sharing a Promise lets one listener abort another identical request.
@@ -69,14 +70,14 @@ export function deezerJSONP(input,{signal,timeoutMs=TIMEOUT_MS}={}){
       script.remove();
       if (error && (error.name==='AbortError' || error.message==='Deezer did not respond. Try again.')) {
         // The browser may still execute already-fetched JSONP after script.remove().
-        retireJSONPCallback(callback,window);
+        retireJSONPCallback(callback,scope);
       } else {
-        try{delete window[callback];}catch{window[callback]=undefined;}
+        try{delete scope[callback];}catch{scope[callback]=undefined;}
       }
       if(error)reject(error);else resolve(payload);
     }
     const abort=()=>finish(new DOMException('Request canceled','AbortError'));
-    window[callback]=payload=>finish(null,payload);
+    scope[callback]=payload=>finish(null,payload);
     script.onerror=()=>finish(new Error('Deezer catalog was unreachable. Please try again.'));
     timer=setTimeout(()=>finish(new Error('Deezer did not respond. Try again.')),timeoutMs);
     signal?.addEventListener('abort',abort,{once:true});
