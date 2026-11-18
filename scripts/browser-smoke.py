@@ -1697,8 +1697,11 @@ def check_cancel_stale_discovery(browser, base):
         field.fill("Fixture Melody")
         field.press("Enter")
         page.locator("#stage-play").wait_for(state="visible",timeout=TIMEOUT)
-        require(not page.evaluate("(cb) => typeof window[cb]==='function'",callback),
-                "Obsolete provider callback remained active after a new search")
+        require(page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "Canceled JSONP must retain a short-lived inert callback for late scripts")
+        page.evaluate("(cb) => window[cb]({data:[{id:99999999,title:'Late stale result'}]})",callback)
+        require(page.locator("#music-search").input_value()=="Fixture Melody",
+                "Late JSONP unexpectedly replaced the current search")
         require(page.evaluate("""(cb) => ![...document.querySelectorAll('script[src]')]
             .some(script=>script.src.includes(cb))""",callback),
                 "Obsolete JSONP script remained in the document after cancellation")
@@ -1717,8 +1720,8 @@ def check_cancel_stale_discovery(browser, base):
                 "Switching away from the search did not select Wild Card")
         require(page.locator("#music-search").input_value()=="",
                 "A new listening path failed to close the temporary artist search")
-        require(not page.evaluate("(cb) => typeof window[cb]==='function'",callback),
-                "Old provider callback leaked after the subsequent path switch")
+        require(page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "Canceled JSONP tombstone expired before late script protection was checked")
         require(page.evaluate("window.__staleDiscoveryDocument")=="same-document",
                 "Switching searches or listening paths unexpectedly reloaded the page")
         require(not errors,"Stale discovery browser exception: "+"; ".join(errors))
