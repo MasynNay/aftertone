@@ -1,3 +1,9 @@
+## v0.12 development — Undo accidental Collection removals (November 17, 2026)
+
+- Added a persistent **Undo Remove** action whenever a song is removed from Collection, including the final saved song. The last removed track can be restored in the same browser tab until another removal supersedes it or the tab reloads.
+- Restoration preserves the saved-song order and existing listening history; the app does not manufacture a new Keep vote. A focused Remove button hands focus to Undo, and Undo returns focus to a safe Collection control.
+- Added Node and real Chromium/Firefox regression tests for order preservation, duplicate prevention, last-song removal, keyboard focus, no lost listening choices and successful persistence through reload. Automated provider results remain fictional.
+
 ## v0.12 development — Collection search recovery and keyboard sorting (November 17, 2026)
 
 - Added truthful saved-song match counts and explicit Clear Search / Show All Saved Songs actions in Collection, including a direct recovery option when no saved tracks match a filter.
@@ -10,7 +16,7 @@
 - Preserve keyboard focus and the exact text selection/caret if a rerender occurs while a listener is editing the search field. Deliberately clearing the search still clears the draft; switching sections retains it until submitted.
 - Added Node markup regressions and Chromium/Firefox browser coverage for draft persistence, caret/focus retention, cross-section navigation and Enter submission using fictional provider fixtures.
 
-undefined## v0.12 development — Keyboard continuity when discovery is empty (November 17, 2026)
+## v0.12 development — Keyboard continuity when discovery is empty (November 17, 2026)
 
 - Fixed a keyboard dead end after Retry Discovery replaced its own button with a loading state: focus now returns to the rebuilt Play control on success or the new enabled Retry action on another outage.
 - Applied focus continuity to Clear Search, Broaden Filters and keyboard-selected discovery-path changes, without stealing focus after pointer actions or after the user moves to another control while waiting.

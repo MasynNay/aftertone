@@ -1557,6 +1557,91 @@ def check_collection_search_recovery(browser, base):
         context.close()
 
 
+
+def check_collection_undo_remove(browser, base):
+    """Removing the last favorite can be undone without creating a listening vote."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"collection-undo-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.locator('#listening-card [data-action="like"]').click()
+        page.wait_for_function("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')||'{}').favorites?.length===1""",
+            timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        first=page.locator('.collection-grid [data-action="remove-favorite"]').first
+        first.wait_for(state="visible",timeout=TIMEOUT)
+        original=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return {favorites:s.favorites,history:s.history,savedTracks:s.savedTracks};
+        }""")
+        page.evaluate("window.__collectionUndoDocument='same-document'")
+        first.focus()
+        page.keyboard.press("Enter")
+        undo=page.get_by_role("button",name="Undo Remove",exact=True)
+        undo.wait_for(state="visible",timeout=TIMEOUT)
+        require(page.locator(".collection-removal-notice [role='status']").count()==1,
+                "Removing a favorite did not present lasting, announced recovery guidance")
+        require(page.evaluate("""() =>
+            document.activeElement?.dataset?.action==='undo-remove-favorite'"""),
+            "Removing a focused song stranded keyboard users on a detached control")
+        require(page.get_by_role("heading",name="Nothing Saved Yet.").count()==1,
+                "The removed final favorite remained in Collection")
+        removed=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return {favorites:s.favorites,history:s.history,savedTracks:s.savedTracks};
+        }""")
+        require(removed["favorites"]==[],"Removing a favorite did not persist")
+        require(removed["history"]==original["history"] and
+                removed["savedTracks"]==original["savedTracks"],
+                "Remove deleted listening choices or metadata needed for an undo")
+
+        page.keyboard.press("Enter")
+        require(page.locator("#collection-search").count()==1 and
+                page.evaluate("document.activeElement?.id === 'collection-search'"),
+                "Undo did not return focus to a safe Collection input")
+        require(page.locator('.collection-grid .track-tile').count()==1,
+                "Undo did not restore the saved song to Collection")
+        require(undo.count()==0,"Undo did not clear the pending removal")
+        recovered=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return {favorites:s.favorites,history:s.history,savedTracks:s.savedTracks};
+        }""")
+        require(recovered==original,
+                "Undo changed listening decisions or restored an incomplete favorite")
+        require(page.evaluate("window.__collectionUndoDocument")=="same-document",
+                "Removing or restoring a saved song reloaded the page")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require(page.locator('.collection-grid .track-tile').count()==1,
+                "Restored favorite was lost after a browser reload")
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).favorites.length""")==1,
+            "Restored favorite did not persist in local storage")
+        require(not errors,"Collection Undo browser exception: "+"; ".join(errors))
+        print(f"PASS {label}: remove final favorite, Undo, focus, history, reload")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1576,6 +1661,7 @@ def firefox_main():
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_collection_undo_remove(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1601,6 +1687,7 @@ def main():
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_collection_undo_remove(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

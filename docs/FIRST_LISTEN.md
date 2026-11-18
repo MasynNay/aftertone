@@ -34,7 +34,7 @@ If an audio preview itself fails, use **Retry Preview** or **Skip Without Voting
 
 ## Find songs in your Collection
 
-Collection lets you filter saved songs by title, artist or genre and sort them by recently kept, song title or artist. While filtering, the app shows how many of your saved songs match. If nothing matches, choose **Show All Saved Songs** to clear the filter and return to the search field. Changing the sort order keeps the dropdown focused for keyboard navigation. Filtering and sorting never delete favorites or modify listening history.
+Collection lets you filter saved songs by title, artist or genre and sort them by recently kept, song title or artist. While filtering, the app shows how many of your saved songs match. If nothing matches, choose **Show All Saved Songs** to clear the filter and return to the search field. Changing the sort order keeps the dropdown focused for keyboard navigation. Filtering and sorting never delete favorites or modify listening history. If you accidentally remove a song, **Undo Remove** appears in Collection (even after removing the last saved song). It restores your favorite without creating a new Keep vote. Undo remains available while this browser tab stays open, until you remove another song; for longer-term safety, export a progress backup.
 
 ## Saved progress and provider limitations
 

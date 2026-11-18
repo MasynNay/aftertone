@@ -1103,6 +1103,27 @@ h1 em {
   max-width: 650px;
 }
 
+.collection-removal-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin: 0 0 22px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.collection-removal-notice p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.5;
+}
+.collection-removal-notice button {
+  min-height: 44px;
+}
+
 .collection-tools {
   display: flex;
   align-items: center;
