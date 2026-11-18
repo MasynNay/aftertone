@@ -1730,6 +1730,84 @@ def check_cancel_stale_discovery(browser, base):
         context.close()
 
 
+
+def check_artist_outage_without_fallback(browser, base):
+    """A broken artist index must not trigger a second provider search."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    state={"online":False,"failed_lookup":0,"ranked_fallback":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+
+    def artist_index_outage(route):
+        url=urlsplit(route.request.url)
+        query=parse_qs(url.query)
+        if not state["online"] and query.get("q")==["Unavailable Artist"]:
+            if url.path=="/search/artist":
+                callback=query.get("callback",[""])[0]
+                require(re.fullmatch(r"__aftertoneDeezer_\d+",callback),
+                        "The failing lookup did not use safe generated JSONP")
+                state["failed_lookup"]+=1
+                body={"error":{"code":503,"message":"Catalog fixture temporarily unavailable"}}
+                return route.fulfill(status=200,content_type="application/javascript",
+                    body=f"window[{json.dumps(callback)}]({json.dumps(body)});")
+            if url.path=="/search":
+                state["ranked_fallback"]+=1
+        mock_deezer(route)
+
+    context.route("https://api.deezer.com/**",artist_index_outage)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"artist-outage-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.evaluate("window.__artistOutageDocument='same-document'")
+        field=page.locator("#music-search")
+        field.fill("Unavailable Artist")
+        field.press("Enter")
+        empty=page.locator(".discovery-empty-state")
+        empty.wait_for(state="visible",timeout=TIMEOUT)
+        require("Music Is Temporarily Unavailable" in empty.inner_text(),
+                "Failed artist lookup did not show a recoverable error state")
+        require("Catalog fixture temporarily unavailable" in empty.inner_text(),
+                "A provider error was obscured by a fallback response")
+        require(state["failed_lookup"]==1 and state["ranked_fallback"]==0,
+                "Artist lookup outage incorrectly launched a second ranked search")
+        require(page.locator("#listening-card").count()==0,
+                "Failed lookup fabricated a playable recommendation")
+        before=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:s.favorites||[],history:s.history||[]};
+        }""")
+        state["online"]=True
+        retry=page.get_by_role("button",name="Retry Discovery",exact=True)
+        retry.focus()
+        page.keyboard.press("Enter")
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        require("Fixture Melody" in page.locator("#listening-card").inner_text(),
+                "Retry after provider recovery did not present fixture songs")
+        require(page.evaluate("window.__artistOutageDocument")=="same-document",
+                "Retrying after artist index outage reloaded the entire app")
+        after=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {favorites:s.favorites||[],history:s.history||[]};
+        }""")
+        require(after==before,"Artist outage/recovery modified favorites or listening votes")
+        require(not errors,"Artist outage browser exceptions: "+"; ".join(errors))
+        print(f"PASS {label}: no amplified lookup, honest retry, no lost user progress")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1751,6 +1829,7 @@ def firefox_main():
             check_collection_search_recovery(browser, base)
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
+            check_artist_outage_without_fallback(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1778,6 +1857,7 @@ def main():
             check_collection_search_recovery(browser, base)
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
+            check_artist_outage_without_fallback(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
