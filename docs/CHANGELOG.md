@@ -1,3 +1,10 @@
+## v0.12 development — Safer phone swipe decisions (November 18, 2026)
+
+- Only primary-pointer horizontal swipes on the original listening card can record Keep or Pass. Secondary touch contacts and right mouse-button drags are neutral, so accidental inputs cannot silently change taste history.
+- Capture an active pointer on its original card so a deliberate release just outside that card remains reliable. Cancel gestures when the browser takes over touch scrolling, focus leaves the window, a pointer is lost, or the card is replaced by a rerender or view change.
+- Partial/vertical drags now clear the card preview and never count as listening votes. Keep/Pass remains available through the large on-card buttons and existing keyboard shortcuts.
+- Added source-level guards plus Chromium/Firefox mobile-width tests at 390px and 320px for neutral drags, cancellation, exact Keep/Pass votes, pointer capture and view-switch safety. These are simulated pointer inputs on real browser engines, not physical touch-hardware or screen-reader certification.
+
 ## v0.12 development — Late JSONP cancellation safety (November 18, 2026)
 
 - A canceled Deezer JSONP script may still execute after its tag is removed, depending on browser timing. Replacing its callback with an inert short-lived function prevents `window.__aftertoneDeezer_* is not a function` page errors while keeping obsolete results isolated from the active search.
