@@ -1858,6 +1858,12 @@ def check_mobile_filters_keyboard(browser, base, width):
                 "Rerendering a mobile filter stranded focus on a removed select")
         require(page.locator("#genre-select").input_value()=="pop",
                 "Changing the mobile genre was not retained after rerender")
+        # The fictional chart and search fixtures reuse song IDs. Reset to
+        # All genres before searching so an already cached chart track's
+        # original unknown genre isn't incorrectly treated as a pop result.
+        page.locator("#genre-select").select_option("all")
+        require(page.evaluate("document.activeElement?.id==='genre-select'"),
+                "Restoring All genres lost focus on the selected filter")
 
         close_filters=page.get_by_role("button",name="Close discovery filters")
         close_filters.click()
