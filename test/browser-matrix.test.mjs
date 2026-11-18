@@ -177,3 +177,14 @@ test('Collection empty search recovery and sort focus are verified in Chromium a
   assert.equal(browser.split('check_collection_search_recovery(browser, base)').length-1,3,
     'Collection recovery requires one check in each browser engine');
 });
+
+test('Collection removal Undo is verified in both real browsers and survives reload',()=>{
+  assert.match(browser,/def check_collection_undo_remove\(browser, base\):/);
+  assert.match(browser,/Removing a focused song stranded keyboard users/);
+  assert.match(browser,/Removing a favorite did not present lasting/);
+  assert.match(browser,/Remove deleted listening choices or metadata needed for an undo/);
+  assert.match(browser,/Restored favorite was lost after a browser reload/);
+  assert.match(browser,/Undo changed listening decisions or restored an incomplete favorite/);
+  assert.equal(browser.split('check_collection_undo_remove(browser, base)').length-1,3,
+    'Both Chromium and Firefox must run Collection Undo regression');
+});
