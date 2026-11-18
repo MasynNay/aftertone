@@ -167,3 +167,13 @@ test('unsubmitted music searches and their caret survive DOM replacement in both
   assert.equal(browser.split('check_search_draft_survives_rerenders(browser, base)').length-1,3,
     'One definition and one invocation each for Chromium and Firefox');
 });
+
+test('Collection empty search recovery and sort focus are verified in Chromium and Firefox',()=>{
+  assert.match(browser,/def check_collection_search_recovery\(browser, base\):/);
+  assert.match(browser,/Showing 0 of 1 saved song/);
+  assert.match(browser,/get_by_role\("button",name="Show All Saved Songs",exact=True\)/);
+  assert.match(browser,/Changing Collection sort stranded keyboard focus/);
+  assert.match(browser,/Collection search changed the user's saved favorites/);
+  assert.equal(browser.split('check_collection_search_recovery(browser, base)').length-1,3,
+    'Collection recovery requires one check in each browser engine');
+});
