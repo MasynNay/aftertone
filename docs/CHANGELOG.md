@@ -1,3 +1,9 @@
+## v0.12 development — Collection search recovery and keyboard sorting (November 17, 2026)
+
+- Added truthful saved-song match counts and explicit Clear Search / Show All Saved Songs actions in Collection, including a direct recovery option when no saved tracks match a filter.
+- Restored focus to the Collection search input after a keyboard-activated clear action, and to the replacement sort dropdown after changing order. Filtering also retains full text selection instead of collapsing it.
+- Added Node rendering/behavior assertions and Chromium/Firefox browser regressions for empty filters, reset, sorting, focus, no page reload and unchanged saved favorites.
+
 ## v0.12 development — Search draft continuity during discovery refreshes (November 17, 2026)
 
 - Fixed an unfinished music search disappearing whenever background discovery or an unrelated UI action rerendered the sidebar. The draft is now separate from the active submitted query.
