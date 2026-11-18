@@ -148,3 +148,84 @@ test('real HTTP 429 preserves rate-limit guidance without extra fallback request
   });
   assert.deepEqual(calls,['/search/artist']);
 });
+
+
+test('artist lookup timeouts do not start a second ranked-search request',async()=>{
+  const calls=[];
+  const fetcher=async url=>{
+    calls.push(new URL(url).pathname);
+    throw new DOMException('The artist index timed out','TimeoutError');
+  };
+  await assert.rejects(fetchDeezerPage('all','0',fetcher,'Fixture Artist'),error=>{
+    assert.equal(error.name,'TimeoutError');
+    return true;
+  });
+  assert.deepEqual(calls,['/search/artist'],
+    'An unresponsive artist index must not amplify the outage with /search');
+});
+
+test('artist top-track network errors surface immediately without fallback traffic',async()=>{
+  const calls=[];
+  const fetcher=async url=>{
+    const path=new URL(url).pathname;
+    calls.push(path);
+    if(path==='/search/artist')return {ok:true,status:200,json:async()=>({
+      data:[{id:501,name:'Fixture Artist'}]
+    })};
+    throw new TypeError('Failed to fetch');
+  };
+  await assert.rejects(fetchDeezerPage('all','0',fetcher,'','all','any','Fixture Artist'),/Failed to fetch/);
+  assert.deepEqual(calls,['/search/artist','/artist/501/top'],
+    'Network failure during top-track lookup must not trigger a third request');
+});
+
+test('real and JSONP HTTP 5xx artist failures do not generate another search',async()=>{
+  for(const makeResponse of [
+    ()=>({ok:false,status:503}),
+    ()=>({ok:true,status:200,json:async()=>({error:{code:503,message:'Catalog temporarily unavailable'}})}),
+  ]) {
+    const calls=[];
+    const fetcher=async url=>{
+      calls.push(new URL(url).pathname);
+      return makeResponse();
+    };
+    await assert.rejects(fetchDeezerPage('all','0',fetcher,'Fixture Artist'),/Deezer/);
+    assert.deepEqual(calls,['/search/artist']);
+  }
+});
+
+test('missing artist endpoint may still use a ranked-search fallback',async()=>{
+  for(const status of [400,404]){
+    const calls=[];
+    const fetcher=async url=>{
+      const u=new URL(url);calls.push(u.pathname);
+      if(u.pathname==='/search/artist')return {ok:false,status};
+      if(u.pathname==='/search')return {ok:true,status:200,json:async()=>({
+        data:[row(111,'Real Song','Fixture Artist')],total:1,next:null
+      })};
+      throw Error('Unexpected fallback endpoint '+u.pathname);
+    };
+    const page=await fetchDeezerPage('all','0',fetcher,'Fixture Artist');
+    assert.equal(page.tracks.length,1);
+    assert.deepEqual(calls,['/search/artist','/search']);
+  }
+});
+
+test('missing artist top list can still recover through verified ranked search',async()=>{
+  const calls=[];
+  const fetcher=async url=>{
+    const u=new URL(url);calls.push(u.pathname);
+    if(u.pathname==='/search/artist')return {ok:true,status:200,json:async()=>({
+      data:[{id:501,name:'Fixture Artist'}]
+    })};
+    if(u.pathname==='/artist/501/top')return {ok:false,status:404};
+    if(u.pathname==='/search')return {ok:true,status:200,json:async()=>({
+      data:[row(111,'Real Song','Fixture Artist'),row(222,'Different Artist Song','Impostor')],total:2,next:null
+    })};
+    throw Error('Unexpected endpoint '+u.pathname);
+  };
+  const page=await fetchDeezerPage('all','0',fetcher,'Fixture Artist');
+  assert.deepEqual(page.tracks.map(t=>t.id),['deezer:111'],
+    'Fallback must keep only tracks from the exact requested artist');
+  assert.deepEqual(calls,['/search/artist','/artist/501/top','/search']);
+});

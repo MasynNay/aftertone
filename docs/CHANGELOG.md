@@ -1,3 +1,9 @@
+## v0.12 development — Avoid redundant artist searches during Deezer outages (November 18, 2026)
+
+- On Deezer artist lookup timeout, transport/network failure, HTTP 5xx or throttling, return the original provider failure instead of immediately requesting an additional ranked search. A user-initiated Retry Discovery remains available and does not change saved favorites or history.
+- Retain ranked-search fallback when the artist index or top-list endpoint genuinely returns HTTP 400/404 or lacks a verified playable match; fallback artist tracks still require an exact artist identity.
+- Added Node regressions for timeouts, transport failures, HTTP/JSONP 5xx, and valid 400/404 fallback. Chromium and Firefox simulate a failing artist index, confirm no redundant provider search and recover via Retry without a reload or listening vote.
+
 ## v0.12 development — Cancel stale Deezer discovery requests (November 18, 2026)
 
 - When a listener submits another search or changes listening paths/filters while discovery is still fetching, cancel the obsolete request instead of allowing it to update shared catalog metadata or fire additional fallback lookups.
