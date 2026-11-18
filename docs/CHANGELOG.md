@@ -4,6 +4,11 @@
 - Prevent independent related-artist callers from sharing one cancelable in-flight Promise. Canceling one listener's request must not terminate another listener's healthy request for the same artist; cached completed results and normal fetcher coalescing remain available.
 - Add deterministic tests that abort preview metadata and a multi-page playlist import, then exercise concurrent related-artist lookups with one cancellation and one successful result. Tests use fictional API responses; they do not establish live Deezer availability or permission to use commercial music.
 
+## v0.12 development — Cancel an active swipe when a second finger arrives (November 18, 2026)
+
+- A second touch anywhere on the page now cancels a primary listening-card drag, resetting its animation and preventing the first finger's later release from saving an unintended Keep or Pass.
+- Extended the 390px/320px Chromium and Firefox smoke checks with a primary-drag-then-secondary-touch regression, plus a source-level guard for page-wide contact handling. These are browser simulations, not physical touchscreen validation.
+
 ## v0.12 development — Safer phone swipe decisions (November 18, 2026)
 
 - Only primary-pointer horizontal swipes on the original listening card can record Keep or Pass. Secondary touch contacts and right mouse-button drags are neutral, so accidental inputs cannot silently change taste history.

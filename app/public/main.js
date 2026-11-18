@@ -2061,6 +2061,14 @@ function clearSwipeGesture(pointerId=null) {
   return gesture;
 }
 
+// A second finger can land anywhere on the page, outside the listening card.
+// Cancel the original swipe immediately: just ignoring the new finger still
+// lets the first finger's eventual pointerup record an accidental vote.
+document.addEventListener('pointerdown', (event) => {
+  if (pointerStart && event.pointerId!==pointerStart.pointer &&
+      event.pointerType==='touch') clearSwipeGesture();
+}, true);
+
 // Vertical scrolling stays native. Capture only a started primary drag so a
 // release just outside the card still reaches this handler.
 main.addEventListener('pointerdown', (event) => {

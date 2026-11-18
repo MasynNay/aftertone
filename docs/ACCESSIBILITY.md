@@ -1,6 +1,6 @@
 ## Phone swipe input safety (v0.12 development)
 
-- Swipe gestures now only begin with a primary pointer and ordinary left-button mouse input. A second touch, right-button drag, canceled pointer, document blur or song-card rerender never becomes a Keep/Pass vote.
+- Swipe gestures now only begin with a primary pointer and ordinary left-button mouse input. A second touch, right-button drag, canceled pointer, document blur or song-card rerender never becomes a Keep/Pass vote. A second finger arriving **while the first is already dragging** also cancels the entire gesture, including if that finger lands outside the card.
 - The card retains pointer capture during a deliberate drag, so lifting a finger just outside the card still produces the intended result. Horizontal movement that returns to mostly vertical immediately clears its visual decision preview, preserving native `touch-action: pan-y` page scrolling.
 - Chromium and Firefox validate 390px and 320px app viewports using real mouse drags plus synthetic cancellation/multi-touch pointer events. Tests confirm exactly one vote for valid Keep/Pass, no vote for canceled/secondary/vertical/short drags and no reload or stale vote during a view switch. Physical Android/iOS gesture ergonomics and VoiceOver/TalkBack support still require manual verification.
 

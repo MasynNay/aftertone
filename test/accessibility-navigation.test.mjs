@@ -149,6 +149,10 @@ test('swipe gestures record decisions only for a primary pointer on the original
   assert.match(swipe,/main\.addEventListener\('pointercancel'/);
   assert.match(swipe,/main\.addEventListener\('lostpointercapture'/);
   assert.match(swipe,/window\.addEventListener\('blur'/);
+  assert.match(swipe,/document\.addEventListener\('pointerdown', \(event\) => \{/);
+  assert.match(swipe,/event\.pointerId!==pointerStart\.pointer/);
+  assert.match(swipe,/event\.pointerType==='touch'\) clearSwipeGesture\(\)/);
+  assert.match(swipe,/\}, true\);/,'Second contacts anywhere on the page must cancel the swipe');
   const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
   assert.match(render,/clearSwipeGesture\(\)/,
     'Rebuilding the active card must invalidate a pending drag');
