@@ -115,6 +115,16 @@ function rememberDiscoveryIds(tracks) {
   }
 }
 const feeds = new Map();
+let inFlightDiscovery = null;
+// A route or artist-search switch invalidates the old provider request before
+// its JSONP callback can populate shared catalog metadata or start more pages.
+function cancelStaleDiscovery(activeFeed=getFeed()) {
+  if (inFlightDiscovery && inFlightDiscovery.feed !== activeFeed) {
+    inFlightDiscovery.controller.abort();
+    inFlightDiscovery.feed.loading = false;
+    inFlightDiscovery = null;
+  }
+}
 let animatingChoice = false;
 let allGenres = [];
 let view = 'discover';
@@ -306,6 +316,7 @@ function focusDiscoveryRecovery() {
 async function loadMore(genre = state.genre, showStatus = false, prioritizeRelated = false, restoreKeyboardFocus = false) {
   if (challengeIds.length) return;
   const feed = getFeed(genre);
+  cancelStaleDiscovery(feed);
   const requestSearch=searchQuery;
   if (feed.loading) { if (prioritizeRelated) feed.relatedUpdatePending = true; return; }
   if (!feed.hasMore) return;
@@ -321,6 +332,12 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
   }
   feed.retryAt=0;
   if(showStatus) feed.emptyRefills=0;
+  const controller = new AbortController();
+  const flight = {feed,controller};
+  inFlightDiscovery = flight;
+  feed.activeFlight = flight;
+  const isCurrent = () => !controller.signal.aborted &&
+    genre === state.genre && isActiveRequest(feed,getFeed(genre));
   feed.loading = true;
   feed.error = '';
   if (showStatus || !current) render();
@@ -339,6 +356,7 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     // for the next manual Retry Discovery or the bounded background refill.
     const failedThisBatch = new Set();
     for (let attempt = 0; attempt < (state.source==='deezer' && !requestSearch ? 6 : 5); attempt++) {
+      if (!isCurrent()) break;
       const providers = eligibleProviders(sourceOrder(), feed.exhausted, failedThisBatch);
       if (!providers.length) break;
       const source = providers[feed.requests % providers.length];
@@ -365,8 +383,10 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
       if (requestSearch) query.set('q', requestSearch);
       if (lane) query.set('seed_artist', lane.artist);
       try {
-        const response = await apiFetch(`/api/discover?${query}`);
+        const response = await apiFetch(`/api/discover?${query}`,{signal:controller.signal});
+        if (!isCurrent()) break;
         const result = await response.json();
+        if (!isCurrent()) break;
         if (!response.ok) throw new Error(result?.error || `HTTP ${response.status}`);
         const before = feed.cursors[cursorKey];
         for (const track of result.tracks || []) {
@@ -386,6 +406,9 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
         if (!result.hasMore || (before && before === result.nextCursor)) feed.exhausted.add(cursorKey);
         successes++;
       } catch (error) {
+        // A canceled route is not a provider outage. Never show its error or
+        // add its results to the new path's shared discovery fallback.
+        if (!isCurrent()) break;
         // Do not permanently exhaust a provider on a temporary outage.
         feed.error = `${SOURCE_LABEL[source]} could not load: ${error.message}`;
         if (lane && /HTTP (400|404)\b/.test(String(error.message))) {
@@ -403,6 +426,7 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
       // The 3-second replenisher brings in deeper catalog pages afterward.
       if (successes >= 1 && availableCount(genre) >= (prioritizeRelated ? 8 : 12)) break;
     }
+    if (!isCurrent()) return;
     if (availableCount(genre) === 0) feed.emptyRefills++;
     else feed.emptyRefills = 0;
     // A finished broad chart page does NOT mean all related-artist pages have
@@ -422,9 +446,16 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     }
     if (!feed.hasMore && !availableCount(genre) && showStatus) toast('No more matching songs from selected sources. Change the filter or source.');
   } finally {
-    feed.loading = false;
-    feed.primed = true;
-    if (genre === state.genre && isActiveRequest(feed,getFeed(genre))) {
+    if (inFlightDiscovery === flight) inFlightDiscovery = null;
+    // A rapidly revisited path may already have issued a replacement fetch.
+    // Its loading flag must not be cleared by the canceled old request.
+    if (feed.activeFlight === flight) {
+      feed.loading = false;
+      // Aborted requests never produced a genuine first page. Reopening that
+      // route must still fetch its own results before using shared fallback.
+      if (!controller.signal.aborted) feed.primed = true;
+    }
+    if (feed.activeFlight === flight && isCurrent()) {
       // Auto-refill must not replace the playing card's DOM every three
       // seconds: that would steal focus from the lyrics slider, interrupt
       // gestures and make the page jump while someone is listening.
@@ -447,7 +478,7 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     }
     // Similarity lookups may finish during a chart fetch. Never lose the
     // background related-artist refill just because a request was in flight.
-    if (feed.relatedUpdatePending) {
+    if (feed.activeFlight === flight && isCurrent() && feed.relatedUpdatePending) {
       feed.relatedUpdatePending = false;
       if (feed.hasMore) void loadMore(genre,false,true);
     }
@@ -924,6 +955,9 @@ function goTo(nextView) {
 }
 
 function render() {
+  // Stop old provider work immediately on mode/search/filter switches, even
+  // when the newly selected path already has enough cached songs.
+  cancelStaleDiscovery();
   // Catalog refreshes may rerender the sidebar while a search is being typed.
   // Keep the unfinished text and its caret; only a deliberate submit commits it.
   const focusedSearch=view==='discover' && document.activeElement?.id==='music-search'

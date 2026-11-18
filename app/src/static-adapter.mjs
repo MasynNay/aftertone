@@ -69,14 +69,22 @@ async function deezerFetch(url,options={}){
 }
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
 
-async function routeApi(url){
+async function routeApi(url,options={}){
   const p=url.searchParams;
+  // Preserve caller cancellation through Deezer's nested artist/chart lookups.
+  // Each lookup also owns a short timeout: either signal can stop the JSONP.
+  const discoveryFetcher=(input,requestOptions={})=>deezerFetch(input,{
+    ...requestOptions,
+    signal:options.signal
+      ? AbortSignal.any([options.signal,requestOptions.signal].filter(Boolean))
+      : requestOptions.signal,
+  });
   try{
     if(url.pathname==='/api/health')return json({status:'ok',name:'AFTERTONE',version:'0.10.1',mode:'static-deezer'});
     if(url.pathname==='/api/catalog')return json({tracks:STARTER_TRACKS,count:STARTER_TRACKS.length,live:true,genres:GENRES,provider:'deezer',providers:['deezer'],expandable:true,youtubeConfigured:false,featuredCount:0,note:'Live Deezer catalog metadata; on-demand preview audio from Deezer. No music files are hosted by AFTERTONE.'});
     if(url.pathname==='/api/discover'){
       if((p.get('source')||'deezer')!=='deezer')return json({error:'Only Deezer discovery is configured on this public site.'},400);
-      const result=await fetchDeezerPage(p.get('genre')||'all',p.get('cursor')||'0',deezerFetch,p.get('q')||'',p.get('language')||'all',p.get('era')||'any',p.get('seed_artist')||'');
+      const result=await fetchDeezerPage(p.get('genre')||'all',p.get('cursor')||'0',discoveryFetcher,p.get('q')||'',p.get('language')||'all',p.get('era')||'any',p.get('seed_artist')||'');
       return json(result);
     }
     if(url.pathname==='/api/audio'){
@@ -93,6 +101,9 @@ async function routeApi(url){
     }
     return json({error:'Endpoint unavailable on static hosting.'},404);
   }catch(error){
+    // Cancellation is not a provider failure. The caller must see AbortError
+    // rather than a 502 that triggers an unnecessary retry or error banner.
+    if(error?.name==='AbortError')throw error;
     const code=error?.status===429 ? 429 : error?.code==='SPOTIFY_AUTH_REQUIRED'?422:502;
     return json({error:String(error?.message||'Music service unavailable').slice(0,260)},code);
   }
@@ -103,5 +114,5 @@ export function apiFetch(input,options){
   const url=new URL(typeof input==='string'?input:input.url,location.href);
   if(!url.pathname.startsWith('/api/'))return fetch(input,options);
   if(['localhost','127.0.0.1'].includes(location.hostname)&&location.port==='4173')return fetch(input,options);
-  return routeApi(url);
+  return routeApi(url,options);
 }

@@ -188,3 +188,15 @@ test('Collection removal Undo is verified in both real browsers and survives rel
   assert.equal(browser.split('check_collection_undo_remove(browser, base)').length-1,3,
     'Both Chromium and Firefox must run Collection Undo regression');
 });
+
+test('real browsers cancel obsolete artist JSONP when queries or paths switch',()=>{
+  assert.match(browser,/def check_cancel_stale_discovery\(browser, base\):/);
+  assert.match(browser,/The first artist query did not remain pending/);
+  assert.match(browser,/Obsolete provider callback remained active after a new search/);
+  assert.match(browser,/Obsolete JSONP script remained in the document after cancellation/);
+  assert.match(browser,/A stale artist request replaced the listener's newer search/);
+  assert.match(browser,/Old provider callback leaked after the subsequent path switch/);
+  assert.match(browser,/An obsolete search created listening votes or favorites/);
+  assert.equal(browser.split('check_cancel_stale_discovery(browser, base)').length-1,3,
+    'Stale provider cancellation must be checked in Chromium and Firefox');
+});

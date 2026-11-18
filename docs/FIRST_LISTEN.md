@@ -24,7 +24,7 @@ When focus is not inside a button or form control, the standalone **Left Arrow**
 
 ## Search without losing your place
 
-While typing an artist or song name, your unfinished search stays in the search box even if the discovery view refreshes or you briefly visit your Collection. A draft does **not** change what Aftertone recommends until you press Enter or the Search button. A refreshed listening screen keeps the text cursor and search focus, and Clear Search intentionally discards the draft.
+While typing an artist or song name, your unfinished search stays in the search box even if the discovery view refreshes or you briefly visit your Collection. A draft does **not** change what Aftertone recommends until you press Enter or the Search button. A refreshed listening screen keeps the text cursor and search focus, and Clear Search intentionally discards the draft. If you submit a different search or change listening paths while Deezer is still responding, Aftertone cancels the obsolete catalog lookup instead of allowing it to affect the new session.
 
 ## When you find no matches
 

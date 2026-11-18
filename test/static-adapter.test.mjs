@@ -75,3 +75,49 @@ test('rejects untrusted JSONP hosts and malformed IDs',async()=>{
   const {response}=await result('/api/audio?id=deezer%3Aabc');
   assert.equal(response.status,404);
 });
+
+
+test('aborting a browser discovery cancels its JSONP callback instead of reporting a provider error', async()=>{
+  const previousCreate=document.createElement;
+  const previousAppend=document.head.append;
+  const waiting=[];
+  let removed=0;
+  document.createElement=()=>({remove(){removed++;},async:false});
+  document.head.append=(script)=>waiting.push(script);
+  try {
+    const controller=new AbortController();
+    const pending=apiFetch('/api/discover?source=deezer&genre=all&cursor=0',{signal:controller.signal});
+    assert.equal(waiting.length,1,'The mocked Deezer chart request must still be in flight');
+    const script=waiting[0];
+    const callback=new URL(script.src).searchParams.get('callback');
+    assert.equal(typeof globalThis[callback],'function');
+    controller.abort();
+    await assert.rejects(pending,(error)=>error?.name==='AbortError',
+      'A canceled request must reject with AbortError, not resolve to a 502');
+    assert.equal(removed,1,'Canceled JSONP scripts must be removed');
+    assert.equal(globalThis[callback],undefined,'Canceled callbacks must be deleted');
+  } finally {
+    document.createElement=previousCreate;
+    document.head.append=previousAppend;
+  }
+  const {response,payload}=await result('/api/discover?source=deezer&genre=all&cursor=0');
+  assert.equal(response.status,200,'A later healthy request must still succeed');
+  assert.equal(payload.tracks.length,25);
+});
+
+test('aborting during Deezer artist resolution does not start fallback catalog requests',async()=>{
+  const previousAppend=document.head.append;
+  const waiting=[];
+  document.head.append=(script)=>waiting.push(script);
+  try {
+    const controller=new AbortController();
+    const pending=apiFetch('/api/discover?source=deezer&q=Unfinished%20Artist',{signal:controller.signal});
+    assert.equal(waiting.length,1);
+    assert.match(new URL(waiting[0].src).pathname,/search\/artist/);
+    controller.abort();
+    await assert.rejects(pending,(error)=>error?.name==='AbortError');
+    assert.equal(waiting.length,1,'An aborted artist lookup must not launch a fallback search');
+  } finally {
+    document.head.append=previousAppend;
+  }
+});

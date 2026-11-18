@@ -1642,6 +1642,94 @@ def check_collection_undo_remove(browser, base):
         context.close()
 
 
+
+def check_cancel_stale_discovery(browser, base):
+    """Changing a search invalidates the old JSONP script and its callback."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    delayed=[]
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+
+    def hold_obsolete_artist_lookup(route):
+        url=urlsplit(route.request.url)
+        query=parse_qs(url.query)
+        if url.path=="/search/artist" and query.get("q")==["Canceled Artist"]:
+            # Deliberately leave the provider request unresolved. The browser
+            # must remove its JSONP script without needing a provider response.
+            delayed.append(route)
+            return
+        mock_deezer(route)
+
+    context.route("https://api.deezer.com/**",hold_obsolete_artist_lookup)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"stale-discovery-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.evaluate("window.__staleDiscoveryDocument='same-document'")
+        field=page.locator("#music-search")
+        field.fill("Canceled Artist")
+        field.press("Enter")
+        page.wait_for_function("""() => [...document.querySelectorAll('script[src]')]
+            .some(script=>script.src.includes('/search/artist') &&
+                          script.src.includes('Canceled'))""",timeout=TIMEOUT)
+        for _ in range(30):
+            if delayed:
+                break
+            page.wait_for_timeout(30)
+        require(len(delayed)==1,"The first artist query did not remain pending")
+        callback=parse_qs(urlsplit(delayed[0].request.url).query).get("callback",[""])[0]
+        require(re.fullmatch(r"__aftertoneDeezer_\d+",callback),
+                "Provider callback was not the generated JSONP name")
+        require(page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "The first request was not waiting on an active callback")
+
+        # Submit another query while the old provider is still unresponsive.
+        # The latest query should finish and remain the only active discovery.
+        field=page.locator("#music-search")
+        field.fill("Fixture Melody")
+        field.press("Enter")
+        page.locator("#stage-play").wait_for(state="visible",timeout=TIMEOUT)
+        require(not page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "Obsolete provider callback remained active after a new search")
+        require(page.evaluate("""(cb) => ![...document.querySelectorAll('script[src]')]
+            .some(script=>script.src.includes(cb))""",callback),
+                "Obsolete JSONP script remained in the document after cancellation")
+        require(page.locator("#music-search").input_value()=="Fixture Melody",
+                "A stale artist request replaced the listener's newer search")
+        require(page.evaluate("""() => document.querySelector('.path-explainer')
+            ?.textContent.includes('You are searching manually')"""),
+                "The new search lost its committed query")
+        require(page.evaluate("""() => {
+            const data=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return (data.history||[]).length===0 && (data.favorites||[]).length===0;
+        }"""),"An obsolete search created listening votes or favorites")
+
+        page.locator('.discovery-paths [data-path="explore"]').click()
+        require(page.locator('.discovery-paths [data-path="explore"]').get_attribute("aria-pressed")=="true",
+                "Switching away from the search did not select Wild Card")
+        require(page.locator("#music-search").input_value()=="",
+                "A new listening path failed to close the temporary artist search")
+        require(not page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "Old provider callback leaked after the subsequent path switch")
+        require(page.evaluate("window.__staleDiscoveryDocument")=="same-document",
+                "Switching searches or listening paths unexpectedly reloaded the page")
+        require(not errors,"Stale discovery browser exception: "+"; ".join(errors))
+        print(f"PASS {label}: old provider request canceled, new search and path intact")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1662,6 +1750,7 @@ def firefox_main():
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
             check_collection_undo_remove(browser, base)
+            check_cancel_stale_discovery(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1688,6 +1777,7 @@ def main():
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
             check_collection_undo_remove(browser, base)
+            check_cancel_stale_discovery(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
