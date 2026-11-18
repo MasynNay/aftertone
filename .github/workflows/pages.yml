@@ -29,6 +29,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # Browser binaries are large and change with the pinned Playwright
+      # release. Cache exactly that revision; never restore a mismatched one.
+      # System libraries are still installed on each fresh runner.
+      - name: Cache pinned Playwright browser binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-ubuntu24.04-1.56.0
       - name: Install Playwright, Chromium and Firefox
         run: |
           python -m pip install --disable-pip-version-check playwright==1.56.0
