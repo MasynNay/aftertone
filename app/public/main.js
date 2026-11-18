@@ -451,7 +451,9 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     // Its loading flag must not be cleared by the canceled old request.
     if (feed.activeFlight === flight) {
       feed.loading = false;
-      feed.primed = true;
+      // Aborted requests never produced a genuine first page. Reopening that
+      // route must still fetch its own results before using shared fallback.
+      if (!controller.signal.aborted) feed.primed = true;
     }
     if (feed.activeFlight === flight && isCurrent()) {
       // Auto-refill must not replace the playing card's DOM every three
