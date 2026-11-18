@@ -1465,7 +1465,7 @@ def check_search_draft_survives_rerenders(browser, base):
         require("You are searching manually" not in result["path"],
                 "The unsubmitted draft unexpectedly changed the active discovery query")
         require(page.locator("#listening-card").get_attribute("aria-label")==original or
-                page.locator("#listening-card").get_attribute("aria-label")=="Blind listening",
+                page.locator("#listening-card").get_attribute("aria-label").startswith("Blind listening."),
                 "Typing into search unexpectedly changed the discovery card")
 
         # Navigation may intentionally move focus, but must retain the draft.
