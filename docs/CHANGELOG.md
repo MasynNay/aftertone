@@ -1,3 +1,9 @@
+## v0.12 development — Late JSONP cancellation safety (November 18, 2026)
+
+- A canceled Deezer JSONP script may still execute after its tag is removed, depending on browser timing. Replacing its callback with an inert short-lived function prevents `window.__aftertoneDeezer_* is not a function` page errors while keeping obsolete results isolated from the active search.
+- The inert callbacks expire after 15 seconds, are capped at 48 entries and only delete themselves if still unchanged. Normal successful responses continue removing callbacks immediately.
+- Added Node tests for aborted/timed-out late callbacks, bounded cleanup and successful requests, plus updated Chromium/Firefox stale-search regressions to simulate a late canceled script. This is browser reliability work, not a live-provider availability or media-usage claim.
+
 ## v0.12 development — Mobile Filters keyboard recovery (November 18, 2026)
 
 - Made the mobile Filters overlay explicitly dismissible via a 44px **Done** button and Escape. Opening places focus on Done rather than triggering the phone's software keyboard, and closing restores focus to the Filters opener.
