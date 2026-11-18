@@ -1,3 +1,8 @@
+## v0.12 development — Cache pinned Playwright browser downloads (November 18, 2026)
+
+- Reuse the version-pinned Chromium/Firefox browser binary cache in GitHub Actions instead of downloading both from scratch on every build, while still installing OS dependencies and executing every existing browser and Node check.
+- Cache keys include runner OS, architecture, Ubuntu 24.04 and Playwright 1.56.0, so changing versions cannot silently reuse incompatible browsers. A cache miss remains a normal verified build; caching does not bypass tests or the Pages deployment gate.
+
 ## v0.12 development — Avoid redundant artist searches during Deezer outages (November 18, 2026)
 
 - On Deezer artist lookup timeout, transport/network failure, HTTP 5xx or throttling, return the original provider failure instead of immediately requesting an additional ranked search. A user-initiated Retry Discovery remains available and does not change saved favorites or history.

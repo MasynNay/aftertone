@@ -211,3 +211,18 @@ test('both browser engines reject ranked-search retry storms during artist looku
   assert.equal(browser.split('check_artist_outage_without_fallback(browser, base)').length-1,3,
     'Outage/recovery must run once in Chromium, once in Firefox');
 });
+
+
+test('CI caches only the exact pinned Linux browser engines without removing dependency installation',()=>{
+  assert.match(workflow,/uses: actions\/cache@v4/);
+  assert.match(workflow,/path: ~\/\.cache\/ms-playwright/);
+  assert.match(workflow,/key: playwright-\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-ubuntu24\.04-1\.56\.0/);
+  assert.match(workflow,/python -m pip install --disable-pip-version-check playwright==1\.56\.0/);
+  assert.match(workflow,/python -m playwright install --with-deps chromium firefox/);
+  assert.ok(workflow.indexOf('Cache pinned Playwright browser binaries') <
+    workflow.indexOf('Install Playwright, Chromium and Firefox'),
+    'Browser cache restoration must happen before downloading the pinned browsers');
+  assert.match(workflow,/runs-on: ubuntu-24\.04/);
+  assert.match(workflow,/if: github\.event_name != 'pull_request'/,
+    'Pages uploads and production deployment must stay gated separately');
+});

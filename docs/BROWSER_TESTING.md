@@ -4,7 +4,7 @@ The published AFTERTONE site has two entry points: the portfolio homepage at / a
 
 ## Automated deployment gate
 
-The GitHub Pages workflow builds the site with `npm run check`, installs Playwright, Chromium and Firefox, then runs both `python scripts/browser-smoke.py` and `python scripts/browser-smoke.py --firefox` before uploading the Pages artifact.
+The GitHub Pages workflow builds the site with `npm run check`, installs Playwright, Chromium and Firefox, then runs both `python scripts/browser-smoke.py` and `python scripts/browser-smoke.py --firefox` before uploading the Pages artifact. To avoid re-downloading the two large browser binaries on every run, the workflow caches `~/.cache/ms-playwright` with a key tied to the GitHub runner OS/architecture, Ubuntu 24.04 and the pinned `playwright==1.56.0` version. A cache miss downloads both browsers normally, and system dependencies are installed on every fresh runner. The cache is a performance optimization only: **all Node checks, Chromium tests, Firefox tests and the Pages deploy gate still run**.
 
 The backup regression suite also transfers a real downloaded progress file into an entirely **new browser context** in Chromium and Firefox separately, with independent localStorage. It verifies the import confirmation and all backed-up data after reload. This is stronger than clearing the same session, but it does not simulate two physical devices or a transfer between browser engines.
 
