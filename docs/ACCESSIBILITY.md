@@ -86,6 +86,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - Standalone B, Left/Right Arrow and Space remain available when focus is not in a native interactive control. The existing dialog and appearance-menu Escape handling is unchanged.
 - Chromium and Firefox scripted browser tests send synthetic modified/repeated key events, verify no unintended blind-mode changes, playback metadata requests or Keep/Pass records, and confirm ordinary B and Left Arrow still work. This is not a complete screen-reader or physical keyboard audit.
 
+## Music search draft and caret preservation (v0.12 development)
+
+- Background discovery updates can rebuild the sidebar. The search field now renders the in-progress text rather than only the last submitted query, so a partially typed artist/song name survives rerenders and cross-section navigation without becoming the active search.
+- If the listener was editing the input when a refresh happened, the replacement input regains keyboard focus and the original caret/selection. Deliberate navigation, focus changes or Clear Search do not force focus back.
+- Chromium and Firefox browser regressions type a new query, trigger a separate UI rerender while editing, verify focus and selection, navigate to Collection and back, and confirm Enter commits the preserved search. Provider results are mocked; manual screen-reader and live-provider checks remain separate.
+
 ## Manual acceptance checklist (not yet verified)
 
 - [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.

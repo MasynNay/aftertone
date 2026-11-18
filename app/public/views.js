@@ -7,7 +7,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   const lookup = (id) => catalog.find((track) => track.id === id) ?? null;
 function waveform(id) {
   let seed = h32(id);
@@ -102,7 +102,7 @@ function renderSidebarPreferences() {
   const langNames = [['all','All languages'],['en','English preferred'],['en-strict','English-focused artists'],['es','Spanish'],['fr','French'],['pt','Portuguese'],['de','German'],['it','Italian'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['hi','Hindi'],['ar','Arabic'],['ru','Russian']];
   return `<div class="sidebar-filter-head"><span>DISCOVERY SETTINGS</span><button type="button" data-action="toggle-side-filters" aria-expanded="true" aria-controls="sidebar-filter-body" title="Collapse or expand discovery settings">▾</button></div>
   <div class="sidebar-filter-body" id="sidebar-filter-body">
-    <form id="music-search-form" class="sidebar-filter-form" role="search"><label for="music-search">FIND MUSIC</label><div class="sidebar-search"><input id="music-search" aria-label="Search tracks and artists" placeholder="Artist or song…" value="${html(searchQuery)}"/><button aria-label="Search music" type="submit">↗</button></div></form>
+    <form id="music-search-form" class="sidebar-filter-form" role="search"><label for="music-search">FIND MUSIC</label><div class="sidebar-search"><input id="music-search" aria-label="Search tracks and artists" placeholder="Artist or song…" value="${html(searchDraft)}"/><button aria-label="Search music" type="submit">↗</button></div></form>
     ${searchQuery ? `<button type="button" class="side-clear" data-action="clear-search">Clear search ×</button>` : ''}
     <label class="side-field" for="genre-select">GENRE<select id="genre-select" aria-label="Discovery genre">${allGenres.map(g=>`<option value="${html(g)}" ${g===state.genre?'selected':''}>${g==='all'?'All genres':g.charAt(0).toUpperCase()+g.slice(1)}</option>`).join('')}</select></label>
     <label class="side-field" for="language-select">LANGUAGE<select id="language-select" aria-label="Discovery language">${langNames.map(([code,name])=>`<option value="${code}" ${state.language===code?'selected':''}>${name}</option>`).join('')}</select></label>

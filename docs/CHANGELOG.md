@@ -1,3 +1,9 @@
+## v0.12 development — Search draft continuity during discovery refreshes (November 17, 2026)
+
+- Fixed an unfinished music search disappearing whenever background discovery or an unrelated UI action rerendered the sidebar. The draft is now separate from the active submitted query.
+- Preserve keyboard focus and the exact text selection/caret if a rerender occurs while a listener is editing the search field. Deliberately clearing the search still clears the draft; switching sections retains it until submitted.
+- Added Node markup regressions and Chromium/Firefox browser coverage for draft persistence, caret/focus retention, cross-section navigation and Enter submission using fictional provider fixtures.
+
 undefined## v0.12 development — Keyboard continuity when discovery is empty (November 17, 2026)
 
 - Fixed a keyboard dead end after Retry Discovery replaced its own button with a loading state: focus now returns to the rebuilt Play control on success or the new enabled Retry action on another outage.

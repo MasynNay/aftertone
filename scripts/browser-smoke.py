@@ -1420,6 +1420,75 @@ def check_safe_music_shortcuts(browser, base):
         context.close()
 
 
+
+def check_search_draft_survives_rerenders(browser, base):
+    """Keep an unfinished search, input focus and caret through app rerenders."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"search-draft-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        field=page.locator("#music-search")
+        require(field.is_visible(),"Music search was not available")
+        original=page.locator("#listening-card").get_attribute("aria-label")
+        draft='An & "Unsubmitted" Artist'
+        field.fill(draft)
+        field.evaluate("(el) => el.setSelectionRange(3,9,'forward')")
+        # A user is still editing search when a separate app event rerenders
+        # the listening room. Programmatic click deliberately leaves the input
+        # focused, just as a background catalog refresh does.
+        page.evaluate("""() => document.querySelector(
+            '#main-content [data-action="toggle-blind"]').click()""")
+        result=page.evaluate("""() => {
+            const el=document.querySelector('#music-search');
+            return {value:el?.value,focused:document.activeElement===el,
+                    start:el?.selectionStart,end:el?.selectionEnd,
+                    direction:el?.selectionDirection,
+                    path:document.querySelector('.path-explainer')?.textContent};
+        }""")
+        require(result["value"]==draft,
+                "An app rerender erased an unsubmitted artist search")
+        require(result["focused"] and result["start"]==3 and result["end"]==9 and
+                result["direction"]=="forward",
+                "Rerender lost focused search's caret/selection")
+        require("You are searching manually" not in result["path"],
+                "The unsubmitted draft unexpectedly changed the active discovery query")
+        require(page.locator("#listening-card").get_attribute("aria-label")==original or
+                page.locator("#listening-card").get_attribute("aria-label").startswith("Blind listening."),
+                "Typing into search unexpectedly changed the discovery card")
+
+        # Navigation may intentionally move focus, but must retain the draft.
+        page.locator('#main-nav button[data-view="collection"]').click()
+        page.locator('#main-nav button[data-view="discover"]').click()
+        field=page.locator("#music-search")
+        require(field.input_value()==draft,
+                "Switching away and back erased an unsubmitted search")
+        field.press("Enter")
+        page.wait_for_function("""() =>
+            document.querySelector('.path-explainer')?.textContent
+                .includes('You are searching manually')""",timeout=TIMEOUT)
+        require(field.input_value()==draft,
+                "Submitting the preserved search discarded its query")
+        require(not errors,"Search draft browser exception: "+"; ".join(errors))
+        print(f"PASS {label}: draft, caret, focus, navigation and submit")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1437,6 +1506,7 @@ def firefox_main():
             check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_safe_music_shortcuts(browser, base)
+            check_search_draft_survives_rerenders(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1460,6 +1530,7 @@ def main():
             check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_safe_music_shortcuts(browser, base)
+            check_search_draft_survives_rerenders(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

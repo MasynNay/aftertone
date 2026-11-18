@@ -157,3 +157,13 @@ test('both browser engines reject shortcut modifiers and held keys without losin
   assert.equal(browser.split('check_safe_music_shortcuts(browser, base)').length-1,3,
     'One definition and one invocation for Chromium and Firefox required');
 });
+
+test('unsubmitted music searches and their caret survive DOM replacement in both engines',()=>{
+  assert.match(browser,/def check_search_draft_survives_rerenders\(browser, base\):/);
+  assert.match(browser,/An app rerender erased an unsubmitted artist search/);
+  assert.match(browser,/Rerender lost focused search's caret\/selection/);
+  assert.match(browser,/Switching away and back erased an unsubmitted search/);
+  assert.match(browser,/The unsubmitted draft unexpectedly changed the active discovery query/);
+  assert.equal(browser.split('check_search_draft_survives_rerenders(browser, base)').length-1,3,
+    'One definition and one invocation each for Chromium and Firefox');
+});

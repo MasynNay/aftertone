@@ -83,3 +83,21 @@ test('empty-state keyboard recovery hands focus back to Play or Retry without st
   assert.match(clear,/maybeTopUp\(restoreKeyboardFocus\)/);
   assert.match(main,/changeDiscoveryPath\(mode, restoreKeyboardFocus = false\)/);
 });
+
+test('unsubmitted artist search survives a view rerender without becoming the active search',()=>{
+  const views=createViews({state:createInitialState(),catalog:[],current:null,
+    allGenres:['all','pop'],challengeIds:[],challengeResponses:[],catalogWarning:'',
+    catalogLive:true,collectionQuery:'',collectionSort:'recent',searchQuery:'Old Artist',
+    searchDraft:'New & "Unsubmitted" Artist',
+    feed:{loading:false,hasMore:false,available:0,primed:true}});
+  const sidebar=views.renderSidebarPreferences();
+  assert.match(sidebar,/value="New &amp; &quot;Unsubmitted&quot; Artist"/);
+  assert.doesNotMatch(sidebar,/value="Old Artist"/);
+  assert.match(views.renderDiscovery(),/No recordings matched “Old Artist”/,
+    'Typing alone must not commit a second search');
+  const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  assert.match(main,/searchQuery, searchDraft, sourceLabel/);
+  assert.match(main,/document\.activeElement\?\.id==='music-search'/);
+  assert.match(main,/replacement\.setSelectionRange\(searchSelection\.start,searchSelection\.end,searchSelection\.direction\)/);
+  assert.match(main,/if \(event\.target\.id === 'music-search'\) searchDraft = event\.target\.value/);
+});
