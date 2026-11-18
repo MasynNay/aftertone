@@ -1697,8 +1697,11 @@ def check_cancel_stale_discovery(browser, base):
         field.fill("Fixture Melody")
         field.press("Enter")
         page.locator("#stage-play").wait_for(state="visible",timeout=TIMEOUT)
-        require(not page.evaluate("(cb) => typeof window[cb]==='function'",callback),
-                "Obsolete provider callback remained active after a new search")
+        require(page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "Canceled JSONP must retain a short-lived inert callback for late scripts")
+        page.evaluate("(cb) => window[cb]({data:[{id:99999999,title:'Late stale result'}]})",callback)
+        require(page.locator("#music-search").input_value()=="Fixture Melody",
+                "Late JSONP unexpectedly replaced the current search")
         require(page.evaluate("""(cb) => ![...document.querySelectorAll('script[src]')]
             .some(script=>script.src.includes(cb))""",callback),
                 "Obsolete JSONP script remained in the document after cancellation")
@@ -1717,8 +1720,8 @@ def check_cancel_stale_discovery(browser, base):
                 "Switching away from the search did not select Wild Card")
         require(page.locator("#music-search").input_value()=="",
                 "A new listening path failed to close the temporary artist search")
-        require(not page.evaluate("(cb) => typeof window[cb]==='function'",callback),
-                "Old provider callback leaked after the subsequent path switch")
+        require(page.evaluate("(cb) => typeof window[cb]==='function'",callback),
+                "Canceled JSONP tombstone expired before late script protection was checked")
         require(page.evaluate("window.__staleDiscoveryDocument")=="same-document",
                 "Switching searches or listening paths unexpectedly reloaded the page")
         require(not errors,"Stale discovery browser exception: "+"; ".join(errors))
@@ -1771,10 +1774,9 @@ def check_artist_outage_without_fallback(browser, base):
         field=page.locator("#music-search")
         field.fill("Unavailable Artist")
         field.press("Enter")
+        page.get_by_role("heading",name="Music Is Temporarily Unavailable").wait_for(
+            state="visible",timeout=TIMEOUT)
         empty=page.locator(".discovery-empty-state")
-        empty.wait_for(state="visible",timeout=TIMEOUT)
-        require("Music Is Temporarily Unavailable" in empty.inner_text(),
-                "Failed artist lookup did not show a recoverable error state")
         require("Catalog fixture temporarily unavailable" in empty.inner_text(),
                 "A provider error was obscured by a fallback response")
         require(state["failed_lookup"]==1 and state["ranked_fallback"]==0,
@@ -1808,6 +1810,107 @@ def check_artist_outage_without_fallback(browser, base):
         context.close()
 
 
+
+def check_mobile_filters_keyboard(browser, base, width):
+    """The mobile filter drawer is closable, focus-safe, and never hides results."""
+    context=browser.new_context(viewport={"width":width,"height":740},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"mobile-filters-{browser.browser_type.name}-{width}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.evaluate("window.__mobileFiltersDocument='same-document'")
+        toggle=page.locator("#mobile-refine-toggle")
+        require(toggle.get_attribute("aria-controls")=="sidebar-preferences",
+                "Mobile Filters toggle does not name its controlled region")
+        toggle.focus()
+        page.keyboard.press("Enter")
+        panel=page.locator("#sidebar-preferences")
+        close_filters=page.get_by_role("button",name="Close discovery filters")
+        require(panel.is_visible() and toggle.get_attribute("aria-expanded")=="true",
+                "Mobile Filters button did not open the visible settings region")
+        require(page.evaluate("""() => document.activeElement?.dataset?.action ===
+            'close-mobile-filters'"""),
+                "Opening Filters did not focus a visible keyboard-safe close action")
+        rect=close_filters.bounding_box()
+        require(rect is not None and rect["width"]>=43.5 and rect["height"]>=43.5,
+                "Phone Filters close control is not a 44px touch target")
+
+        page.keyboard.press("Escape")
+        require(not panel.is_visible() and toggle.get_attribute("aria-expanded")=="false",
+                "Escape failed to close mobile Filters or reset aria-expanded")
+        require(page.evaluate("document.activeElement?.id==='mobile-refine-toggle'"),
+                "Escape failed to restore focus to the Filters opener")
+
+        toggle.click()
+        selected=page.locator("#genre-select")
+        selected.focus()
+        selected.select_option("pop")
+        require(page.evaluate("document.activeElement?.id==='genre-select'"),
+                "Rerendering a mobile filter stranded focus on a removed select")
+        require(page.locator("#genre-select").input_value()=="pop",
+                "Changing the mobile genre was not retained after rerender")
+        # The fictional chart and search fixtures reuse song IDs. Reset to
+        # All genres before searching so an already cached chart track's
+        # original unknown genre isn't incorrectly treated as a pop result.
+        page.locator("#genre-select").select_option("all")
+        require(page.evaluate("document.activeElement?.id==='genre-select'"),
+                "Restoring All genres lost focus on the selected filter")
+
+        close_filters=page.get_by_role("button",name="Close discovery filters")
+        close_filters.click()
+        require(not panel.is_visible() and toggle.get_attribute("aria-expanded")=="false",
+                "Done failed to close the Filters panel")
+        require(page.evaluate("document.activeElement?.id==='mobile-refine-toggle'"),
+                "Done did not return keyboard focus to Filters opener")
+
+        toggle.click()
+        field=page.locator("#music-search")
+        field.fill("Fixture Melody")
+        field.press("Enter")
+        require(not panel.is_visible() and toggle.get_attribute("aria-expanded")=="false",
+                "Search submission left mobile Filters covering the results")
+        require(page.evaluate("document.activeElement?.id==='main-content'"),
+                "Submitting a mobile search failed to dismiss keyboard focus from the drawer")
+        page.locator("#stage-play").wait_for(state="visible",timeout=TIMEOUT)
+        require("Fixture Melody" in page.locator("#listening-card").inner_text(),
+                "After closing Filters the new music search was not displayed")
+        require(page.locator("#music-search").input_value()=="Fixture Melody",
+                "Search submission lost its committed text")
+
+        toggle.click()
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require(not panel.is_visible() and toggle.get_attribute("aria-expanded")=="false",
+                "Navigation away left a hidden Filters drawer marked expanded")
+        require(page.evaluate("document.activeElement?.id==='main-content'"),
+                "Navigation away from the mobile drawer lost main section focus")
+        require(page.evaluate("window.__mobileFiltersDocument")=="same-document",
+                "Mobile filter actions unexpectedly reloaded the page")
+        require(page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return (s.favorites||[]).length===0 && (s.history||[]).length===0;
+        }"""),"Mobile filter interactions fabricated listening votes or favorites")
+        require(page.evaluate("document.documentElement.scrollWidth <= innerWidth+2"),
+                "Mobile Filters caused horizontal document overflow")
+        require(not errors,"Mobile Filters JavaScript exception: "+"; ".join(errors))
+        print(f"PASS {label}: open, Escape, Done, filter focus, search, navigation")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1830,6 +1933,8 @@ def firefox_main():
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
             check_artist_outage_without_fallback(browser, base)
+            check_mobile_filters_keyboard(browser, base, 390)
+            check_mobile_filters_keyboard(browser, base, 320)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1858,6 +1963,8 @@ def main():
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
             check_artist_outage_without_fallback(browser, base)
+            check_mobile_filters_keyboard(browser, base, 390)
+            check_mobile_filters_keyboard(browser, base, 320)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

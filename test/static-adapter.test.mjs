@@ -95,7 +95,12 @@ test('aborting a browser discovery cancels its JSONP callback instead of reporti
     await assert.rejects(pending,(error)=>error?.name==='AbortError',
       'A canceled request must reject with AbortError, not resolve to a 502');
     assert.equal(removed,1,'Canceled JSONP scripts must be removed');
-    assert.equal(globalThis[callback],undefined,'Canceled callbacks must be deleted');
+    assert.equal(typeof globalThis[callback],'function',
+      'Canceled scripts need a temporary inert callback for late execution');
+    assert.doesNotThrow(()=>globalThis[callback]({data:rows}),
+      'Late JSONP must not cause a browser exception');
+    assert.equal(typeof globalThis[callback],'function',
+      'The canceled callback should remain inert until its bounded expiry');
   } finally {
     document.createElement=previousCreate;
     document.head.append=previousAppend;
@@ -117,6 +122,48 @@ test('aborting during Deezer artist resolution does not start fallback catalog r
     controller.abort();
     await assert.rejects(pending,(error)=>error?.name==='AbortError');
     assert.equal(waiting.length,1,'An aborted artist lookup must not launch a fallback search');
+  } finally {
+    document.head.append=previousAppend;
+  }
+});
+
+
+test('timed-out JSONP leaves a short-lived inert callback rather than crashing late scripts',async()=>{
+  const previousAppend=document.head.append;
+  const pendingScripts=[];
+  document.head.append=(script)=>pendingScripts.push(script);
+  try {
+    const failure=deezerJSONP('https://api.deezer.com/search',{timeoutMs:1});
+    await assert.rejects(failure,/did not respond/);
+    assert.equal(pendingScripts.length,1);
+    const callback=new URL(pendingScripts[0].src).searchParams.get('callback');
+    assert.equal(typeof globalThis[callback],'function');
+    assert.doesNotThrow(()=>globalThis[callback]({data:rows}),
+      'A tardy timeout response must not raise an uncaught exception');
+  } finally {
+    document.head.append=previousAppend;
+  }
+});
+
+test('callback tombstone lifetime and count are bounded, and valid data cleans up immediately',async()=>{
+  const source=(await import('node:fs')).readFileSync(
+    new URL('../app/src/static-adapter.mjs',import.meta.url),'utf8');
+  assert.match(source,/const RETIRED_JSONP_MS=15000/);
+  assert.match(source,/const MAX_RETIRED_JSONP=48/);
+  assert.match(source,/while \(retiredJSONP\.size>MAX_RETIRED_JSONP\)/);
+  assert.match(source,/setTimeout\(\(\)=>discardRetiredJSONP\(name\),RETIRED_JSONP_MS\)/);
+  assert.match(source,/entry\.scope\[name\]===entry\.ignore/);
+  const previousAppend=document.head.append;
+  let normalCallback;
+  document.head.append=script=>{
+    normalCallback=new URL(script.src).searchParams.get('callback');
+    queueMicrotask(()=>globalThis[normalCallback]?.(reply(script.src)));
+  };
+  try {
+    const response=await apiFetch('/api/discover?source=deezer&genre=all&cursor=0');
+    assert.equal(response.status,200);
+    assert.equal(globalThis[normalCallback],undefined,
+      'A normally completed callback should not leave a tombstone');
   } finally {
     document.head.append=previousAppend;
   }

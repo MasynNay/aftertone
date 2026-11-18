@@ -1,3 +1,13 @@
+## Provider cancellation and mobile interactions (v0.12 development)
+
+The phone-width Filters test exposed a race in the browser-side Deezer adapter: a removed JSONP script may still execute after its callback was deleted, causing an uncaught page error even though the obsolete results are ignored. A bounded, short-lived no-op callback now absorbs these delayed responses. Browser automation checks that stale results never replace an active search or change listening history. This does not change third-party playback rights or the need for manual device testing.
+
+## Mobile Filters focus and dismissal (v0.12 development)
+
+- On screens 900px wide or narrower, opening **Filters** now focuses a visible, 44px-tall **Done** button instead of raising the phone keyboard immediately. The header toggle identifies its settings panel through `aria-controls` and keeps `aria-expanded` synchronized with the actual open state.
+- **Escape** and **Done** close the drawer and return focus to the Filters opener. Submitting a music search closes the overlay and focuses the newly rendered Discover landmark so results are not hidden behind the panel. Switching to another app section also resets the expanded state.
+- Discovery genre/language/mix selects preserve focus when their options cause the sidebar to rerender. Automated browser checks cover 390px and 320px CSS viewport widths in Chromium and Firefox, including keyboard operation, no fabricated votes and no horizontal overflow. These tests do not establish manual VoiceOver/TalkBack compatibility or actual touch-keyboard behavior.
+
 # AFTERTONE v0.12 — Accessibility and Mobile Verification
 
 **Reviewed November 16, 2026** · [Roadmap issue #7](https://github.com/MasynNay/aftertone/issues/7) · [Keyboard/layout PR #23](https://github.com/MasynNay/aftertone/pull/23) · [Touch targets PR #25](https://github.com/MasynNay/aftertone/pull/25)

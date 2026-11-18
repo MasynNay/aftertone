@@ -192,10 +192,11 @@ test('Collection removal Undo is verified in both real browsers and survives rel
 test('real browsers cancel obsolete artist JSONP when queries or paths switch',()=>{
   assert.match(browser,/def check_cancel_stale_discovery\(browser, base\):/);
   assert.match(browser,/The first artist query did not remain pending/);
-  assert.match(browser,/Obsolete provider callback remained active after a new search/);
+  assert.match(browser,/Canceled JSONP must retain a short-lived inert callback for late scripts/);
   assert.match(browser,/Obsolete JSONP script remained in the document after cancellation/);
   assert.match(browser,/A stale artist request replaced the listener's newer search/);
-  assert.match(browser,/Old provider callback leaked after the subsequent path switch/);
+  assert.match(browser,/Late JSONP unexpectedly replaced the current search/);
+  assert.match(browser,/Canceled JSONP tombstone expired before late script protection was checked/);
   assert.match(browser,/An obsolete search created listening votes or favorites/);
   assert.equal(browser.split('check_cancel_stale_discovery(browser, base)').length-1,3,
     'Stale provider cancellation must be checked in Chromium and Firefox');
@@ -225,4 +226,19 @@ test('CI caches only the exact pinned Linux browser engines without removing dep
   assert.match(workflow,/runs-on: ubuntu-24\.04/);
   assert.match(workflow,/if: github\.event_name != 'pull_request'/,
     'Pages uploads and production deployment must stay gated separately');
+});
+
+
+test('mobile Filters keyboard recovery is checked at 390px and 320px in both browser engines',()=>{
+  assert.match(browser,/def check_mobile_filters_keyboard\(browser, base, width\):/);
+  for(const marker of [
+    'Opening Filters did not focus a visible keyboard-safe close action',
+    'Escape failed to restore focus to the Filters opener',
+    'Rerendering a mobile filter stranded focus on a removed select',
+    'Search submission left mobile Filters covering the results',
+    'Navigation away left a hidden Filters drawer marked expanded',
+    'Mobile filter interactions fabricated listening votes or favorites',
+  ]) assert.ok(browser.includes(marker),'Missing mobile Filters regression: '+marker);
+  assert.equal(browser.split('check_mobile_filters_keyboard(browser, base, 390)').length-1,2);
+  assert.equal(browser.split('check_mobile_filters_keyboard(browser, base, 320)').length-1,2);
 });

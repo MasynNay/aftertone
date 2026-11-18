@@ -941,13 +941,29 @@ function motionSafeScroll() {
   return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
+/** Keep the small-screen settings panel and its accessible toggle in sync.
+ * Opening focuses a visible close control, not an editable input that would
+ * immediately raise the phone's software keyboard.
+ */
+function setMobileFiltersOpen(open, focusTarget='') {
+  const toggle=$('#mobile-refine-toggle');
+  const side=$('#sidebar-preferences');
+  const expanded=Boolean(open && view==='discover' &&
+    matchMedia('(max-width: 900px)').matches && side && !side.hidden);
+  document.body.classList.toggle('mobile-filters-open',expanded);
+  toggle?.setAttribute('aria-expanded',String(expanded));
+  if (expanded && focusTarget==='close')
+    side.querySelector('[data-action="close-mobile-filters"]')?.focus({preventScroll:true});
+  if (!expanded && focusTarget==='toggle' && toggle?.getClientRects().length)
+    toggle.focus({preventScroll:true});
+}
 function goTo(nextView) {
   setThemeMenuOpen(false);
   if (!['discover', 'collection', 'taste', 'challenges', 'quiz', 'duels'].includes(nextView)) return;
   if (modal) closeModal();
   stopContinuous();
   view = nextView;
-  document.body.classList.remove('mobile-filters-open');
+  setMobileFiltersOpen(false);
   render();
   // Moving focus to the named main landmark announces the destination once.
   main.focus({preventScroll:true});
@@ -960,6 +976,9 @@ function render() {
   cancelStaleDiscovery();
   // Catalog refreshes may rerender the sidebar while a search is being typed.
   // Keep the unfinished text and its caret; only a deliberate submit commits it.
+  const focusedFilterId=view==='discover' &&
+    ['genre-select','language-select','discovery-mix-select'].includes(document.activeElement?.id)
+    ? document.activeElement.id : null;
   const focusedSearch=view==='discover' && document.activeElement?.id==='music-search'
     ? document.activeElement : null;
   const searchSelection=focusedSearch
@@ -970,6 +989,11 @@ function render() {
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
+  if (focusedFilterId) {
+    // Sidebar preferences are rebuilt when a filter changes. Keep keyboard
+    // focus on the new select instead of leaving it on the document body.
+    $('#'+focusedFilterId)?.focus({preventScroll:true});
+  }
   if (searchSelection && view==='discover') {
     const replacement=$('#music-search');
     if (replacement) {
@@ -1752,10 +1776,10 @@ document.addEventListener('click', async (event) => {
     case 'play-current': return togglePlayback(current);
     case 'retry-preview': return retryFailedPreview();
     case 'skip-unavailable': return skipUnavailablePreview();
+    case 'close-mobile-filters': return setMobileFiltersOpen(false,'toggle');
     case 'focus-music-search': {
       if(view!=='discover') goTo('discover');
-      document.body.classList.add('mobile-filters-open');
-      $('#mobile-refine-toggle')?.setAttribute('aria-expanded','true');
+      setMobileFiltersOpen(true);
       sidebarFiltersCollapsed=false;
       $('#sidebar-preferences')?.classList.remove('is-collapsed');
       $('#sidebar-preferences [data-action="toggle-side-filters"]')?.setAttribute('aria-expanded','true');
@@ -1890,7 +1914,10 @@ main.addEventListener('input', (event) => {
   updateChrome(); // Sync navbar mute with the new level.
 });
 $('#help-button').addEventListener('click', () => openModal('help'));
-$('#mobile-refine-toggle').addEventListener('click', () => {const opened=document.body.classList.toggle('mobile-filters-open'); $('#mobile-refine-toggle').setAttribute('aria-expanded',String(opened));});
+$('#mobile-refine-toggle').addEventListener('click', () => {
+  const opened=document.body.classList.contains('mobile-filters-open');
+  setMobileFiltersOpen(!opened,'close');
+});
 $('.brand').addEventListener('click', (event) => { event.preventDefault(); goTo('discover'); });
 
 main.addEventListener('error', (event) => {
@@ -1952,6 +1979,13 @@ document.addEventListener('submit', (event) => {
   event.preventDefault();
   searchQuery = ($('#music-search')?.value || '').trim().slice(0, 90);
   searchDraft = searchQuery;
+  const fromMobileFilters=document.body.classList.contains('mobile-filters-open');
+  if (fromMobileFilters) {
+    setMobileFiltersOpen(false);
+    // Results are below the former overlay. Dismiss the software keyboard
+    // and announce the newly rendered discovery section instead.
+    main.focus({preventScroll:true});
+  }
   stopContinuous(); current = null; render(); void loadMore(state.genre, true);
 });
 document.addEventListener('input', (event) => {
@@ -1980,6 +2014,11 @@ window.addEventListener('keydown', (event) => {
   if (modal) {
     if(event.key==='Escape') {event.preventDefault();closeModal();return;}
     if(event.key==='Tab')trapModalTab(event);
+    return;
+  }
+  if(event.key==='Escape' && document.body.classList.contains('mobile-filters-open')) {
+    event.preventDefault();
+    setMobileFiltersOpen(false,'toggle');
     return;
   }
   // Do not hijack browser/assistive-technology shortcuts or let holding

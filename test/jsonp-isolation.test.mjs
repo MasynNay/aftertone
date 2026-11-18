@@ -24,7 +24,9 @@ test('aborting one identical request does not cancel the other', async()=>{
     assert.notEqual(firstCallback,secondCallback);
     firstAbort.abort();
     await assert.rejects(first,{name:'AbortError'});
-    assert.equal(globalThis[firstCallback],undefined);
+    assert.equal(typeof globalThis[firstCallback],'function',
+      'Only the aborted request receives an inert callback');
+    assert.doesNotThrow(()=>globalThis[firstCallback]({data:[{id:99}]}));
     assert.equal(scripts[0].removed,true);
     assert.equal(scripts[1].removed,undefined);
     globalThis[secondCallback]({data:[{id:42}]});

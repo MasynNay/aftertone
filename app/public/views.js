@@ -100,7 +100,7 @@ function renderDiscovery() {
 
 function renderSidebarPreferences() {
   const langNames = [['all','All languages'],['en','English preferred'],['en-strict','English-focused artists'],['es','Spanish'],['fr','French'],['pt','Portuguese'],['de','German'],['it','Italian'],['ja','Japanese'],['ko','Korean'],['zh','Chinese'],['hi','Hindi'],['ar','Arabic'],['ru','Russian']];
-  return `<div class="sidebar-filter-head"><span>DISCOVERY SETTINGS</span><button type="button" data-action="toggle-side-filters" aria-expanded="true" aria-controls="sidebar-filter-body" title="Collapse or expand discovery settings">▾</button></div>
+  return `<div class="sidebar-filter-head"><span>DISCOVERY SETTINGS</span><div class="sidebar-filter-head-actions"><button class="mobile-filter-close" type="button" data-action="close-mobile-filters" aria-label="Close discovery filters">Done ✓</button><button type="button" data-action="toggle-side-filters" aria-expanded="true" aria-controls="sidebar-filter-body" title="Collapse or expand discovery settings">▾</button></div></div>
   <div class="sidebar-filter-body" id="sidebar-filter-body">
     <form id="music-search-form" class="sidebar-filter-form" role="search"><label for="music-search">FIND MUSIC</label><div class="sidebar-search"><input id="music-search" aria-label="Search tracks and artists" placeholder="Artist or song…" value="${html(searchDraft)}"/><button aria-label="Search music" type="submit">↗</button></div></form>
     ${searchQuery ? `<button type="button" class="side-clear" data-action="clear-search">Clear search ×</button>` : ''}

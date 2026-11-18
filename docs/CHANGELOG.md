@@ -1,3 +1,15 @@
+## v0.12 development — Late JSONP cancellation safety (November 18, 2026)
+
+- A canceled Deezer JSONP script may still execute after its tag is removed, depending on browser timing. Replacing its callback with an inert short-lived function prevents `window.__aftertoneDeezer_* is not a function` page errors while keeping obsolete results isolated from the active search.
+- The inert callbacks expire after 15 seconds, are capped at 48 entries and only delete themselves if still unchanged. Normal successful responses continue removing callbacks immediately.
+- Added Node tests for aborted/timed-out late callbacks, bounded cleanup and successful requests, plus updated Chromium/Firefox stale-search regressions to simulate a late canceled script. This is browser reliability work, not a live-provider availability or media-usage claim.
+
+## v0.12 development — Mobile Filters keyboard recovery (November 18, 2026)
+
+- Made the mobile Filters overlay explicitly dismissible via a 44px **Done** button and Escape. Opening places focus on Done rather than triggering the phone's software keyboard, and closing restores focus to the Filters opener.
+- Submitting a music search dismisses Filters and returns focus to Discover so new results are visible. Switching sections resets the button's expanded state, and selecting genre/language/discovery mix preserves keyboard focus through sidebar rerenders.
+- Added source-level checks and Chromium/Firefox browser regressions at 390px and 320px, covering Escape, Done, search, select focus, section navigation, no reload or false listening votes.
+
 ## v0.12 development — Cache pinned Playwright browser downloads (November 18, 2026)
 
 - Reuse the version-pinned Chromium/Firefox browser binary cache in GitHub Actions instead of downloading both from scratch on every build, while still installing OS dependencies and executing every existing browser and Node check.
