@@ -96,3 +96,41 @@ test('backup restoration never strands focus on a hidden picker or silently lose
   assert.match(main,/Restore canceled\. Your existing progress was not changed/);
   assert.match(main,/if \(view==='collection'\) action\.focus\(\{preventScroll:true\}\)/);
 });
+
+
+test('mobile Filters panel has a named toggle and a visible touch-friendly close action',()=>{
+  assert.match(index,/id="mobile-refine-toggle" aria-expanded="false" aria-controls="sidebar-preferences"/);
+  const views=readFileSync(new URL('../app/public/views.js',import.meta.url),'utf8');
+  assert.match(views,/data-action="close-mobile-filters" aria-label="Close discovery filters"/);
+  assert.match(css,/\.sidebar-filter-head-actions \.mobile-filter-close \{display:none;\}/);
+  assert.match(css,/\.sidebar-filter-head-actions \.mobile-filter-close \{\s*display:inline-flex;/);
+  assert.match(css,/min-height:44px;height:44px/);
+});
+
+test('mobile Filters dismissal, search submission, and navigation always synchronize aria-expanded',()=>{
+  const helper=main.match(/function setMobileFiltersOpen\(open, focusTarget=''\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(helper,'Mobile drawer open/close helper must be centralized');
+  assert.match(helper,/matchMedia\('\(max-width: 900px\)'\)\.matches/);
+  assert.match(helper,/classList\.toggle\('mobile-filters-open',expanded\)/);
+  assert.match(helper,/setAttribute\('aria-expanded',String\(expanded\)\)/);
+  assert.match(helper,/close-mobile-filters/);
+  assert.match(helper,/focus\(\{preventScroll:true\}\)/);
+  assert.match(main,/case 'close-mobile-filters': return setMobileFiltersOpen\(false,'toggle'\)/);
+  assert.match(main,/setMobileFiltersOpen\(!opened,'close'\)/);
+  const go=main.slice(main.indexOf('function goTo(nextView)'),main.indexOf('function render()'));
+  assert.match(go,/setMobileFiltersOpen\(false\)/);
+  const submit=main.slice(main.indexOf("document.addEventListener('submit'"),main.indexOf("document.addEventListener('input'"));
+  assert.match(submit,/setMobileFiltersOpen\(false\)/);
+  assert.match(submit,/main\.focus\(\{preventScroll:true\}\)/);
+  const keys=main.slice(main.indexOf("window.addEventListener('keydown'"),main.indexOf('// Gestures follow the pointer'));
+  assert.match(keys,/event\.key==='Escape' && document\.body\.classList\.contains\('mobile-filters-open'\)/);
+  assert.match(keys,/setMobileFiltersOpen\(false,'toggle'\)/);
+});
+
+test('filter redraws retain focus on active select boxes',()=>{
+  const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
+  assert.match(render,/focusedFilterId/);
+  for (const id of ['genre-select','language-select','discovery-mix-select'])
+    assert.match(render,new RegExp(id));
+  assert.match(render,/\$\('#'\+focusedFilterId\)\?\.focus\(\{preventScroll:true\}\)/);
+});
