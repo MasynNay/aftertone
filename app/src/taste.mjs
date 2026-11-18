@@ -134,6 +134,17 @@ export function removeFavorite(state, id) {
   return { ...state, favorites: state.favorites.filter((value) => value !== id) };
 }
 
+/** Reverse a Collection removal without replaying a listening decision.
+ * Reinstate the original save order and never introduce a duplicate.
+ */
+export function restoreRemovedFavorite(state, id, index) {
+  if (typeof id !== 'string' || !id || state.favorites.includes(id)) return state;
+  const favorites = state.favorites.slice();
+  const position = Number.isInteger(index) ? Math.max(0, Math.min(index, favorites.length)) : favorites.length;
+  favorites.splice(position, 0, id);
+  return { ...state, favorites };
+}
+
 export function restoreLastChoice(state) {
   if (!state.history.length) return state;
   const history = state.history.slice(0, -1);
