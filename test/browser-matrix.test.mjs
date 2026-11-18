@@ -242,3 +242,21 @@ test('mobile Filters keyboard recovery is checked at 390px and 320px in both bro
   assert.equal(browser.split('check_mobile_filters_keyboard(browser, base, 390)').length-1,2);
   assert.equal(browser.split('check_mobile_filters_keyboard(browser, base, 320)').length-1,2);
 });
+
+
+test('primary swipe safety covers mouse, touch, cancellation and card replacement on both phones and browsers',()=>{
+  assert.match(browser,/def check_swipe_pointer_safety\(browser, base, width\):/);
+  for(const evidence of [
+    'Right-button drag recorded a listening vote',
+    'Secondary touch pointer recorded a vote',
+    'Mostly vertical motion was counted as a swipe',
+    'Below-threshold horizontal drag rated a song',
+    'Canceled drag recorded a listening vote',
+    'Pointer cancellation left a transformed card',
+    'A deliberate right swipe did not keep exactly one song',
+    'Left swipe did not Pass exactly once without deleting a favorite',
+    "Replaced card's delayed pointerup recorded a vote",
+  ]) assert.ok(browser.includes(evidence),'Missing swipe-safety regression: '+evidence);
+  assert.equal(browser.split('check_swipe_pointer_safety(browser, base, 390)').length-1,2);
+  assert.equal(browser.split('check_swipe_pointer_safety(browser, base, 320)').length-1,2);
+});
