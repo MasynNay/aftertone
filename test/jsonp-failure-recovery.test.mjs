@@ -51,7 +51,10 @@ test('timed out JSONP requests clean up and ignore late script errors',async()=>
     const callback=new URL(script.src).searchParams.get('callback');
     await assert.rejects(pending,/did not respond/i);
     assert.equal(script.removed,true);
-    assert.equal(globalThis[callback],undefined);
+    assert.equal(typeof globalThis[callback],'function',
+      'Timed-out scripts retain a short-lived inert callback');
+    assert.doesNotThrow(()=>globalThis[callback]({data:[{id:44}]}),
+      'Late JSONP execution must never raise an uncaught exception');
     assert.doesNotThrow(()=>script.onerror());
   }finally{
     globalThis.document=oldDocument;
