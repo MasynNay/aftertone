@@ -1489,6 +1489,74 @@ def check_search_draft_survives_rerenders(browser, base):
         context.close()
 
 
+def check_collection_search_recovery(browser, base):
+    """Collection filters must give keyboard users a direct and safe way back."""
+    context=browser.new_context(viewport={"width":1024,"height":800},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"collection-search-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():
+            close.first.click(timeout=TIMEOUT)
+        page.locator('#listening-card [data-action="like"]').click()
+        page.wait_for_function("""() => {
+            const data=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return data.favorites?.length===1;
+        }""",timeout=TIMEOUT)
+        page.evaluate("window.__collectionFilterProbe='same-document'")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        field=page.locator("#collection-search")
+        field.wait_for(state="visible",timeout=TIMEOUT)
+        field.fill("NoSuchSavedArtistXYZ")
+        page.get_by_role("heading",name="No Matches.").wait_for(state="visible",timeout=TIMEOUT)
+        require("Showing 0 of 1 saved song" in page.locator(".collection-match-count").inner_text(),
+                "Empty collection filtering did not show an accurate match count")
+        clear=page.get_by_role("button",name="Show All Saved Songs",exact=True)
+        clear.focus()
+        page.keyboard.press("Enter")
+        require(page.evaluate("document.activeElement?.id === 'collection-search'"),
+                "Clearing an empty collection filter failed to return focus to search")
+        require(page.locator("#collection-search").input_value()=="",
+                "Clear Search did not reset the saved-music filter")
+        require(page.locator(".collection-grid .track-tile").count()==1,
+                "Clearing an empty filter did not restore the saved song")
+
+        field=page.locator("#collection-search")
+        field.fill("Fixture")
+        require("Showing 1 of 1 saved song" in page.locator(".collection-match-count").inner_text(),
+                "Filtered collection count was incorrect")
+        sort=page.locator("#sort-select")
+        sort.focus()
+        sort.select_option("artist")
+        require(page.evaluate("document.activeElement?.id === 'sort-select'"),
+                "Changing Collection sort stranded keyboard focus on the old dropdown")
+        require(page.locator("#sort-select").input_value()=="artist",
+                "Collection sort choice was not preserved after rerender")
+        require(page.locator(".collection-grid .track-tile").count()==1,
+                "Sorting unexpectedly removed a saved song")
+        require(page.evaluate("window.__collectionFilterProbe")=="same-document",
+                "Collection search or sorting triggered an unexpected page reload")
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).favorites.length""")==1,
+            "Collection search changed the user's saved favorites")
+        require(not errors,"Collection filter browser exception: "+"; ".join(errors))
+        print(f"PASS {label}: empty search recovery, counts, sort focus, no lost favorites")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -1507,6 +1575,7 @@ def firefox_main():
             check_choice_keyboard_focus(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
+            check_collection_search_recovery(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -1531,6 +1600,7 @@ def main():
             check_choice_keyboard_focus(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
+            check_collection_search_recovery(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")

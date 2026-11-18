@@ -1800,6 +1800,13 @@ document.addEventListener('click', async (event) => {
       if (returnFocus) restoreDecisionFocus('undo');
       return toast('Last choice undone.');
     }
+    case 'clear-collection-search': {
+      const returnFocus=document.activeElement===action;
+      collectionQuery='';
+      render();
+      if (returnFocus) $('#collection-search')?.focus({preventScroll:true});
+      return;
+    }
     case 'remove-favorite': state = removeFavorite(state, id); persist(); render(); return toast('Removed from collection.');
     case 'export-json': return exportLibrary('json');
     case 'export-csv': return exportLibrary('csv');
@@ -1877,7 +1884,12 @@ document.addEventListener('change', (event) => {
     state.discovery = ['hits','variety'].includes(event.target.value) ? event.target.value : 'hits';
     persist(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp();
   }
-  if (event.target.id === 'sort-select') { collectionSort = event.target.value; render(); }
+  if (event.target.id === 'sort-select') {
+    const returnFocus=document.activeElement===event.target;
+    collectionSort=['recent','title','artist'].includes(event.target.value) ? event.target.value : 'recent';
+    render();
+    if (returnFocus) $('#sort-select')?.focus({preventScroll:true});
+  }
 });
 document.addEventListener('submit', (event) => {
   if (event.target.id !== 'music-search-form') return;
@@ -1895,11 +1907,15 @@ document.addEventListener('input', (event) => {
   if (event.target.matches('[data-intro-artist]')) updateArtistCount();
 
   if (event.target.id === 'collection-search') {
-    const focusPosition = event.target.selectionStart;
+    const selection={start:event.target.selectionStart,end:event.target.selectionEnd,
+      direction:event.target.selectionDirection};
     collectionQuery = event.target.value;
     render();
     const input = $('#collection-search');
-    if (input) { input.focus(); input.setSelectionRange(focusPosition, focusPosition); }
+    if (input) {
+      input.focus({preventScroll:true});
+      input.setSelectionRange(selection.start,selection.end,selection.direction);
+    }
   }
 });
 

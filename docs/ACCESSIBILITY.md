@@ -92,6 +92,12 @@ This milestone addresses specific barriers discovered in the original browser ap
 - If the listener was editing the input when a refresh happened, the replacement input regains keyboard focus and the original caret/selection. Deliberate navigation, focus changes or Clear Search do not force focus back.
 - Chromium and Firefox browser regressions type a new query, trigger a separate UI rerender while editing, verify focus and selection, navigate to Collection and back, and confirm Enter commits the preserved search. Provider results are mocked; manual screen-reader and live-provider checks remain separate.
 
+## Collection search and sort continuity (v0.12 development)
+
+- Filtering saved songs now shows a visible match count and an explicit **Show All Saved Songs** empty-state action, so keyboard and touch users do not have to discover how to clear the search manually.
+- Clearing an active Collection filter restores keyboard focus to the saved-music search box if the action began there; sorting restores focus to the new dropdown after rerendering rather than leaving users on a removed element. Search selection direction and range are preserved during live filtering.
+- Browser checks in Chromium and Firefox save a fictional song, enter a query that yields zero matches, clear it by keyboard, sort the recovered result and verify that favorite data and browser document identity remain unchanged. This is not a manual screen-reader audit.
+
 ## Manual acceptance checklist (not yet verified)
 
 - [ ] Test all six navigation sections and all first-run dialogs with keyboard-only use in **Firefox** and **Chrome**.

@@ -51,3 +51,40 @@ test('markup helpers escape hostile text and reject non-HTTPS links', () => {
   assert.equal(urlSafe('javascript:alert(1)'), '#');
   assert.equal(urlSafe('http://example.com'), '#');
 });
+
+test('collection filtering shows exact match counts and a one-click empty-state recovery', () => {
+  const track = STARTER_TRACKS[0];
+  const state = recordChoice(createInitialState(), { id: track.id, action: 'like' });
+  const render = (query) => createViews({
+    state,catalog:STARTER_TRACKS,current:null,allGenres:GENRES,
+    challengeIds:[],challengeResponses:[],catalogWarning:'',catalogLive:false,
+    collectionQuery:query,collectionSort:'recent'
+  }).renderCollection();
+  assert.doesNotMatch(render(''),/data-action="clear-collection-search"/);
+  const matched=render(track.artist);
+  assert.match(matched,/Showing 1 of 1 saved song/);
+  assert.match(matched,/data-action="clear-collection-search">Clear Search/);
+  const empty=render('NoSuchSavedArtistXYZ');
+  assert.match(empty,/Showing 0 of 1 saved song/);
+  assert.match(empty,/No Matches/);
+  assert.match(empty,/data-action="clear-collection-search">Show All Saved Songs/);
+  assert.match(empty,/data-action="backup-progress"/);
+  assert.doesNotMatch(empty,/data-action="reset-listens"/);
+});
+
+test('collection search and sort recovery return focus to a live control', async () => {
+  const {readFileSync} = await import('node:fs');
+  const app=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const clear=app.slice(app.indexOf("case 'clear-collection-search':"),
+    app.indexOf("case 'remove-favorite':"));
+  assert.match(clear,/collectionQuery='';/);
+  assert.match(clear,/document\.activeElement===action/);
+  assert.match(clear,/#collection-search/);
+  assert.match(clear,/focus\(\{preventScroll:true\}\)/);
+  const sort=app.slice(app.indexOf("if (event.target.id === 'sort-select')"),
+    app.indexOf("document.addEventListener('submit'"));
+  assert.match(sort,/document\.activeElement===event\.target/);
+  assert.match(sort,/#sort-select/);
+  assert.match(sort,/focus\(\{preventScroll:true\}\)/);
+  assert.match(app,/input\.setSelectionRange\(selection\.start,selection\.end,selection\.direction\)/);
+});

@@ -32,6 +32,10 @@ An empty screen is not a reason to erase your history. You can **Retry Search / 
 
 If an audio preview itself fails, use **Retry Preview** or **Skip Without Voting**. Unavailable audio is not a negative vote against the artist.
 
+## Find songs in your Collection
+
+Collection lets you filter saved songs by title, artist or genre and sort them by recently kept, song title or artist. While filtering, the app shows how many of your saved songs match. If nothing matches, choose **Show All Saved Songs** to clear the filter and return to the search field. Changing the sort order keeps the dropdown focused for keyboard navigation. Filtering and sorting never delete favorites or modify listening history.
+
 ## Saved progress and provider limitations
 
 Open **Collection** to save or restore progress via [Backup and Restore](BACKUP_RESTORE.md). Real Deezer catalog and playback may be limited by upstream availability, region, browser policies, and content permissions. This project doesn't host or distribute copyrighted recordings, and the demo is not an official Deezer service.
