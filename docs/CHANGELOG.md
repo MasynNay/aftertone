@@ -1,3 +1,9 @@
+## v0.12 development — Mobile Filters keyboard recovery (November 18, 2026)
+
+- Made the mobile Filters overlay explicitly dismissible via a 44px **Done** button and Escape. Opening places focus on Done rather than triggering the phone's software keyboard, and closing restores focus to the Filters opener.
+- Submitting a music search dismisses Filters and returns focus to Discover so new results are visible. Switching sections resets the button's expanded state, and selecting genre/language/discovery mix preserves keyboard focus through sidebar rerenders.
+- Added source-level checks and Chromium/Firefox browser regressions at 390px and 320px, covering Escape, Done, search, select focus, section navigation, no reload or false listening votes.
+
 ## v0.12 development — Cache pinned Playwright browser downloads (November 18, 2026)
 
 - Reuse the version-pinned Chromium/Firefox browser binary cache in GitHub Actions instead of downloading both from scratch on every build, while still installing OS dependencies and executing every existing browser and Node check.
