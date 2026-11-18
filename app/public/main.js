@@ -971,6 +971,9 @@ function goTo(nextView) {
 }
 
 function render() {
+  // The existing card can be replaced by provider updates mid-drag. The next
+  // pointerup must never rate a different song after that replacement.
+  clearSwipeGesture();
   // Stop old provider work immediately on mode/search/filter switches, even
   // when the newly selected path already has enough cached songs.
   cancelStaleDiscovery();
@@ -2041,47 +2044,74 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'Space') { event.preventDefault(); togglePlayback(current); }
 });
 
-// Gestures follow the pointer, reveal the stamp, then animate offscreen.
-// Vertical scrolling stays native; the final decision only happens after a threshold.
+// Keep every gesture tied to the exact card, song and primary pointer that
+// started it. A rerender, browser scroll/cancel, second finger or right-click
+// must never turn into an accidental Keep or Pass.
+function clearSwipeGesture(pointerId=null) {
+  const gesture=pointerStart;
+  if (!gesture || (pointerId!==null && gesture.pointer!==pointerId)) return null;
+  pointerStart=null;
+  const card=gesture.card;
+  card.classList.remove('dragging');
+  card.style.transform='';
+  card.querySelector('#decision-stamp')?.style.removeProperty('opacity');
+  if (card.hasPointerCapture?.(gesture.pointer)) {
+    try {card.releasePointerCapture(gesture.pointer);} catch {}
+  }
+  return gesture;
+}
+
+// Vertical scrolling stays native. Capture only a started primary drag so a
+// release just outside the card still reaches this handler.
 main.addEventListener('pointerdown', (event) => {
-  if (modal || animatingChoice || view !== 'discover' || !current || !event.target.closest('#listening-card') || event.target.closest('button, input, select, textarea, label, a, [data-volume-slider]')) return;
-  pointerStart = { x: event.clientX, y: event.clientY, pointer: event.pointerId };
+  const card=event.target.closest('#listening-card');
+  if (pointerStart || event.isPrimary===false || event.button!==0 || modal ||
+      animatingChoice || view!=='discover' || !current || !card ||
+      event.target.closest('button, input, select, textarea, label, a, [data-volume-slider]')) return;
+  pointerStart={x:event.clientX,y:event.clientY,pointer:event.pointerId,
+    card,trackId:current.id};
+  try {card.setPointerCapture?.(event.pointerId);} catch {}
 });
 main.addEventListener('pointermove', (event) => {
-  if (!pointerStart || pointerStart.pointer !== event.pointerId) return;
-  const dx = event.clientX - pointerStart.x;
-  const dy = event.clientY - pointerStart.y;
-  const card = $('#listening-card');
-  if (!card || Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
-  const bounded = Math.max(-170, Math.min(170, dx));
+  const gesture=pointerStart;
+  if (!gesture || gesture.pointer!==event.pointerId) return;
+  if (!gesture.card.isConnected || current?.id!==gesture.trackId || view!=='discover' || modal) {
+    clearSwipeGesture(event.pointerId);
+    return;
+  }
+  const dx=event.clientX-gesture.x;
+  const dy=event.clientY-gesture.y;
+  const card=gesture.card;
+  if (Math.abs(dx)<10 || Math.abs(dx)<Math.abs(dy)*1.3) {
+    // A diagonal gesture that turns into vertical scrolling must restore the
+    // card immediately, rather than leaving a partial Keep/Pass preview.
+    card.classList.remove('dragging');
+    card.style.transform='';
+    card.querySelector('#decision-stamp')?.style.removeProperty('opacity');
+    return;
+  }
+  const bounded=Math.max(-170,Math.min(170,dx));
   card.classList.add('dragging');
-  card.style.transform = `translateX(${bounded}px) rotate(${bounded * .035}deg)`;
-  const stamp = $('#decision-stamp', card);
+  card.style.transform=`translateX(${bounded}px) rotate(${bounded*.035}deg)`;
+  const stamp=card.querySelector('#decision-stamp');
   if (stamp) {
-    stamp.textContent = dx > 0 ? '♥' : 'NOPE';
-    stamp.dataset.feedback = dx > 0 ? 'like' : 'pass';
-    stamp.style.opacity = String(Math.min(1, Math.max(0, (Math.abs(dx) - 12) / 85)));
+    stamp.textContent=dx>0?'♥':'NOPE';
+    stamp.dataset.feedback=dx>0?'like':'pass';
+    stamp.style.opacity=String(Math.min(1,Math.max(0,(Math.abs(dx)-12)/85)));
   }
 });
 main.addEventListener('pointerup', (event) => {
-  if (!pointerStart || pointerStart.pointer !== event.pointerId) return;
-  const dx = event.clientX - pointerStart.x;
-  const dy = event.clientY - pointerStart.y;
-  pointerStart = null;
-  const card = $('#listening-card');
-  if (card) {
-    card.classList.remove('dragging');
-    card.style.transform = '';
-    $('#decision-stamp', card)?.style.removeProperty('opacity');
-  }
-  if (Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 1.6) acceptChoice(dx > 0 ? 'like' : 'pass');
+  const gesture=clearSwipeGesture(event.pointerId);
+  if (!gesture || !gesture.card.isConnected || current?.id!==gesture.trackId ||
+      view!=='discover' || modal || animatingChoice) return;
+  const dx=event.clientX-gesture.x;
+  const dy=event.clientY-gesture.y;
+  if (Math.abs(dx)>75 && Math.abs(dx)>Math.abs(dy)*1.6)
+    acceptChoice(dx>0?'like':'pass');
 });
-main.addEventListener('pointercancel', () => {
-  pointerStart = null;
-  const card = $('#listening-card');
-  if (card) { card.classList.remove('dragging'); card.style.transform = ''; }
-  $('#decision-stamp', card || main)?.style.removeProperty('opacity');
-});
+main.addEventListener('pointercancel', (event) => {clearSwipeGesture(event.pointerId);});
+main.addEventListener('lostpointercapture', (event) => {clearSwipeGesture(event.pointerId);});
+window.addEventListener('blur', () => {clearSwipeGesture();});
 
 async function init() {
   main.innerHTML = `<div class="eyebrow">THE LISTENING ROOM</div><h1>Finding the <em>frequency...</em></h1><p class="lead">Tuning the record shelf.</p>`;
