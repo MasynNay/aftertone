@@ -249,6 +249,9 @@ test('primary swipe safety covers mouse, touch, cancellation and card replacemen
   for(const evidence of [
     'Right-button drag recorded a listening vote',
     'Secondary touch pointer recorded a vote',
+    'Primary swipe was not active before a second touch',
+    'Second contact failed to cancel the active swipe',
+    'Original pointer voted after a second finger arrived',
     'Mostly vertical motion was counted as a swipe',
     'Below-threshold horizontal drag rated a song',
     'Canceled drag recorded a listening vote',

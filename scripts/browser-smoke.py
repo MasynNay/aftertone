@@ -1998,6 +1998,27 @@ def check_swipe_pointer_safety(browser, base, width):
         }""")
         require(progress()==before,"Secondary touch pointer recorded a vote")
 
+        # A second finger outside the card must invalidate a drag already
+        # captured by the first pointer, even if the first pointer later lifts.
+        x,y,_=anchor()
+        page.mouse.move(x,y)
+        page.mouse.down()
+        page.mouse.move(x+105,y,steps=6)
+        require(page.locator("#listening-card").evaluate(
+            "(card)=>card.classList.contains('dragging')"),
+            "Primary swipe was not active before a second touch")
+        page.evaluate("""() => {
+            document.body.dispatchEvent(new PointerEvent('pointerdown',{
+              bubbles:true,pointerId:87,pointerType:'touch',button:0,
+              isPrimary:false,clientX:8,clientY:8
+            }));
+        }""")
+        require(page.locator("#listening-card").evaluate(
+            "(card)=>!card.classList.contains('dragging') && !card.style.transform"),
+            "Second contact failed to cancel the active swipe")
+        page.mouse.up()
+        require(progress()==before,"Original pointer voted after a second finger arrived")
+
         drag(44,162)
         require(progress()==before,"Mostly vertical motion was counted as a swipe")
         require(not page.locator("#listening-card").evaluate(
