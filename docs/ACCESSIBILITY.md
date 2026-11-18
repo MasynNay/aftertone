@@ -1,3 +1,7 @@
+## Provider cancellation and mobile interactions (v0.12 development)
+
+The phone-width Filters test exposed a race in the browser-side Deezer adapter: a removed JSONP script may still execute after its callback was deleted, causing an uncaught page error even though the obsolete results are ignored. A bounded, short-lived no-op callback now absorbs these delayed responses. Browser automation checks that stale results never replace an active search or change listening history. This does not change third-party playback rights or the need for manual device testing.
+
 ## Mobile Filters focus and dismissal (v0.12 development)
 
 - On screens 900px wide or narrower, opening **Filters** now focuses a visible, 44px-tall **Done** button instead of raising the phone keyboard immediately. The header toggle identifies its settings panel through `aria-controls` and keeps `aria-expanded` synchronized with the actual open state.
