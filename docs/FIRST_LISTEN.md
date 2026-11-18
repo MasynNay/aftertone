@@ -30,7 +30,7 @@ While typing an artist or song name, your unfinished search stays in the search 
 
 An empty screen is not a reason to erase your history. You can **Retry Search / Find More Songs**, **Clear Search**, **Broaden Filters** to return to all genres, languages, and eras, switch to a different listening path, or **Search for an Artist**. These actions don't remove favorites or prior Keep/Pass choices. Keyboard users can activate Retry Discovery with Enter, and focus returns to the new **Retry Discovery** control if the source remains unavailable or to **Play** if a track is found. Route switches and recovery controls are also designed to retain a useful focus target after the card changes.
 
-If an audio preview itself fails, use **Retry Preview** or **Skip Without Voting**. Unavailable audio is not a negative vote against the artist.
+If an audio preview itself fails, use **Retry Preview** or **Skip Without Voting**. Unavailable audio is not a negative vote against the artist. When an artist search fails because Deezer is slow or unavailable, Aftertone now stops rather than immediately launching more provider lookups. Use **Retry Discovery** when the service recovers; your favorites and listening decisions stay intact.
 
 ## Find songs in your Collection
 
