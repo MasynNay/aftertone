@@ -922,11 +922,25 @@ function goTo(nextView) {
 }
 
 function render() {
+  // Catalog refreshes may rerender the sidebar while a search is being typed.
+  // Keep the unfinished text and its caret; only a deliberate submit commits it.
+  const focusedSearch=view==='discover' && document.activeElement?.id==='music-search'
+    ? document.activeElement : null;
+  const searchSelection=focusedSearch
+    ? {start:focusedSearch.selectionStart,end:focusedSearch.selectionEnd,direction:focusedSearch.selectionDirection}
+    : null;
   updateChrome();
   const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort,
-    feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
+    feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
+  if (searchSelection && view==='discover') {
+    const replacement=$('#music-search');
+    if (replacement) {
+      replacement.focus({preventScroll:true});
+      replacement.setSelectionRange(searchSelection.start,searchSelection.end,searchSelection.direction);
+    }
+  }
   switch (view) {
     case 'collection': main.innerHTML = pages.renderCollection(); break;
     case 'taste': main.innerHTML = pages.renderTaste(); break;
