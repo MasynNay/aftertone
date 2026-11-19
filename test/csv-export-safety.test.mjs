@@ -56,9 +56,11 @@ test('podium and Hall of Fame CSVs use the same safe cell encoding without rewri
       'Normal song names must not be modified');
     assert.ok(output.endsWith('\r\n'),'CSV must end with a normal CRLF');
   }
-  assert.ok(podium.includes(csvCell(name)),
-    'A user-supplied cup name must not execute in a spreadsheet');
-  assert.equal(tournament.name,name,'Export must not mutate stored tournament data');
+  // Creating a cup intentionally trims its name before storage.
+  assert.ok(podium.includes(csvCell(tournament.name)),
+    'A normalized user-supplied cup name must not execute in a spreadsheet');
+  assert.equal(tournament.name,name.trim(),
+    'CSV must preserve the tournament name after its ordinary input normalization');
   assert.equal(tournament.entries[0].title,titles[0],
     'Export must not modify the saved song metadata');
 });
