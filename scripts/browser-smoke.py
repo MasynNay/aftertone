@@ -2725,6 +2725,98 @@ def check_discovery_path_keyboard_continuity(browser, base):
         context.close()
 
 
+def check_modal_interrupts_pending_preview(browser, base):
+    """Opening Help while Play is resolving must cancel metadata and end autoplay."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        onboarding=page.locator('#modal-root button[data-modal="close"]')
+        if onboarding.count():onboarding.first.click(timeout=TIMEOUT)
+        # The callback is registered by the production JSONP adapter, but
+        # never deliver metadata. Record removal as AbortSignal evidence.
+        page.evaluate("""() => {
+            const append=document.head.append.bind(document.head);
+            window.__dialogPreviewFlights=[];
+            document.head.append=(...nodes)=>{
+                for(const node of nodes){
+                    const url=node?.src ? new URL(node.src,location.href) : null;
+                    if(url?.hostname==='api.deezer.com' &&
+                       url.pathname.startsWith('/track/')){
+                        const pending={
+                            callback:url.searchParams.get('callback'),
+                            path:url.pathname,removed:false
+                        };
+                        const remove=node.remove.bind(node);
+                        node.remove=()=>{pending.removed=true;return remove();};
+                        window.__dialogPreviewFlights.push(pending);
+                    } else append(node);
+                }
+            };
+        }""")
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__dialogPreviewFlights.length===1",
+                               timeout=TIMEOUT)
+        require(not page.evaluate("window.__dialogPreviewFlights[0].removed"),
+                "Preview metadata finished before opening Help")
+        page.locator("#help-button").click()
+        page.locator('#modal-root [role="dialog"]').wait_for(
+            state="visible",timeout=TIMEOUT)
+        page.wait_for_function("() => window.__dialogPreviewFlights[0].removed",
+                               timeout=TIMEOUT)
+        require(page.evaluate("""() => {
+            const player=document.querySelector('#player');
+            return player.paused && !player.getAttribute('src');
+        }"""),"Help dialog left pending audio loaded or playing behind its overlay")
+        page.evaluate("""() => {
+            const cb=window.__dialogPreviewFlights[0].callback;
+            window[cb]?.({id:9100001,
+                preview:'https://fixture.invalid/too-late-preview.mp3'});
+        }""")
+        page.keyboard.press("Escape")
+        page.locator('#modal-root [role="dialog"]').wait_for(
+            state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("document.activeElement?.id==='help-button'"),
+                "Closing Help did not restore focus to its button")
+        require(page.locator("#stop-session").is_hidden(),
+                "Opening Help did not end automatic playback")
+        require(page.locator("#preview-recovery").is_hidden(),
+                "Canceled preview metadata created a false preview error")
+        require(page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return !s.history?.length && !s.favorites?.length &&
+                document.querySelector('#player').paused;
+        }"""),"Dialog interruption played audio or changed Keep/Pass history")
+        # A later explicit Play must request fresh metadata, not share the
+        # abandoned request or instantly start audio from its stale callback.
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__dialogPreviewFlights.length===2",
+                               timeout=TIMEOUT)
+        require(page.evaluate("""() =>
+            window.__dialogPreviewFlights[0].callback !==
+            window.__dialogPreviewFlights[1].callback &&
+            !window.__dialogPreviewFlights[1].removed"""),
+            "Fresh Play reused the canceled metadata request")
+        page.locator("#stop-session").click()
+        page.wait_for_function("() => window.__dialogPreviewFlights[1].removed",
+                               timeout=TIMEOUT)
+        require(not errors,"Dialog interruption browser errors: "+"; ".join(errors))
+        print("PASS modal cancels pending preview, prevents hidden autoplay, and permits retry")
+    except Exception:
+        screenshot(page,"FAILED-modal-preview-interruption")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2741,6 +2833,7 @@ def firefox_main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
+            check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
@@ -2781,6 +2874,7 @@ def main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
+            check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
