@@ -2097,6 +2097,91 @@ def check_swipe_pointer_safety(browser, base, width):
         context.close()
 
 
+def check_playlist_dialog_cancellation(browser, base):
+    """An abandoned import must not affect a later reopened playlist dialog."""
+    context=browser.new_context(viewport={"width":1440,"height":900},service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error: errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    pending=[]
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+
+    def fixture(route):
+        parsed=urlsplit(route.request.url)
+        path=parsed.path
+        cb=parse_qs(parsed.query).get("callback",[""])[0]
+        if path=="/playlist/54321":
+            # Leave this request unanswered. Closing its dialog must abort the
+            # corresponding JSONP callback and remove the script tag.
+            pending.append(route)
+            return
+        if path=="/playlist/67890":
+            payload={"title":"New fixture playlist","nb_tracks":1}
+        elif path=="/playlist/67890/tracks":
+            payload={"data":[{"title":"Fixture Quiet Song",
+                               "artist":{"name":"Fixture New Artist"}}]}
+        else:
+            return mock_deezer(route)
+        route.fulfill(status=200,content_type="application/javascript",
+                      body=f"window[{json.dumps(cb)}]({json.dumps(payload)});")
+
+    context.route("https://api.deezer.com/**",fixture)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        intro=page.locator('#modal-root button[data-modal="close"]')
+        if intro.count(): intro.first.click()
+        page.locator('[data-action="import-playlist"]').click()
+        page.locator('#playlist-link').fill('https://www.deezer.com/playlist/54321')
+        page.locator('[data-modal="playlist-link-import"]').click()
+        page.wait_for_function("""() => [...document.scripts].some(script =>
+            script.src.includes('/playlist/54321?'))""",timeout=TIMEOUT)
+        old_callback=page.evaluate("""() => {
+            const script=[...document.scripts].find(s=>s.src.includes('/playlist/54321?'));
+            return new URL(script.src).searchParams.get('callback');
+        }""")
+        require(len(pending)==1,"First metadata request did not reach the fixture")
+        page.keyboard.press("Escape")
+        page.locator('#modal-root [role="dialog"]').wait_for(state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("""() => ![...document.scripts].some(
+            script=>script.src.includes('/playlist/54321?'))"""),
+            "Closing the playlist dialog did not remove its pending JSONP script")
+        require(page.evaluate("(cb) => typeof window[cb] === 'function'",old_callback),
+                "Canceled JSONP callback lost its bounded late-response tombstone")
+        page.evaluate("""(cb) => window[cb]({
+            title:'Old fixture playlist',nb_tracks:1
+        })""",old_callback)
+        require(page.evaluate("""() => !localStorage.getItem(
+            'aftertone:optional-playlist:v1')"""),
+            "Abandoned playlist unexpectedly wrote saved songs")
+
+        # Opening the same *kind* of dialog is not permission for the earlier
+        # async request to update or close this new instance.
+        page.locator('[data-action="import-playlist"]').click()
+        page.locator('#playlist-link').fill('https://www.deezer.com/playlist/67890')
+        page.locator('[data-modal="playlist-link-import"]').click()
+        page.wait_for_function("""() => {
+            const p=JSON.parse(localStorage.getItem('aftertone:optional-playlist:v1')||'null');
+            return (p?.tracks||[]).some(t=>t.title==='Fixture Quiet Song');
+        }""",timeout=TIMEOUT)
+        saved=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:optional-playlist:v1')||'null')""")
+        require(len(saved["tracks"])==1 and
+                saved["tracks"][0]["artist"]=="Fixture New Artist",
+                "Fresh playlist was overwritten or mixed with stale metadata")
+        require(page.locator('#modal-root [role="dialog"]').count()==0,
+                "Successful import should close its own dialog")
+        require(not errors,"Playlist cancellation caused browser errors: "+"; ".join(errors))
+        print("PASS playlist dialog cancellation, stale JSONP isolation and reimport")
+    except Exception:
+        screenshot(page,"FAILED-playlist-dialog-cancellation")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2123,6 +2208,7 @@ def firefox_main():
             check_mobile_filters_keyboard(browser, base, 320)
             check_swipe_pointer_safety(browser, base, 390)
             check_swipe_pointer_safety(browser, base, 320)
+            check_playlist_dialog_cancellation(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -2155,6 +2241,7 @@ def main():
             check_mobile_filters_keyboard(browser, base, 320)
             check_swipe_pointer_safety(browser, base, 390)
             check_swipe_pointer_safety(browser, base, 320)
+            check_playlist_dialog_cancellation(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
