@@ -1,3 +1,8 @@
+## Preview interruption by modal dialogs (v0.12 development)
+
+- Opening a modal while a fictional Deezer preview metadata lookup is pending now aborts that lookup before the dialog becomes interactive. The phone-width Chromium/Firefox regression checks script removal, inert late callback behavior, paused/cleared audio, no automatic restart, correct return of focus, and a fresh explicit Play afterward.
+- The browser fixture does not fetch actual media or establish external playback permissions. The non-loading path pauses rather than resets an existing preview; physical-device playback interruption still requires manual checking.
+
 ## Abandoned audio-metadata cancellation (v0.12 development)
 
 - Added a phone-width Chromium/Firefox regression that intercepts fictional on-demand Deezer track JSONP metadata, starts Play, stops before the lookup responds, then verifies the script was removed and an old callback is harmless. Navigating away also stops an in-flight lookup; a new Play on returning to Discover starts a fresh request and never records a Keep/Pass.
