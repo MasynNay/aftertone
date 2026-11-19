@@ -52,9 +52,11 @@ test('theme tiles preserve modal focus rather than jumping to an inert header to
 
 test('only same-song listening controls regain focus through card redraws',()=>{
   const views=readFileSync(new URL('../app/public/views.js',import.meta.url),'utf8');
-  assert.match(views,/id="listening-card" data-track-id="\$\{html\(current\.id\)\}"/);
+  assert.doesNotMatch(views,/id="listening-card" data-track-id=/,
+    'Blind challenges must not expose recording IDs in markup');
   const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
-  assert.match(render,/previousCard\?\.dataset\.trackId===String\(current\.id\)/);
+  assert.match(render,/Boolean\(previousCard\) && renderedListeningTrackId===String\(current\.id\)/);
+  assert.match(render,/renderedListeningTrackId=view==='discover' && \$\('#listening-card'\)/);
   for(const id of ['stage-play','preview-volume','lyrics-offset','lyrics-toggle'])
     assert.ok(render.includes(id),'No focus tracking for '+id);
   assert.match(render,/!replacement\.closest\('\[hidden\], \[inert\]'\)/);
