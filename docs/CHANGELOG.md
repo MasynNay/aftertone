@@ -1,3 +1,9 @@
+## v0.12 development — Keep discovery-path keyboard focus (November 19, 2026)
+
+- Switching among Comfort Zone, New Territory and Wild Card now keeps keyboard focus on the selected path button rather than unexpectedly moving it to Play or the page landmark.
+- The focused option survives the immediate Discover rebuild and any later catalog-loading rerender, while `aria-pressed` continues to identify the active mode. Changing paths still requests a genuinely different discovery lane; no Keep/Pass votes are created by changing a setting.
+- Added a Node wiring regression and phone-width Chromium/Firefox interaction checks. Real screen-reader navigation and physical touch-device behavior remain separately unverified.
+
 ## v0.12 development — Stop abandoned preview metadata requests (November 18, 2026)
 
 - Closing an active preview, switching to a new song or navigating away from Discover now aborts any pending on-demand preview metadata lookups. Previously the player ignored stale replies but allowed their underlying provider calls to keep running.
