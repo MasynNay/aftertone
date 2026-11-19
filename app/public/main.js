@@ -1190,7 +1190,7 @@ async function warmRelatedFromSaved(version) {
       const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(name)}`,{signal});
       if(!response.ok || signal.aborted || version!==seedVersion) return;
       const data=await response.json();
-      if(!Array.isArray(data.related)) return;
+      if(signal.aborted || version!==seedVersion || !Array.isArray(data.related)) return;
       const next=mergeRelatedArtists(seedRelated,data.related,
         seedActive?(activeSeedProfile()?.artists.map(x=>x.artist)||[]):[],name);
       if(next.length<=seedRelated.length) return;
@@ -1220,7 +1220,7 @@ async function expandRelatedFromLike(track,version) {
     const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(artist)}`,{signal});
     if(!response.ok || signal.aborted || version!==seedVersion) return;
     const data=await response.json();
-    if(!Array.isArray(data.related)) return;
+    if(signal.aborted || version!==seedVersion || !Array.isArray(data.related)) return;
     const starters=seedActive ? (activeSeedProfile()?.artists.map(a=>a.artist) || []) : [];
     const next=mergeRelatedArtists(seedRelated,data.related,starters,artist);
     if(next.length<=seedRelated.length) return;
