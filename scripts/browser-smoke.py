@@ -2657,6 +2657,74 @@ def check_abandoned_preview_metadata_cancellation(browser, base):
         context.close()
 
 
+def check_discovery_path_keyboard_continuity(browser, base):
+    """Changing a discovery path must not jump focus to Play or the main landmark."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        require(page.locator('.discovery-paths .path-option').count()==3,
+                "Three discovery paths must be keyboard accessible")
+        page.evaluate("window.__pathFocusProbe='same-document'")
+        # Starting on a different mode ensures these are real setting changes.
+        for mode in ('explore','familiar','balanced'):
+            button=page.locator(f'.discovery-paths .path-option[data-path="{mode}"]')
+            button.focus()
+            page.keyboard.press('Enter')
+            page.wait_for_function("""(name) => {
+                const active=document.activeElement;
+                const chosen=document.querySelector(
+                    '.discovery-paths .path-option[aria-pressed="true"]');
+                return active?.dataset.path===name &&
+                    chosen?.dataset.path===name &&
+                    active.getAttribute('aria-pressed')==='true';
+            }""",arg=mode,timeout=TIMEOUT)
+            require(page.locator('.discovery-paths .path-option[aria-pressed="true"]').count()==1,
+                    "Exactly one discovery path should be selected")
+            # Network completion may replace the placeholder card after mode
+            # selection; the focused option must survive that later redraw.
+            page.wait_for_timeout(350)
+            require(page.evaluate("document.activeElement?.dataset.path") == mode,
+                    f"Delayed {mode} loading discarded keyboard focus")
+        # Another path can still be selected with ordinary Tab and Enter.
+        chosen=page.locator('.discovery-paths .path-option[data-path="balanced"]')
+        chosen.focus()
+        page.keyboard.press("Shift+Tab")
+        require(page.evaluate("document.activeElement?.dataset.path")=="familiar",
+                "Path focus could not move between adjacent buttons")
+        page.keyboard.press("Enter")
+        require(page.evaluate("""() =>
+            document.activeElement?.dataset.path==='familiar' &&
+            document.activeElement?.getAttribute('aria-pressed')==='true'"""),
+            "Selecting the adjacent path jumped focus away")
+        state=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')||'{}')""")
+        require(not state.get('history') and not state.get('favorites'),
+                "Changing path settings unexpectedly recorded a listening choice")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require(page.evaluate("document.activeElement?.id==='main-content'"),
+                "Deliberate navigation should focus the new main landmark")
+        require(page.evaluate("window.__pathFocusProbe")=="same-document",
+                "Changing discovery paths unexpectedly reloaded the page")
+        require(not errors,"Discovery path browser errors: "+"; ".join(errors))
+        print("PASS discovery paths retain keyboard focus across mode and provider redraws")
+    except Exception:
+        screenshot(page,"FAILED-discovery-path-focus")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2677,6 +2745,7 @@ def firefox_main():
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
+            check_discovery_path_keyboard_continuity(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
@@ -2716,6 +2785,7 @@ def main():
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
+            check_discovery_path_keyboard_continuity(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
