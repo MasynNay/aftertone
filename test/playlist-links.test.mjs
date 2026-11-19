@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {parsePlaylistLink, importPlaylistLink} from '../app/src/playlist-links.mjs';
 import {createServer} from '../app/server.mjs';
 import {createViews} from '../app/public/views.js';
@@ -69,4 +70,22 @@ test('balanced and adventurous do not schedule any starter artist repeats',()=>{
     assert.ok(DISCOVERY_MIXES[mode].every(slot=>slot!=='favorite'));
     assert.equal(Array.from({length:10},(_,i)=>chooseListeningLane(i,mode,['favorite','related','broad'])).filter(x=>x==='favorite').length,0);
   }
+});
+
+test('playlist dialog cancels obsolete link imports and ignores delayed file reads',()=>{
+  const source=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const lifecycle=source.match(/function cancelPlaylistLinkFlight\(\) \{([\s\S]*?)\n\}/)?.[1];
+  assert.ok(lifecycle,'Missing cancellation helper for the active playlist dialog');
+  assert.match(lifecycle,/flight\.controller\.abort\(\)/);
+  assert.match(source,/function openModal\(kind, extra = \{\}\) \{\s*cancelPlaylistLinkFlight\(\)/);
+  assert.match(source,/function closeModal\(\) \{\s*if \(!modal\) return;\s*cancelPlaylistLinkFlight\(\)/);
+  assert.match(source,/function startPlaylistDiscovery\(\) \{[\s\S]*?cancelPlaylistLinkFlight\(\)/);
+  const link=source.slice(source.indexOf('async function importPlaylistLinkFromDialog()'),source.indexOf('function openModal(kind'));
+  assert.match(link,/const dialog=modal;/);
+  assert.match(link,/\{signal:controller\.signal\}/);
+  assert.match(link,/modal!==dialog \|\| playlistLinkFlight!==flight/);
+  assert.match(link,/!controller\.signal\.aborted && modal===dialog && playlistLinkFlight===flight/);
+  const file=source.slice(source.indexOf('async function importPlaylistFromDialog()'),source.indexOf('async function importPlaylistLinkFromDialog()'));
+  assert.match(file,/const dialog=modal;/);
+  assert.match(file,/if\(modal!==dialog \|\| dialog\?\.kind!=='playlist'\) return/);
 });
