@@ -1392,7 +1392,13 @@ function openModal(kind, extra = {}) {
       !modalRoot.contains(opener) ? opener : main;
   }
   modal = { kind, ...extra };
-  audio.pause();
+  // A dialog is an explicit interruption. A slow on-demand preview must not
+  // finish loading and begin playing behind an inert application shell.
+  continuousListening = false;
+  consecutivePlaybackFailures = 0;
+  if (isLoadingAudio) stopAudio(); // Abort pending metadata and invalidate its generation.
+  else audio.pause(); // Keep an already-loaded preview's position for a later manual Play.
+  updatePlaybackView();
   renderModal();
 }
 
