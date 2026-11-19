@@ -2182,6 +2182,70 @@ def check_playlist_dialog_cancellation(browser, base):
         context.close()
 
 
+def check_stale_related_profile_cancellation(browser, base):
+    """Changing artist personalization must abort old related-graph JSONP."""
+    context=browser.new_context(viewport={"width":1440,"height":900},service_workers="block")
+    page=context.new_page()
+    errors=[]
+    pending=[]
+    artist="Fixture Stale Seed Artist"
+    page.on("pageerror",lambda error: errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+
+    def provider(route):
+        parsed=urlsplit(route.request.url)
+        if parsed.path=="/search/artist" and parse_qs(parsed.query).get("q",[""])[0]==artist:
+            pending.append(route)
+            return
+        return mock_deezer(route)
+
+    context.route("https://api.deezer.com/**",provider)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        page.locator('#intro-artist-0').fill(artist)
+        page.locator('#modal-root [data-modal="onboarding-artists"]').click()
+        page.wait_for_function("""(artist) => [...document.scripts].some(script => {
+            const url=new URL(script.src);
+            return url.pathname==='/search/artist' &&
+                url.searchParams.get('q')===artist;
+        })""",artist,timeout=TIMEOUT)
+        callbacks=page.evaluate("""(artist) => [...document.scripts].filter(script => {
+            const url=new URL(script.src);
+            return url.pathname==='/search/artist' &&
+                url.searchParams.get('q')===artist;
+        }).map(script=>new URL(script.src).searchParams.get('callback'))""",artist)
+        require(callbacks,"Seeded lookup was not pending before exiting personalization")
+        page.locator('[data-action="fresh-discovery"]').first.click()
+        page.wait_for_function("""(artist) => ![...document.scripts].some(script=>{
+            const url=new URL(script.src);
+            return url.pathname==='/search/artist' &&
+                url.searchParams.get('q')===artist;
+        })""",artist,timeout=TIMEOUT)
+        for callback in callbacks:
+            require(page.evaluate("(name) => typeof window[name] === 'function'",callback),
+                    "Canceled related lookup lost its bounded inert callback")
+            page.evaluate("""(name) => window[name]({
+                data:[{id:99999,name:'Obsolete Fixture Neighbor'}]
+            })""",callback)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        require(page.locator('[data-action="fresh-discovery"]').count()==0,
+                "A stale seed was still active after returning to fresh discovery")
+        state=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')||'{}')""")
+        require(not state.get("history") and not state.get("favorites"),
+                "Canceled background artist lookup recorded a listening decision")
+        require(not errors,"Related-profile cancellation caused JS errors: "+"; ".join(errors))
+        print("PASS related graph seed switch aborts old lookups without votes")
+    except Exception:
+        screenshot(page,"FAILED-related-profile-cancellation")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2209,6 +2273,7 @@ def firefox_main():
             check_swipe_pointer_safety(browser, base, 390)
             check_swipe_pointer_safety(browser, base, 320)
             check_playlist_dialog_cancellation(browser, base)
+            check_stale_related_profile_cancellation(browser, base)
         finally:
             browser.close()
     print("PASS Firefox compatibility smoke. Live provider playback was not tested.")
@@ -2242,6 +2307,7 @@ def main():
             check_swipe_pointer_safety(browser, base, 390)
             check_swipe_pointer_safety(browser, base, 320)
             check_playlist_dialog_cancellation(browser, base)
+            check_stale_related_profile_cancellation(browser, base)
         finally:
             browser.close()
     print("PASS all browser checks. Live provider playback was not tested.")
