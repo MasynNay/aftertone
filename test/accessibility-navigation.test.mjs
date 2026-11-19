@@ -38,6 +38,18 @@ test('modal focus stays inside and returns to the original opener on close',()=>
   assert.match(main,/if\(event\.key==='Tab'\)trapModalTab\(event\)/);
   assert.match(main,/modal\.kind === 'playlist' \? 'Import a playlist'/);
 });
+test('theme tiles preserve modal focus rather than jumping to an inert header toggle',()=>{
+  const handler=main.slice(
+    main.indexOf("const theme = event.target.closest('[data-set-theme]');"),
+    main.indexOf("if (!event.target.closest('#theme-picker'))")
+  );
+  assert.match(handler,/if \(modal\?\.kind === 'themes'\) \{[\s\S]*?renderModal\(\);\s*\} else \{[\s\S]*?setThemeMenuOpen\(false, true\);/);
+  const renderModal=main.slice(main.indexOf('function renderModal()'),main.indexOf('function trapModalTab'));
+  assert.match(renderModal,/const previousTheme=modalRoot\.contains\(document\.activeElement\)/);
+  assert.match(renderModal,/\(restoreTheme \|\| modalRoot\.querySelector/);
+  assert.match(renderModal,/\.focus\(\)/);
+});
+
 test('native keyboard activation takes priority over music hotkeys',()=>{
   const keys=main.match(/window\.addEventListener\('keydown', \(event\) => \{([\s\S]*?)\n\}\);/)?.[1];
   assert.ok(keys);
