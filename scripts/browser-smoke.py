@@ -2497,6 +2497,76 @@ def check_listening_control_focus_on_rerender(browser, base):
         context.close()
 
 
+def check_collection_csv_formula_safety(browser, base):
+    """Real Collection downloads must render untrusted metadata as inert CSV text."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                accept_downloads=True,service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        first=page.locator('#modal-root button[data-modal="close"]')
+        if first.count():first.first.click(timeout=TIMEOUT)
+        # Insert hostile-looking *fictional* metadata through normal browser
+        # persistence. These strings are never evaluated or opened by a sheet.
+        title='=HYPERLINK("https://fixture.invalid","Listen")'
+        artist='\t+Pretend Artist'
+        page.evaluate("""(unsafe) => {
+            const current=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            current.favorites=['deezer:91239991'];
+            current.savedTracks=[{
+                id:'deezer:91239991',title:unsafe.title,artist:unsafe.artist,
+                genre:'jazz',mood:'Fresh',source:'deezer',link:'https://fixture.invalid/song'
+            }];
+            current.history=[];
+            localStorage.setItem('aftertone:session:v1',JSON.stringify(current));
+        }""",{"title":title,"artist":artist})
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        page.locator(".collection-grid .track-tile").wait_for(state="visible",timeout=TIMEOUT)
+        require(title in page.locator(".collection-grid").inner_text(),
+                "Collection changed the original untrusted song metadata")
+        page.evaluate("window.__csvExportProbe='same-document'")
+        with page.expect_download(timeout=TIMEOUT) as exported:
+            page.locator('[data-action="export-csv"]').click()
+        download=exported.value
+        require(download.suggested_filename=="aftertone-collection.csv",
+                "Collection CSV filename changed unexpectedly")
+        csv=Path(download.path()).read_text(encoding="utf-8")
+        require("\"'=HYPERLINK(\"\"https://fixture.invalid\"\",\"\"Listen\"\")\"" in csv,
+                "Exported song title was not neutralized as spreadsheet text")
+        require("\"\u0027\t+Pretend Artist\"" in csv,
+                "Tab-prefixed formula-like artist was not neutralized")
+        require('"Title","Artist","Genre","Mood","Source URL"' in csv,
+                "Collection CSV headers were lost or malformatted")
+        require(page.evaluate("window.__csvExportProbe")=="same-document",
+                "Export navigation unexpectedly reloaded the app")
+        saved=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).savedTracks[0]""")
+        require(saved["title"]==title and saved["artist"]==artist,
+                "CSV hardening changed the user's saved metadata")
+        with page.expect_download(timeout=TIMEOUT) as json_exported:
+            page.locator('[data-action="export-json"]').click()
+        json_copy=json.loads(Path(json_exported.value.path()).read_text(encoding="utf-8"))
+        require(json_copy["tracks"][0]["title"]==title and
+                json_copy["tracks"][0]["artist"]==artist,
+                "JSON library export must retain the exact metadata")
+        require(not errors,"Collection CSV browser errors: "+"; ".join(errors))
+        print("PASS inert Collection CSV download and unmodified JSON metadata")
+    except Exception:
+        screenshot(page,"FAILED-collection-csv-safety")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2519,6 +2589,7 @@ def firefox_main():
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
             check_artist_outage_without_fallback(browser, base)
@@ -2556,6 +2627,7 @@ def main():
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
             check_artist_outage_without_fallback(browser, base)
