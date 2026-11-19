@@ -129,7 +129,7 @@ async function routeApi(url,options={}){
     if(url.pathname==='/api/lyrics'){
       // Browser-safe public LRCLIB calls, no embedded key or restricted headers.
       const fetcher=(link,options={})=>fetch(link,{headers:{Accept:'application/json','Lrclib-Client':'AFTERTONE/0.10'},signal:options.signal});
-      return json(await lookupLyrics({artist:p.get('artist')||'',title:p.get('title')||'',duration:Number(p.get('duration'))||0},fetcher));
+      return json(await lookupLyrics({artist:p.get('artist')||'',title:p.get('title')||'',duration:Number(p.get('duration'))||0},fetcher,undefined,{signal:options.signal}));
     }
     return json({error:'Endpoint unavailable on static hosting.'},404);
   }catch(error){

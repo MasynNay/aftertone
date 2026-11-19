@@ -56,3 +56,57 @@ test('local lyrics endpoint uses exact artist metadata and never bundles lines',
     assert.equal(urls.length,1);
   }finally {await new Promise(resolve=>server.close(resolve));}
 });
+
+
+// Cancellation must not masquerade as "lyrics unavailable" in the cache.
+// All artist names and lyric lines in this test are fictional fixtures.
+test('an abandoned timed-lyrics fetch aborts and a later request can retry',async()=>{
+ const track={artist:'Fixture Cancellation Singer',title:'Fixture Cancelled Tune',duration:173};
+ const controller=new AbortController();
+ let started;
+ const entered=new Promise(resolve=>{started=resolve;});
+ const pending=lookupLyrics(track,(_url,{signal})=>new Promise((_resolve,reject)=>{
+   started(signal);
+   signal.addEventListener('abort',()=>reject(new DOMException('Stopped','AbortError')),{once:true});
+ }),undefined,{signal:controller.signal});
+ const activeSignal=await entered;
+ assert.equal(activeSignal.aborted,false);
+ controller.abort();
+ await assert.rejects(pending,error=>error?.name==='AbortError');
+ assert.equal(activeSignal.aborted,true);
+ let called=0;
+ const response=await lookupLyrics(track,async()=>{
+   called++;
+   return {ok:true,status:200,json:async()=>({
+     artistName:track.artist,trackName:track.title,
+     syncedLyrics:'[00:03.00] A fictional line',duration:track.duration
+   })};
+ });
+ assert.equal(called,1,'An aborted request must not be saved in the error cache');
+ assert.equal(response.status,'available');
+ assert.equal(response.lines[0].text,'A fictional line');
+});
+
+test('an already-aborted lyric lookup never calls its provider',async()=>{
+ const controller=new AbortController();
+ controller.abort();
+ let calls=0;
+ await assert.rejects(
+   lookupLyrics({artist:'Fixture Stopped Performer',title:'Fixture Silence'},
+     async()=>{calls++;throw new Error('This must not be requested');},
+     undefined,{signal:controller.signal}),
+   error=>error?.name==='AbortError'
+ );
+ assert.equal(calls,0);
+});
+
+test('static lyrics route forwards abort into the lyrics provider and UI cancels on exit',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const adapter=readFileSync(new URL('../app/src/static-adapter.mjs',import.meta.url),'utf8');
+ const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+ assert.match(adapter,/lookupLyrics\([\s\S]*?\{signal:options\.signal\}\)/);
+ assert.match(main,/function cancelCurrentLyrics\(\) \{[\s\S]*?lyricsController\?\.abort\(\)/);
+ assert.match(main,/const response=await apiFetch\([\s\S]*?\{signal:controller\.signal\}\)/);
+ assert.match(main,/if\(lyricsController && \(!lyricsEnabled \|\| view!=='discover' \|\| !current\)\) cancelCurrentLyrics\(\)/);
+ assert.match(main,/if\(!lyricsEnabled\) cancelCurrentLyrics\(\)/);
+});

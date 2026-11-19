@@ -15,7 +15,17 @@ const MIN_REQUEST_GAP_MS = 400;
 let nextRequestAt = 0;
 let lastRateLimitedUntil = 0;
 const normalized = s => String(s || '').toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
+const sleep = (ms,signal) => new Promise((resolve,reject) => {
+  if(signal?.aborted) return reject(new DOMException('Lyrics lookup canceled','AbortError'));
+  const done=()=>{signal?.removeEventListener('abort',cancel);resolve();};
+  const timer=setTimeout(done,ms);
+  function cancel() {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort',cancel);
+    reject(new DOMException('Lyrics lookup canceled','AbortError'));
+  }
+  signal?.addEventListener('abort',cancel,{once:true});
+});
 
 export function parseLrc(source) {
   const lines = [];
@@ -43,7 +53,8 @@ export function lineAt(lines, previewTime, offset=0) {
   return match;
 }
 
-export async function lookupLyrics({artist,title,duration},fetcher=fetch,now=()=>Date.now()) {
+export async function lookupLyrics({artist,title,duration},fetcher=fetch,now=()=>Date.now(),{signal}={}) {
+  signal?.throwIfAborted();
   const who = String(artist||'').trim().slice(0,110);
   const song = String(title||'').trim().slice(0,140);
   if(!who || !song) return {status:'unavailable',lines:[]};
@@ -53,7 +64,8 @@ export async function lookupLyrics({artist,title,duration},fetcher=fetch,now=()=
   if(now()<lastRateLimitedUntil) return {status:'rate-limited',lines:[]};
   // Sequential requests and short delay respect LRCLIB's published client rules.
   const delay = Math.max(0,nextRequestAt-now());
-  if(delay) await sleep(delay);
+  if(delay) await sleep(delay,signal);
+  signal?.throwIfAborted();
   nextRequestAt = now()+MIN_REQUEST_GAP_MS;
   const u = new URL(BASE);
   u.searchParams.set('artist_name',who);
@@ -61,7 +73,10 @@ export async function lookupLyrics({artist,title,duration},fetcher=fetch,now=()=
   if(Number.isFinite(duration) && duration>0 && duration<3601) u.searchParams.set('duration',String(Math.round(duration)));
   let value;
   try {
-    const response=await fetcher(u.href, {headers:{'Accept':'application/json','User-Agent':'AFTERTONE/0.7 (local desktop prototype)','Lrclib-Client':'AFTERTONE/0.7'},signal:AbortSignal.timeout(TIMEOUT_MS)});
+    const timeout=AbortSignal.timeout(TIMEOUT_MS);
+    const requestSignal=signal ? AbortSignal.any([signal,timeout]) : timeout;
+    const response=await fetcher(u.href, {headers:{'Accept':'application/json','User-Agent':'AFTERTONE/0.7 (local desktop prototype)','Lrclib-Client':'AFTERTONE/0.7'},signal:requestSignal});
+    signal?.throwIfAborted();
     if(response.status === 429) {
       const retry = Math.max(10,Math.min(3600,Number(response.headers?.get('retry-after')) || 60));
       lastRateLimitedUntil = now()+retry*1000;
@@ -71,11 +86,18 @@ export async function lookupLyrics({artist,title,duration},fetcher=fetch,now=()=
     else if(!response.ok) value={status:'error',lines:[]};
     else {
       const result=await response.json();
+      signal?.throwIfAborted();
       const match=normalized(result.artistName) === normalized(who) && normalized(result.trackName) === normalized(song);
       const lines=match ? parseLrc(result.syncedLyrics) : [];
       value={status: lines.length ? 'available':'unavailable',lines,source:'LRCLIB',duration:Number(result.duration)||null};
     }
-  } catch { value={status:'error',lines:[]}; }
+  } catch {
+    // An intentionally canceled request is not an LRCLIB outage and must
+    // never poison the shared error cache for a future fresh lookup.
+    signal?.throwIfAborted();
+    value={status:'error',lines:[]};
+  }
+  signal?.throwIfAborted();
   if(cache.size>=CACHE_MAX) cache.delete(cache.keys().next().value);
   cache.set(key,{value,expire:now()+(value.status==='available'?900_000:120_000)});
   return value;
