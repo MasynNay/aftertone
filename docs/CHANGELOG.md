@@ -1,3 +1,9 @@
+## v0.12 development — Stop pending playback when opening dialogs (November 19, 2026)
+
+- Opening Help, Appearance themes, a playlist dialog, onboarding or an official video modal now ends the automatic listening session. If a short preview is still resolving, its on-demand metadata request is canceled and its playback generation invalidated before the dialog is shown, preventing the recording from starting behind the modal.
+- An already-loaded preview is only paused, retaining its position so the listener can manually resume after closing the dialog. Background listening never restarts without another Play.
+- Added Node controller checks and Chromium/Firefox phone-viewport fixtures for a held preview request, dialog opening, safe delayed callbacks, focus restoration and a clean subsequent Play. Real provider playback and physical screen-reader checks remain outside this automated test.
+
 ## v0.12 development — Keep discovery-path keyboard focus (November 19, 2026)
 
 - Switching among Comfort Zone, New Territory and Wild Card now keeps keyboard focus on the selected path button rather than unexpectedly moving it to Play or the page landmark.
