@@ -2408,8 +2408,15 @@ def check_listening_control_focus_on_rerender(browser, base):
                   if urlsplit(route.request.url).netloc==origin else route.abort())
     context.route("https://api.deezer.com/**",mock_deezer)
     def fake_lyrics(route):
+        cors={"Access-Control-Allow-Origin":"*",
+              "Access-Control-Allow-Methods":"GET, OPTIONS",
+              "Access-Control-Allow-Headers":"Accept, Lrclib-Client"}
+        if route.request.method=="OPTIONS":
+            route.fulfill(status=204,headers=cors)
+            return
         params=parse_qs(urlsplit(route.request.url).query)
-        route.fulfill(status=200,content_type="application/json",body=json.dumps({
+        route.fulfill(status=200,content_type="application/json",headers=cors,
+                      body=json.dumps({
             "artistName":params.get("artist_name",[""])[0],
             "trackName":params.get("track_name",[""])[0],
             "duration":208,
