@@ -64,7 +64,8 @@ test('broaden filters action keeps listening history and saved favorites intact'
   for(const expected of ["state.genre='all'","state.language='all'","state.era='any'","persist();","loadMore(state.genre,true,false,restoreKeyboardFocus)"])
     assert.ok(reset.includes(expected),expected);
   assert.doesNotMatch(reset,/state\.history\s*=|state\.favorites\s*=|reset-listens|saveImportedPlaylist/);
-  assert.match(main,/changeDiscoveryPath\(path\.dataset\.path,document\.activeElement===path\)/);
+  assert.match(main,/changeDiscoveryPath\(path\.dataset\.path\)/);
+  assert.doesNotMatch(main,/changeDiscoveryPath\(path\.dataset\.path,document\.activeElement===path\)/);
 });
 
 test('empty-state keyboard recovery hands focus back to Play or Retry without stealing later focus',()=>{
@@ -81,7 +82,10 @@ test('empty-state keyboard recovery hands focus back to Play or Retry without st
   assert.match(main,/document\.activeElement === main && requestSearch === searchQuery/);
   const clear=main.slice(main.indexOf("case 'clear-search':"),main.indexOf("case 'pass':"));
   assert.match(clear,/maybeTopUp\(restoreKeyboardFocus\)/);
-  assert.match(main,/changeDiscoveryPath\(mode, restoreKeyboardFocus = false\)/);
+  assert.match(main,/changeDiscoveryPath\(mode\)/);
+  // A path button is a choice, not a disappearing recovery action; the
+  // focused option should survive rerenders instead of jumping to Play.
+  assert.match(main,/focusedPath && view==='discover'/);
 });
 
 test('unsubmitted artist search survives a view rerender without becoming the active search',()=>{

@@ -1,3 +1,8 @@
+## Discovery-path keyboard continuity (v0.12 development)
+
+- The three Discover listening-path buttons retain focus after a keyboard selection. The focused button remains reachable after the screen is rebuilt, and users can Tab to another path without being transported to Play or the main landmark.
+- Automated Node and Chromium/Firefox phone-viewport checks cover successive path changes, `aria-pressed`, delayed provider redraws, and the absence of incidental listening votes. Manual assistive-technology testing is still needed.
+
 ## Listening controls during background rerenders (v0.12 development)
 
 - The listening card can be replaced while the background catalog refills. When the exact same recording stays on screen, focus now returns to the equivalent Play, volume, Lyrics or preview-offset control, provided it is still interactive and visible.

@@ -66,6 +66,17 @@ test('only same-song listening controls regain focus through card redraws',()=>{
   assert.match(go,/view = nextView;[\s\S]*?render\(\);[\s\S]*?main\.focus\(\{preventScroll:true\}\)/);
 });
 
+test('discovery paths keep their focused option instead of jumping to Play',()=>{
+  const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
+  assert.match(render,/focusedOldControl\?\.matches\?\.\('\.discovery-paths \.path-option\[data-path\]'\)/);
+  assert.match(render,/\['familiar','balanced','explore'\]\.includes\(focusedOldControl\.dataset\.path\)/);
+  assert.match(render,/replacement\.focus\(\{preventScroll:true\}\)/);
+  const change=main.slice(main.indexOf('function changeDiscoveryPath('),main.indexOf('function motionSafeScroll()'));
+  assert.doesNotMatch(change,/focusDiscoveryRecovery\(\)|main\.focus\(\{preventScroll:true\}\)/);
+  assert.match(change,/void loadMore\(state\.genre,false,true\)/);
+  assert.match(change,/stopContinuous\(\)/);
+});
+
 test('native keyboard activation takes priority over music hotkeys',()=>{
   const keys=main.match(/window\.addEventListener\('keydown', \(event\) => \{([\s\S]*?)\n\}\);/)?.[1];
   assert.ok(keys);
