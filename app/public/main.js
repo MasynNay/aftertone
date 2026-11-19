@@ -16,6 +16,7 @@ import { belongsToDiscoveryFeed } from '/src/discovery/queue.mjs';
 import { selectRouteQueue, isActiveRequest } from '/src/discovery/route-session.mjs';
 import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/graph.mjs';
 import { createRelatedRequestScope } from '/src/discovery/related-request-scope.mjs';
+import { createPreviewRequestScope } from '/src/discovery/preview-request-scope.mjs';
 import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
 import { eligibleProviders } from '/src/discovery/provider-availability.mjs';
 import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore, loadDuelSelection, saveDuelSelection } from '/src/duels.mjs';
@@ -168,7 +169,7 @@ let activeAudioFallback = false;
 let failedAudioId = null;
 let failedAudioQuota = false; // Rate limits need different recovery guidance from a broken CDN.
 let resolved = new Map();
-const inFlightAudio = new Map();
+const previewRequestScope=createPreviewRequestScope();
 let failedSources = new Set();
 const deezerRefreshedOnce = new Set(); // A signed preview can expire; retry once with a fresh URL.
 const LYRIC_OFFSET_KEY='aftertone:lyric-offsets:v1';
@@ -606,6 +607,9 @@ function setThemeMenuOpen(open, restoreFocus = false) {
 
 function stopAudio() {
   audioGeneration++;
+  // Abandoned on-demand metadata requests must stop at the Deezer adapter,
+  // not merely have their eventual results ignored by audioGeneration.
+  previewRequestScope.cancelAll();
   audio.pause();
   audio.removeAttribute('src');
   audio.load();
@@ -622,10 +626,13 @@ async function resolveAudio(track) {
     if (!item.expiresAt || Date.now() < item.expiresAt) return item;
     resolved.delete(track.id);
   }
-  if (inFlightAudio.has(track.id)) return inFlightAudio.get(track.id);
-  const request = (async () => {
-    const response = await apiFetch(`/api/audio?id=${encodeURIComponent(track.id)}`);
+  // An in-flight Play for the same song reuses its request. On a song change,
+  // Stop or navigation, cancelAll aborts provider traffic and releases the
+  // entry immediately so a fresh Play cannot join an abandoned request.
+  return previewRequestScope.run(track.id, async signal => {
+    const response = await apiFetch(`/api/audio?id=${encodeURIComponent(track.id)}`,{signal});
     const payload = await response.json();
+    signal.throwIfAborted(); // Do not cache a late response after cancellation.
     if (!response.ok || !payload.url) {
       const error = new Error(payload.detail || payload.error || 'No playable file');
       error.status = response.status; // Preserve 429 without exposing provider text as HTML.
@@ -635,10 +642,7 @@ async function resolveAudio(track) {
     if (payload.ttlSeconds) payload.expiresAt = Date.now() + payload.ttlSeconds * 1000;
     resolved.set(track.id, payload);
     return payload;
-  })();
-  inFlightAudio.set(track.id, request);
-  try { return await request; }
-  finally { inFlightAudio.delete(track.id); }
+  });
 }
 
 function prewarm(track) {

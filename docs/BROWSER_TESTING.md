@@ -1,3 +1,8 @@
+## Abandoned audio-metadata cancellation (v0.12 development)
+
+- Added a phone-width Chromium/Firefox regression that intercepts fictional on-demand Deezer track JSONP metadata, starts Play, stops before the lookup responds, then verifies the script was removed and an old callback is harmless. Navigating away also stops an in-flight lookup; a new Play on returning to Discover starts a fresh request and never records a Keep/Pass.
+- The test intentionally never requests a real recording. These checks establish browser cancellation and retry safety, not live Deezer reliability, licensed preview rights or physical mobile-device behavior.
+
 # Browser Smoke Testing
 
 The published AFTERTONE site has two entry points: the portfolio homepage at / and the original interactive music application at /demo/. In an earlier deployment, missing CSS and JavaScript imports produced a blank or unstyled screen even though static unit tests succeeded.
