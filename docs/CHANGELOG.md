@@ -1,3 +1,9 @@
+## v0.12 development — Stop stale artist-graph requests after changing taste (November 18, 2026)
+
+- Changing or clearing the active artist/playlist personalization now aborts outstanding related-artist lookups from the prior session. These requests previously kept running after listeners returned to fresh discovery or changed their chosen artists.
+- Use a fresh AbortSignal for each personalization generation and send it through all three graph request paths: initial seed exploration, saved-Keep warmup and one-hop expansion after a Keep. Old callbacks stay inert under the existing bounded JSONP cancellation rules.
+- Preserve unrelated discovery, existing favorites, playback and completed graph metadata. Add Node contract tests and a Chromium/Firefox browser scenario that leaves a seed artist lookup pending, exits to fresh discovery, and simulates its late response without a stale result or listening vote. Test tracks are fictional.
+
 ## v0.12 development — Cancel abandoned playlist dialogs (November 18, 2026)
 
 - Closing or replacing the playlist import dialog now aborts an in-flight Deezer playlist request, including a slow playlist metadata/page lookup, instead of continuing the import after a listener leaves the dialog.
