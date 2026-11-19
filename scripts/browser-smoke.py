@@ -2422,8 +2422,12 @@ def check_listening_control_focus_on_rerender(browser, base):
         close=page.locator('#modal-root button[data-modal="close"]')
         if close.count():close.first.click(timeout=TIMEOUT)
         card=page.locator("#listening-card")
-        track_id=card.get_attribute("data-track-id")
-        require(track_id,"The rendered listening card lacks the matching track ID")
+        # Only inspect already-visible, non-blind metadata. Never add the
+        # current recording ID to DOM attributes: it may expose the answer.
+        original_title=card.locator(".track-identity h2").inner_text()
+        require(original_title,"No visible song title for focus test")
+        require(card.get_attribute("data-track-id") is None,
+                "Private song identity leaked into the HTML")
         page.evaluate("window.__focusProbe='same-document'")
         def redraw():
             # Programmatic selection triggers a normal render without moving
@@ -2436,8 +2440,8 @@ def check_listening_control_focus_on_rerender(browser, base):
         redraw()
         require(page.evaluate("document.activeElement?.id==='preview-volume'"),
                 "A same-track refresh stranded focus on the volume slider")
-        require(card.get_attribute("data-track-id")==track_id,
-                "The focus test inadvertently switched to another recording")
+        require(card.get_attribute("data-track-id") is None,
+                "Blind-mode rerender exposed the current recording ID")
         page.keyboard.press("ArrowUp")
         after=int(page.locator("#preview-volume").input_value())
         require(after==initial+1,
@@ -2449,6 +2453,8 @@ def check_listening_control_focus_on_rerender(browser, base):
         redraw()
         require(page.evaluate("document.activeElement?.id==='stage-play'"),
                 "Play lost its focused control during a same-track refresh")
+        require(card.locator(".track-identity h2").inner_text()==original_title,
+                "A same-track redraw unexpectedly changed the visible song")
 
         page.locator('#listening-card [data-action="lyrics-toggle"]').focus()
         redraw()
