@@ -1,3 +1,9 @@
+## v0.12 development — Stop abandoned preview metadata requests (November 18, 2026)
+
+- Closing an active preview, switching to a new song or navigating away from Discover now aborts any pending on-demand preview metadata lookups. Previously the player ignored stale replies but allowed their underlying provider calls to keep running.
+- A new per-track request scope coalesces simultaneous requests for the same song; cancellation releases those entries immediately and prevents late, canceled replies from populating the preview URL cache. Fresh user-initiated playback can request a new URL without joining the old canceled request.
+- Added deterministic request-scope regressions and Chromium/Firefox browser tests for a held Deezer JSONP lookup, Stop, navigation, late callback safety and a fresh Play attempt. Mocked records verify client behavior only, not provider availability or playback permission.
+
 ## v0.12 development — Protect spreadsheet CSV exports (November 18, 2026)
 
 - Collection, Music Duels podium and Hall of Fame CSV exports now use one shared encoder. It quotes commas and double quotes as before, and neutralizes track names, artists and tournament names that a spreadsheet might interpret as formulas (including values starting with =, +, -, @ or leading whitespace before them).
