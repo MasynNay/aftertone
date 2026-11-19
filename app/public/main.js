@@ -15,6 +15,7 @@ import { planDiscoveryRequest, explainDiscovery, PATH_DESCRIPTIONS } from '/src/
 import { belongsToDiscoveryFeed } from '/src/discovery/queue.mjs';
 import { selectRouteQueue, isActiveRequest } from '/src/discovery/route-session.mjs';
 import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/graph.mjs';
+import { createRelatedRequestScope } from '/src/discovery/related-request-scope.mjs';
 import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
 import { eligibleProviders } from '/src/discovery/provider-availability.mjs';
 import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore, loadDuelSelection, saveDuelSelection } from '/src/duels.mjs';
@@ -52,6 +53,13 @@ const INTRO_STORAGE_KEY = 'aftertone:intro-shown:v054';
 let chosenArtists = (() => {try {return parseFavoriteArtists(JSON.parse(localStorage.getItem(ARTISTS_STORAGE_KEY)||'[]'));}catch{return [];}})();
 let seedRelated = [];
 let seedVersion = 0;
+const relatedRequestScope=createRelatedRequestScope();
+function advanceSeedVersion() {
+  // A profile switch invalidates every graph lookup from the old session.
+  // Signals propagate to both static JSONP and the local server's fetch.
+  relatedRequestScope.advance();
+  return ++seedVersion;
+}
 let relatedLookupStatus = 'idle'; // idle | searching | ready | unavailable
 const expandedArtists = new Set(); // Limits graph lookups on explicit likes.
 let sessionPosition = 0;
@@ -1126,20 +1134,21 @@ function trapModalTab(event) {
 }
 
 async function findRelatedForPlaylist(version) {
-  if (!activeSeedProfile() || !seedActive) return;
+  const signal=relatedRequestScope.signal;
+  if (signal.aborted || version!==seedVersion || !activeSeedProfile() || !seedActive) return;
   relatedLookupStatus='searching'; render();
   // This work is non-blocking. Deezer charts are already playable while the
   // artist graph loads. Two concurrent lookups limit API pressure.
   const choices=activeSeedProfile()?.artists.slice(0,FAVORITE_ARTIST_LIMIT) || [];
   let nextIndex=0;
   const worker=async () => {
-    while(nextIndex<choices.length && seedActive && version===seedVersion) {
+    while(nextIndex<choices.length && seedActive && version===seedVersion && !signal.aborted) {
       const candidate=choices[nextIndex++];
       try {
-        const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(candidate.artist)}`);
+        const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(candidate.artist)}`,{signal});
         if(!response.ok) continue;
         const data=await response.json();
-        if (!seedActive || version!==seedVersion || !Array.isArray(data.related)) return;
+        if (signal.aborted || !seedActive || version!==seedVersion || !Array.isArray(data.related)) return;
         const next=mergeRelatedArtists(seedRelated,data.related,
           choices.map(a=>a.artist),candidate.artist);
         if(next.length>seedRelated.length) {
@@ -1155,7 +1164,7 @@ async function findRelatedForPlaylist(version) {
     }
   };
   await Promise.all(Array.from({length:Math.min(2,choices.length)},()=>worker()));
-  if(seedActive && version===seedVersion) {
+  if(!signal.aborted && seedActive && version===seedVersion) {
     relatedLookupStatus=seedRelated.length ? 'ready' : 'unavailable';
     render();
   }
@@ -1169,6 +1178,8 @@ async function findRelatedForPlaylist(version) {
  * This runs in the background and deduplicates with on-Keep expansions.
  */
 async function warmRelatedFromSaved(version) {
+  const signal=relatedRequestScope.signal;
+  if(signal.aborted || version!==seedVersion) return;
   const seeds=likedArtistLanes(state.history,5).map(x=>x.artist)
     .filter(name=>!expandedArtists.has(artistKey(name)));
   if(!seeds.length) return;
@@ -1176,8 +1187,8 @@ async function warmRelatedFromSaved(version) {
     const key=artistKey(name);
     expandedArtists.add(key);
     try {
-      const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(name)}`);
-      if(!response.ok || version!==seedVersion) return;
+      const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(name)}`,{signal});
+      if(!response.ok || signal.aborted || version!==seedVersion) return;
       const data=await response.json();
       if(!Array.isArray(data.related)) return;
       const next=mergeRelatedArtists(seedRelated,data.related,
@@ -1199,14 +1210,15 @@ async function warmRelatedFromSaved(version) {
  * the listener deliberately keeps one of their recordings.
  */
 async function expandRelatedFromLike(track,version) {
-  if(track?.source!=='deezer' || version!==seedVersion) return;
+  const signal=relatedRequestScope.signal;
+  if(signal.aborted || track?.source!=='deezer' || version!==seedVersion) return;
   const artist=String(track.artist || '').trim();
   const norm=artistKey(artist);
   if(!norm || expandedArtists.has(norm) || expandedArtists.size >= 12) return;
   expandedArtists.add(norm);
   try {
-    const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(artist)}`);
-    if(!response.ok || version!==seedVersion) return;
+    const response=await apiFetch(`/api/related-artists?artist=${encodeURIComponent(artist)}`,{signal});
+    if(!response.ok || signal.aborted || version!==seedVersion) return;
     const data=await response.json();
     if(!Array.isArray(data.related)) return;
     const starters=seedActive ? (activeSeedProfile()?.artists.map(a=>a.artist) || []) : [];
@@ -1224,7 +1236,7 @@ async function expandRelatedFromLike(track,version) {
 function startPlaylistDiscovery() {
   if (!playlistProfile?.totalSongs) return toast('Import a playlist first.');
   if (!availableSources.includes('deezer')) return toast('Deezer discovery is temporarily unavailable.');
-  seedActive = true; seedKind = 'playlist'; seedVersion++; seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
+  seedActive = true; seedKind = 'playlist'; advanceSeedVersion(); seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
   state.source = availableSources.includes('deezer') ? 'deezer' : 'featured';
   state.genre = 'all'; state.language = 'all';
   searchQuery = ''; searchDraft = '';
@@ -1244,7 +1256,7 @@ function startArtistDiscovery(artists=chosenArtists) {
   chosenArtists=parseFavoriteArtists(artists);
   if (!chosenArtists.length) return toast('Add at least one artist you love to begin.');
   try { localStorage.setItem(ARTISTS_STORAGE_KEY,JSON.stringify(chosenArtists)); } catch {}
-  seedActive=true; seedKind='artists'; seedVersion++; seedRelated=[]; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
+  seedActive=true; seedKind='artists'; advanceSeedVersion(); seedRelated=[]; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
   state.source='deezer'; state.genre='all'; state.language='all';
   searchQuery='';searchDraft='';stopContinuous();current=null;
   persist(); modal=null;renderModal();render();void loadMore(state.genre,true);
@@ -1252,7 +1264,7 @@ function startArtistDiscovery(artists=chosenArtists) {
   toast(`Finding songs based on ${chosenArtists.slice(0,3).join(', ')}${chosenArtists.length>3?' and more':''}. Switch to fresh anytime.`);
 }
 function startFreshDiscovery() {
-  seedActive = false; seedVersion++; seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
+  seedActive = false; advanceSeedVersion(); seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
   searchQuery=''; searchDraft=''; state.genre='all'; persist();
   stopContinuous(); current = null; chooseNext(); render(); maybeTopUp();
   toast('Fresh discovery is on. No artist or playlist seeds are active.');
@@ -1407,7 +1419,7 @@ function handleModalAction(action) {
     if (action === 'playlist-link-import') { void importPlaylistLinkFromDialog(); return; }
     if (action === 'playlist-use-saved') return startPlaylistDiscovery();
     if (action === 'playlist-clear') {
-      importedPlaylist = null; playlistProfile = null; seedRelated = []; seedActive = false; seedVersion++; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
+      importedPlaylist = null; playlistProfile = null; seedRelated = []; seedActive = false; advanceSeedVersion(); relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
       saveImportedPlaylist(null); closeModal(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp(); toast('Saved playlist deleted. Fresh mode is active.'); return;
     }
     return;
@@ -1970,14 +1982,14 @@ document.addEventListener('change', (event) => {
   }
 
   if (event.target.id === 'source-select') {
-    if (seedActive) { seedActive = false; seedVersion++; seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation(); toast('Switched to fresh discovery; imported seeds are no longer applied.'); }
+    if (seedActive) { seedActive = false; advanceSeedVersion(); seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation(); toast('Switched to fresh discovery; imported seeds are no longer applied.'); }
     state.source = 'deezer';
     if (state.source === 'charts') { state.genre = 'all'; state.era = 'any'; }
     rememberSource();
     persist(); stopContinuous(); chooseNext(); render(); maybeTopUp();
   }
   if (event.target.id === 'genre-select') {
-    if (seedActive) { seedActive = false; seedVersion++; seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation(); toast('Switched to fresh genre discovery.'); }
+    if (seedActive) { seedActive = false; advanceSeedVersion(); seedRelated = []; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation(); toast('Switched to fresh genre discovery.'); }
     state.genre = allGenres.includes(event.target.value) ? event.target.value : 'all';
     if (state.source === 'charts' && state.genre !== 'all') { state.source = 'youtube'; toast('Genre filtering uses official-artist YouTube discovery. Global charts do not tag songs by genre.'); }
     persist(); stopContinuous(); chooseNext(); render(); maybeTopUp();
