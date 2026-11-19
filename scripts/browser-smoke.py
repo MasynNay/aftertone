@@ -2567,6 +2567,96 @@ def check_collection_csv_formula_safety(browser, base):
         context.close()
 
 
+def check_abandoned_preview_metadata_cancellation(browser, base):
+    """Stop and navigation must abort old on-demand Deezer JSONP immediately."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        first=page.locator('#modal-root button[data-modal="close"]')
+        if first.count():first.first.click(timeout=TIMEOUT)
+        # Hold a fictional /track/ JSONP by not attaching its script to the
+        # document. The script's remove() instrumentation verifies the real
+        # browser adapter's AbortSignal cleanup, without requesting media.
+        page.evaluate("""() => {
+            const oldAppend=document.head.append.bind(document.head);
+            window.__heldPreviewFlights=[];
+            document.head.append=(...nodes)=>{
+                for(const node of nodes) {
+                    const url=node?.src ? new URL(node.src,location.href) : null;
+                    if(url?.hostname==='api.deezer.com' &&
+                       url.pathname.startsWith('/track/')) {
+                        const flight={
+                            callback:url.searchParams.get('callback'),
+                            path:url.pathname,removed:false
+                        };
+                        const remove=node.remove.bind(node);
+                        node.remove=()=>{
+                            flight.removed=true;
+                            return remove();
+                        };
+                        window.__heldPreviewFlights.push(flight);
+                    } else oldAppend(node);
+                }
+            };
+        }""")
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__heldPreviewFlights.length===1",
+                               timeout=TIMEOUT)
+        require(page.evaluate("""() => !window.__heldPreviewFlights[0].removed"""),
+                "The mocked Play metadata lookup was unexpectedly finished")
+        page.locator("#stop-session").click()
+        page.wait_for_function("() => window.__heldPreviewFlights[0].removed",
+                               timeout=TIMEOUT)
+        # Late JSONP must be an inert tombstone; never accidentally wake up
+        # playback, set a false provider error or count a listening vote.
+        page.evaluate("""() => {
+            const cb=window.__heldPreviewFlights[0].callback;
+            window[cb]?.({id:9100001,preview:'https://fixture.invalid/obsolete.mp3'});
+        }""")
+        require(page.locator("#preview-recovery").is_hidden(),
+                "An intentionally stopped metadata request showed an error")
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__heldPreviewFlights.length===2",
+                               timeout=TIMEOUT)
+        require(page.evaluate("""() =>
+            window.__heldPreviewFlights[1].callback!==
+            window.__heldPreviewFlights[0].callback"""),
+            "A new Play joined the canceled provider callback")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        page.wait_for_function("() => window.__heldPreviewFlights[1].removed",
+                               timeout=TIMEOUT)
+        state=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')||'{}')""")
+        require(not state.get("history") and not state.get("favorites"),
+                "Stopping or leaving a pending preview recorded a false vote")
+        page.locator('#main-nav button[data-view="discover"]').click()
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__heldPreviewFlights.length===3",
+                               timeout=TIMEOUT)
+        require(not page.evaluate("() => window.__heldPreviewFlights[2].removed"),
+                "Fresh preview retry inherited an aborted request")
+        page.locator("#stop-session").click()
+        page.wait_for_function("() => window.__heldPreviewFlights[2].removed",
+                               timeout=TIMEOUT)
+        require(not errors,"Canceled preview metadata browser errors: "+"; ".join(errors))
+        print("PASS preview JSONP cancellation on Stop/navigation and fresh Play retry")
+    except Exception:
+        screenshot(page,"FAILED-preview-metadata-cancellation")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2582,6 +2672,7 @@ def firefox_main():
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
+            check_abandoned_preview_metadata_cancellation(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
@@ -2620,6 +2711,7 @@ def main():
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
+            check_abandoned_preview_metadata_cancellation(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
