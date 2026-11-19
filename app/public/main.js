@@ -22,6 +22,7 @@ import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTr
 import { renderDuels } from './duels-view.js';
 import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
+import { csvRows } from '/src/csv.mjs';
 
 const main = document.querySelector('#main-content');
 const modalRoot = document.querySelector('#modal-root');
@@ -1695,7 +1696,7 @@ function exportLibrary(type = 'json') {
   if (!items.length && type === 'csv') return toast('Save a track first.');
   const data = type === 'json'
     ? JSON.stringify({ exportVersion: 1, exportedAt: new Date().toISOString(), tracks: items, history: state.history }, null, 2)
-    : ['Title,Artist,Genre,Mood,Source URL', ...items.map((item) => [item.title, item.artist, item.genre, item.mood, item.link].map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(','))].join('\n');
+    : csvRows([['Title','Artist','Genre','Mood','Source URL'], ...items.map((item) => [item.title, item.artist, item.genre, item.mood, item.link])]);
   const blob = new Blob([data], { type: type === 'json' ? 'application/json' : 'text/csv;charset=utf-8' });
   const href = URL.createObjectURL(blob);
   const anchor = document.createElement('a'); anchor.href = href; anchor.download = `aftertone-collection.${type}`;

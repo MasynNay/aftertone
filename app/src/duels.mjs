@@ -9,6 +9,7 @@
  * two previous winners for an early head-to-head championship.
  */
 import { tournamentTheme, songYear } from './tournament-themes.mjs';
+import { csvRows } from './csv.mjs';
 
 export const DUEL_STORAGE_KEY = 'aftertone:duels:v1';
 export const DUEL_SELECTION_KEY = 'aftertone:duels:selection:v1';
@@ -167,9 +168,7 @@ export function saveDuelSelection(storage,id) {
 
 /** CSV export is playlist-ready metadata, not an unauthorized audio download. */
 export function podiumCsv(tournament) {
-  const q=value=>'"'+String(value??'').replaceAll('"','""')+'"';
-  return [['Rank','Track Name','Artist Name','Source','Tournament'],...podiumTracks(tournament).map(t=>[t.place,t.title,t.artist,t.source,tournament.name])]
-    .map(row=>row.map(q).join(',')).join('\r\n')+'\r\n';
+  return csvRows([['Rank','Track Name','Artist Name','Source','Tournament'],...podiumTracks(tournament).map(t=>[t.place,t.title,t.artist,t.source,tournament.name])]);
 }
 
 
@@ -206,8 +205,6 @@ export function hallOfFame(tournaments=[],season='all') {
 }
 /** Export Hall of Fame metadata without fetching or redistributing recordings. */
 export function hallOfFameCsv(tournaments=[],season='all') {
-  const q=value=>'"'+String(value??'').replaceAll('"','""')+'"';
-  return [['Rank','Track Name','Artist Name','Gold','Silver','Bronze','Champions Cups','Points','Season'],
-    ...hallOfFame(tournaments,season).map((t,i)=>[i+1,t.title,t.artist,t.gold,t.silver,t.bronze,t.cups,t.points,season])]
-    .map(row=>row.map(q).join(',')).join('\r\n')+'\r\n';
+  return csvRows([['Rank','Track Name','Artist Name','Gold','Silver','Bronze','Champions Cups','Points','Season'],
+    ...hallOfFame(tournaments,season).map((t,i)=>[i+1,t.title,t.artist,t.gold,t.silver,t.bronze,t.cups,t.points,season])]);
 }
