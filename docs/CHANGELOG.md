@@ -1,3 +1,9 @@
+## v0.12 development — Protect spreadsheet CSV exports (November 18, 2026)
+
+- Collection, Music Duels podium and Hall of Fame CSV exports now use one shared encoder. It quotes commas and double quotes as before, and neutralizes track names, artists and tournament names that a spreadsheet might interpret as formulas (including values starting with =, +, -, @ or leading whitespace before them).
+- This affects **downloaded CSV text only**. Displayed song names, JSON backups, saved records, source URLs and tournament results are unchanged; users can still distinguish the exact metadata in the app.
+- Added malicious-metadata regression tests for all three exporters and a real Chromium/Firefox fixture download from Collection. No claims are made about external provider authorization or a full spreadsheet-app security audit.
+
 ## v0.12 development — Preserve listening controls through background redraws (November 18, 2026)
 
 - A provider refresh can replace the active listening card while keyboard users are adjusting preview volume, preview position or lyrics. The same-track card now restores focus to Play, preview volume, Lyrics or synchronized-lyrics offset controls when those controls remain visible.
