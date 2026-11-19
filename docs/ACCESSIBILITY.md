@@ -1,3 +1,8 @@
+## Optional lyrics request cancellation (v0.12 development)
+
+- When the listener changes tracks, leaves Discover or turns off optional lyrics, in-progress timed-lyrics requests are now aborted rather than continuing to use the external provider. Canceled requests do not populate the old card or contaminate the shared negative-result cache; a later enabled lookup can still succeed.
+- Node and Chromium/Firefox fixture tests verify abort propagation, stale-request isolation and fresh lookup recovery. The browser regression does not exercise actual third-party lyrics, screen-reader speech or reproduction rights. Human and legal review remains open.
+
 ## Theme dialog keyboard focus (v0.12 development)
 
 - Fixed a focus regression where activating a theme tile inside the **Appearance themes** dialog could move focus to the header palette button, which is inert while the dialog is open. The selected tile now retains keyboard focus after the theme rerenders; repeated selections remain inside the dialog, and Escape restores the original Help button.
