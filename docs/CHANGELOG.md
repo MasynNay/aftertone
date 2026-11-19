@@ -1,3 +1,9 @@
+## v0.12 development — Cancel obsolete timed-lyrics requests (November 18, 2026)
+
+- Optional LRCLIB lookups now receive an AbortSignal from the active listening card through the static browser adapter and lyrics helper. Advancing to another song, disabling lyrics or leaving Discover cancels pending work rather than only ignoring its eventual display.
+- The lyrics helper stops during its provider pacing delay or HTTP fetch and does not store a canceled lookup as a provider error. A subsequent request for the same track can retry normally. Timeout handling, verified artist/title matching and optional lyric offset controls remain intact.
+- Added deterministic cancellation tests and a Chromium/Firefox built-site regression for song changes, disabling and re-enabling lyrics, and a fresh successful fixture response. These tests use fictional lyric lines and make no claim of lyric reproduction rights or live LRCLIB reliability.
+
 ## v0.12 development — Keep keyboard focus inside the theme dialog (November 18, 2026)
 
 - Choosing one of the 20 appearance themes inside the modal no longer moves keyboard focus to the header theme button behind the inert page backdrop. Instead, focus remains on the selected color tile after the dialog rerenders, and Escape still closes the dialog and returns focus to its original opener.
