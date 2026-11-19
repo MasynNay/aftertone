@@ -1,3 +1,8 @@
+## Listening controls during background rerenders (v0.12 development)
+
+- The listening card can be replaced while the background catalog refills. When the exact same recording stays on screen, focus now returns to the equivalent Play, volume, Lyrics or preview-offset control, provided it is still interactive and visible.
+- Focus is not transferred across tracks or after deliberate section navigation. Browser regression checks in Chromium and Firefox use a fictional music/lyrics fixture and verify that focused slider Arrow keys keep controlling sliders, not song voting. Manual screen-reader and actual-device testing is still outstanding.
+
 ## Optional lyrics request cancellation (v0.12 development)
 
 - When the listener changes tracks, leaves Discover or turns off optional lyrics, in-progress timed-lyrics requests are now aborted rather than continuing to use the external provider. Canceled requests do not populate the old card or contaminate the shared negative-result cache; a later enabled lookup can still succeed.
