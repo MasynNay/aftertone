@@ -174,6 +174,16 @@ let lyricsEnabled=false;
 let lyricTrackId=null;
 let lyricPayload=null;
 let lyricsRequestVersion=0;
+let lyricsController=null;
+// Disabling lyrics or replacing the song must stop the actual network work,
+// not just hide old results and leave the provider request running.
+function cancelCurrentLyrics() {
+  lyricsController?.abort();
+  lyricsController=null;
+  lyricsRequestVersion++;
+  lyricTrackId=null;
+  lyricPayload=null;
+}
 let lyricOffsets=(()=>{try{const data=JSON.parse(localStorage.getItem(LYRIC_OFFSET_KEY)||'{}');return data && typeof data==='object' && !Array.isArray(data)?data:{};}catch{return {};}})();
 function lyricOffsetFor(track) {return Number(lyricOffsets[track?.id]) || 0;}
 function storeLyricOffset(track,value) {
@@ -190,20 +200,27 @@ function lyricLineAt(lines,time) {
   return result;
 }
 async function requestCurrentLyrics(track) {
-  if(!lyricsEnabled || !track || lyricTrackId===track.id) return;
-  const token=++lyricsRequestVersion;
+  if(!lyricsEnabled || view!=='discover' || !track || lyricTrackId===track.id) return;
+  cancelCurrentLyrics();
+  const token=lyricsRequestVersion;
+  const controller=new AbortController();
+  lyricsController=controller;
   lyricTrackId=track.id;
   lyricPayload={status:'loading',lines:[]};
   updateLyricView();
   try {
     const q=new URLSearchParams({artist:track.artist,title:track.title,duration:String(track.duration||0)});
-    const response=await apiFetch(`/api/lyrics?${q}`);
+    const response=await apiFetch(`/api/lyrics?${q}`,{signal:controller.signal});
     const payload=await response.json();
-    if(token!==lyricsRequestVersion || current?.id!==track.id) return;
+    if(controller.signal.aborted || token!==lyricsRequestVersion ||
+       !lyricsEnabled || view!=='discover' || current?.id!==track.id) return;
     lyricPayload=response.ok ? payload:{status:'error',lines:[]};
   } catch {
-    if(token!==lyricsRequestVersion) return;
+    if(controller.signal.aborted || token!==lyricsRequestVersion ||
+       !lyricsEnabled || view!=='discover' || current?.id!==track.id) return;
     lyricPayload={status:'error',lines:[]};
+  } finally {
+    if(lyricsController===controller) lyricsController=null;
   }
   updateLyricView();
 }
@@ -988,6 +1005,9 @@ function goTo(nextView) {
 }
 
 function render() {
+  // A navigation or empty-state transition must also cancel a pending lyric
+  // lookup even when there is no next listening card to trigger a new request.
+  if(lyricsController && (!lyricsEnabled || view!=='discover' || !current)) cancelCurrentLyrics();
   // The existing card can be replaced by provider updates mid-drag. The next
   // pointerup must never rate a different song after that replacement.
   clearSwipeGesture();
@@ -1848,7 +1868,7 @@ document.addEventListener('click', async (event) => {
     case 'stop-session': return stopContinuous();
     case 'lyrics-toggle':
       lyricsEnabled=!lyricsEnabled;
-      if(!lyricsEnabled) {lyricTrackId=null;lyricPayload=null;lyricsRequestVersion++;}
+      if(!lyricsEnabled) cancelCurrentLyrics();
       updateLyricView();
       if(lyricsEnabled && current) void requestCurrentLyrics(current);
       return;
