@@ -1,3 +1,9 @@
+## v0.12 development — Cancel abandoned playlist dialogs (November 18, 2026)
+
+- Closing or replacing the playlist import dialog now aborts an in-flight Deezer playlist request, including a slow playlist metadata/page lookup, instead of continuing the import after a listener leaves the dialog.
+- Bind each import result to the exact dialog that started it. Reopening another playlist dialog cannot receive a stale result or error from an older request, and a delayed local CSV/JSON file read is ignored if its original dialog has closed.
+- Preserve normal successful imports, keyboard Escape and modal focus-return behavior; add a browser regression for closing a pending import, safely ignoring a late callback, reopening and completing a fresh import. Third-party music remains mocked in CI.
+
 ## v0.12 development — Cancel other obsolete Deezer requests (November 18, 2026)
 
 - Forward the caller's cancellation signal to on-demand Deezer preview metadata, playlist-link import pages, and related-artist graph lookups, while retaining each provider helper's own timeout. Abandoned lookups now remove their JSONP scripts and stop follow-on playlist/artist requests instead of silently continuing after a user changes course.
