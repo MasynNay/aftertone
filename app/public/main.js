@@ -945,7 +945,7 @@ function chooseNext() {
 
 /** Switching paths is a new listening lane, not a cosmetic ranking tweak.
  * Leave the saved collection untouched and let the new lane preload first. */
-function changeDiscoveryPath(mode, restoreKeyboardFocus = false) {
+function changeDiscoveryPath(mode) {
   if (!['familiar','balanced','explore'].includes(mode) || state.discoveryMix===mode) return;
   lastModeSwitchTrackId=current?.id || null;
   // Clicking a discovery path exits any temporary artist/song search. Otherwise
@@ -963,14 +963,12 @@ function changeDiscoveryPath(mode, restoreKeyboardFocus = false) {
   // path has fetched its own artists. A loading card is less misleading than
   // pretending the same song was recommended by three different modes.
   if(feed.primed) chooseNext();
+  // render() preserves focus on the selected path button. Do not jump the
+  // keyboard to Play or the main landmark just for changing a setting.
   render();
-  if (restoreKeyboardFocus) {
-    if (current) focusDiscoveryRecovery();
-    else main.focus({preventScroll:true});
-  }
   if(wasSearching) toast('Search closed · loading your new discovery path.');
   if(!feed.primed || !availableCount(state.genre))
-    void loadMore(state.genre,false,true,restoreKeyboardFocus);
+    void loadMore(state.genre,false,true);
   if(mode!=='explore') void warmRelatedFromSaved(seedVersion);
 }
 
@@ -1033,6 +1031,12 @@ function render() {
     ['stage-play','preview-volume','lyrics-offset'].includes(focusedOldControl.id) ||
     focusedOldControl.matches?.('[data-action="lyrics-toggle"]')
   ) ? (focusedOldControl.id || 'lyrics-toggle') : null;
+  // Choosing a path rebuilds its own buttons. Keep keyboard context on
+  // that option instead of moving focus to Play or to the document body.
+  const focusedPath=view==='discover' &&
+    focusedOldControl?.matches?.('.discovery-paths .path-option[data-path]') &&
+    ['familiar','balanced','explore'].includes(focusedOldControl.dataset.path)
+    ? focusedOldControl.dataset.path : null;
   const focusedFilterId=view==='discover' &&
     ['genre-select','language-select','discovery-mix-select'].includes(document.activeElement?.id)
     ? document.activeElement.id : null;
@@ -1068,6 +1072,12 @@ function render() {
   }
   applySavedVolume();
   updatePlaybackView();
+  if(focusedPath && view==='discover') {
+    const replacement=$('.discovery-paths .path-option[data-path="'+focusedPath+'"]');
+    if(replacement && !replacement.disabled && replacement.getClientRects().length &&
+       !replacement.closest('[hidden], [inert]'))
+      replacement.focus({preventScroll:true});
+  }
   if (view === 'discover') {
     if (current && lyricsEnabled) void requestCurrentLyrics(current);
     updateLyricView();
@@ -1864,7 +1874,7 @@ document.addEventListener('click', async (event) => {
   if (preview) return togglePlayback(lookup(preview.dataset.preview));
   const path=event.target.closest('[data-path]');
   if(path && ['familiar','balanced','explore'].includes(path.dataset.path)) {
-    changeDiscoveryPath(path.dataset.path,document.activeElement===path); // Distinct request and presentation pools.
+    changeDiscoveryPath(path.dataset.path); // Distinct request and presentation pools.
     return;
   }
   const action = event.target.closest('[data-action]');
