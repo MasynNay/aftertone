@@ -1,3 +1,9 @@
+## v0.12 development — Keep keyboard focus inside the theme dialog (November 18, 2026)
+
+- Choosing one of the 20 appearance themes inside the modal no longer moves keyboard focus to the header theme button behind the inert page backdrop. Instead, focus remains on the selected color tile after the dialog rerenders, and Escape still closes the dialog and returns focus to its original opener.
+- Preserve the existing behavior of the separate, non-modal header palette: selecting a theme closes that palette and returns focus to the header toggle. Add focused Node guards and browser tests for both interactions in Chromium and Firefox.
+- This is a narrow automated keyboard-accessibility fix. It does not establish manual VoiceOver/TalkBack compatibility, full WCAG conformance or a physical-device audit.
+
 ## v0.12 development — Stop stale artist-graph requests after changing taste (November 18, 2026)
 
 - Changing or clearing the active artist/playlist personalization now aborts outstanding related-artist lookups from the prior session. These requests previously kept running after listeners returned to fresh discovery or changed their chosen artists.
