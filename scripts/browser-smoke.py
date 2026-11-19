@@ -2211,7 +2211,7 @@ def check_stale_related_profile_cancellation(browser, base):
             const url=new URL(script.src);
             return url.pathname==='/search/artist' &&
                 url.searchParams.get('q')===artist;
-        })""",artist,timeout=TIMEOUT)
+        })""",arg=artist,timeout=TIMEOUT)
         callbacks=page.evaluate("""(artist) => [...document.scripts].filter(script => {
             const url=new URL(script.src);
             return url.pathname==='/search/artist' &&
@@ -2223,7 +2223,7 @@ def check_stale_related_profile_cancellation(browser, base):
             const url=new URL(script.src);
             return url.pathname==='/search/artist' &&
                 url.searchParams.get('q')===artist;
-        })""",artist,timeout=TIMEOUT)
+        })""",arg=artist,timeout=TIMEOUT)
         for callback in callbacks:
             require(page.evaluate("(name) => typeof window[name] === 'function'",callback),
                     "Canceled related lookup lost its bounded inert callback")
