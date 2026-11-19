@@ -1016,6 +1016,17 @@ function render() {
   cancelStaleDiscovery();
   // Catalog refreshes may rerender the sidebar while a search is being typed.
   // Keep the unfinished text and its caret; only a deliberate submit commits it.
+  // The active listening card is rebuilt on background provider updates.
+  // Only restore an interactive player's focus if it is still the SAME song.
+  // A navigation, deliberate new song or hidden control must not steal focus.
+  const focusedOldControl=document.activeElement;
+  const previousCard=focusedOldControl?.closest?.('#listening-card');
+  const sameListeningTrack=view==='discover' && current &&
+    previousCard?.dataset.trackId===String(current.id);
+  const focusedListeningControl=sameListeningTrack && (
+    ['stage-play','preview-volume','lyrics-offset'].includes(focusedOldControl.id) ||
+    focusedOldControl.matches?.('[data-action="lyrics-toggle"]')
+  ) ? (focusedOldControl.id || 'lyrics-toggle') : null;
   const focusedFilterId=view==='discover' &&
     ['genre-select','language-select','discovery-mix-select'].includes(document.activeElement?.id)
     ? document.activeElement.id : null;
@@ -1054,6 +1065,15 @@ function render() {
   if (view === 'discover') {
     if (current && lyricsEnabled) void requestCurrentLyrics(current);
     updateLyricView();
+  }
+  if(focusedListeningControl && view==='discover' && current?.id &&
+     $('#listening-card')?.dataset.trackId===String(current.id)) {
+    const replacement=focusedListeningControl==='lyrics-toggle'
+      ? $('#listening-card [data-action="lyrics-toggle"]')
+      : $('#'+focusedListeningControl);
+    if(replacement && !replacement.disabled &&
+       !replacement.closest('[hidden], [inert]') && replacement.getClientRects().length)
+      replacement.focus({preventScroll:true});
   }
   if (view === 'discover' && current) prewarm(current);
   if (view === 'duels') refreshDuelAvailability();
