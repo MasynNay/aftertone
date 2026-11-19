@@ -122,7 +122,9 @@ test('a stale outgoing mode cannot overwrite the active mode’s card',()=>{
 test('UI changes mode before choosing a new card, and the new feed is primed first',async()=>{
   const app=await readFile(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(app,/if\(feed\.primed\) chooseNext\(\);/);
-  assert.match(app,/if\(!feed\.primed \|\| !availableCount\(state\.genre\)\)\s+void loadMore\(state\.genre,false,true,restoreKeyboardFocus\)/);
+  assert.match(app,/if\(!feed\.primed \|\| !availableCount\(state\.genre\)\)\s+void loadMore\(state\.genre,false,true\)/);
+  // Focus remains on the selected path; it no longer needs an async jump to Play.
+  assert.match(app,/const focusedPath=view==='discover'/);
   assert.match(app,/isActiveRequest\(feed,getFeed\(genre\)\)/);
   assert.match(app,/const requestSearch=searchQuery/);
 });
