@@ -1,3 +1,8 @@
+## Theme dialog keyboard focus (v0.12 development)
+
+- Fixed a focus regression where activating a theme tile inside the **Appearance themes** dialog could move focus to the header palette button, which is inert while the dialog is open. The selected tile now retains keyboard focus after the theme rerenders; repeated selections remain inside the dialog, and Escape restores the original Help button.
+- The standalone header palette retains its distinct expected behavior: selecting a theme closes the palette and focuses its header toggle. Node and Chromium/Firefox browser tests cover both paths. Manual screen-reader and touch-device review is still required.
+
 ## Phone swipe input safety (v0.12 development)
 
 - Swipe gestures now only begin with a primary pointer and ordinary left-button mouse input. A second touch, right-button drag, canceled pointer, document blur or song-card rerender never becomes a Keep/Pass vote. A second finger arriving **while the first is already dragging** also cancels the entire gesture, including if that finger lands outside the card.

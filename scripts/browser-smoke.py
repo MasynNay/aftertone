@@ -2246,6 +2246,70 @@ def check_stale_related_profile_cancellation(browser, base):
         context.close()
 
 
+def check_theme_dialog_focus(browser, base):
+    """Theme changes must preserve modal focus, unlike the header palette."""
+    context=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error: errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        first=page.locator('#modal-root button[data-modal="close"]')
+        if first.count(): first.first.click()
+
+        # This dialog is opened from Help, not from the header palette. The
+        # original Help button should regain focus only when the dialog closes.
+        page.locator("#help-button").click()
+        page.locator('#modal-root button[data-modal="themes"]').click()
+        dialog=page.locator('#modal-root [role="dialog"]')
+        dialog.wait_for(state="visible",timeout=TIMEOUT)
+        for theme in ["aurora","plum"]:
+            tile=page.locator(f'#modal-root [data-set-theme="{theme}"]')
+            tile.focus()
+            page.keyboard.press("Enter")
+            require(page.evaluate("""(name) => {
+                const active=document.activeElement;
+                const dialog=document.querySelector('#modal-root [role="dialog"]');
+                return dialog?.contains(active) &&
+                    active?.dataset.setTheme===name &&
+                    active.getAttribute('aria-pressed')==='true' &&
+                    document.body.dataset.theme===name;
+            }""",theme),
+                f"Choosing {theme} moved focus outside the appearance dialog")
+            require(dialog.is_visible(),"Changing a theme unexpectedly closed its dialog")
+        page.keyboard.press("Tab")
+        require(page.evaluate("""() => document.querySelector(
+            '#modal-root [role="dialog"]')?.contains(document.activeElement)"""),
+            "Tab escaped the still-open theme dialog after changing colors")
+        page.keyboard.press("Escape")
+        dialog.wait_for(state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("document.activeElement?.id==='help-button'"),
+                "Closing appearance dialog failed to restore its Help opener")
+
+        # The header palette is not modal: choosing its swatch should close it
+        # and put focus back on the header toggle, preserving old behavior.
+        page.locator("#theme-menu-toggle").click()
+        page.locator('#theme-menu [data-set-theme="forest"]').click()
+        require(page.locator("#theme-menu-toggle").get_attribute("aria-expanded")=="false",
+                "Header palette did not collapse after selecting its color")
+        require(page.evaluate("document.activeElement?.id==='theme-menu-toggle'"),
+                "Header palette did not restore focus after changing its color")
+        require(page.evaluate("document.body.dataset.theme==='forest'"),
+                "Header palette theme choice was not applied")
+        require(not errors,"Theme focus browser exceptions: "+"; ".join(errors))
+        print("PASS theme-dialog focus, Escape restoration and header palette behavior")
+    except Exception:
+        screenshot(page,"FAILED-theme-dialog-focus")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2262,6 +2326,7 @@ def firefox_main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
+            check_theme_dialog_focus(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
@@ -2296,6 +2361,7 @@ def main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_choice_keyboard_focus(browser, base)
+            check_theme_dialog_focus(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
