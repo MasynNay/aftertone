@@ -137,6 +137,15 @@ const quizStorageKey = 'aftertone:tune-lab:v1';
 let quizStats = (() => { try { const data=JSON.parse(localStorage.getItem(quizStorageKey)||'null'); return {answered:Math.max(0,Number(data?.answered)||0),correct:Math.max(0,Number(data?.correct)||0)}; } catch { return {answered:0,correct:0}; } })();
 let current = null;
 let modal = null;
+let playlistLinkFlight = null;
+// Closing or replacing a playlist dialog must stop its in-flight provider
+// request before it can import stale data into a later dialog.
+function cancelPlaylistLinkFlight() {
+  const flight=playlistLinkFlight;
+  if(!flight) return;
+  playlistLinkFlight=null;
+  flight.controller.abort();
+}
 let modalReturnFocus = null; // Original opener survives nested dialogs.
 let activeAudioId = null;
 let continuousListening = false; // Starts only on a user-initiated Play in Discover.
@@ -1220,6 +1229,7 @@ function startPlaylistDiscovery() {
   state.genre = 'all'; state.language = 'all';
   searchQuery = ''; searchDraft = '';
   persist(); rememberSource(); stopContinuous(); current = null;
+  cancelPlaylistLinkFlight();
   modal = null; renderModal(); render(); void loadMore(state.genre, true);
   void findRelatedForPlaylist(seedVersion);
   toast(`Playlist discovery on · ${playlistProfile.totalSongs.toLocaleString()} songs, ${playlistProfile.artistCount} artists. Fresh mode remains one click away.`);
@@ -1256,37 +1266,54 @@ function finishPlaylistImport(data) {
 }
 
 async function importPlaylistFromDialog() {
+  const dialog=modal;
   const file = $('#playlist-file', modalRoot)?.files?.[0];
   const pasted = $('#playlist-paste', modalRoot)?.value?.trim();
   if (file && file.size > 3_000_000) return toast('The file must be under 3 MB.');
-  try { finishPlaylistImport(parsePlaylist(file ? await file.text() : pasted)); }
-  catch (error) { toast(error.message); }
+  try {
+    const content=file ? await file.text() : pasted;
+    // File reads can finish after Escape or after a different dialog opens.
+    if(modal!==dialog || dialog?.kind!=='playlist') return;
+    finishPlaylistImport(parsePlaylist(content));
+  } catch(error) { if(modal===dialog) toast(error.message); }
 }
 
 /** A link is resolved by our same-origin server, never fetched from a visitor URL directly. */
 async function importPlaylistLinkFromDialog() {
+  const dialog=modal;
+  if(dialog?.kind!=='playlist' || playlistLinkFlight) return;
   const link = $('#playlist-link', modalRoot)?.value?.trim();
   const status = $('#playlist-link-status', modalRoot);
   const button = $('[data-modal="playlist-link-import"]',modalRoot);
   if (!link) { if(status) {status.textContent='Paste a playlist link first.';status.classList.add('is-error');} return; }
+  const controller=new AbortController();
+  const flight={dialog,controller};
+  playlistLinkFlight=flight;
   if (button) { button.disabled=true;button.textContent='Reading playlist…'; }
   if (status) {status.textContent='Checking the public playlist…';status.classList.remove('is-error');}
   try {
-    const response=await apiFetch(`/api/playlist-link?url=${encodeURIComponent(link)}`);
+    const response=await apiFetch(`/api/playlist-link?url=${encodeURIComponent(link)}`,{signal:controller.signal});
     const result=await response.json();
+    // A newly opened playlist dialog is not the dialog that requested this
+    // data. Ignore late results even if a provider disregards cancellation.
+    if(controller.signal.aborted || modal!==dialog || playlistLinkFlight!==flight) return;
     if (!response.ok || !Array.isArray(result.tracks) || !result.tracks.length) throw new Error(result.error || 'No songs available from this link.');
-    // Modal may have been closed while the network request was in flight.
-    if (modal?.kind !== 'playlist') return;
     finishPlaylistImport(result);
     toast(`Imported ${result.tracks.length.toLocaleString()} tracks from ${result.playlistTitle || 'Deezer'}${result.truncated ? ' (first 2,000)' : ''}.`);
   } catch(error) {
-    if(status && modal?.kind==='playlist') { status.textContent=error.message;status.classList.add('is-error'); }
+    if(!controller.signal.aborted && modal===dialog && playlistLinkFlight===flight && status?.isConnected) {
+      status.textContent=error.message;status.classList.add('is-error');
+    }
   } finally {
-    if(button && modal?.kind==='playlist') {button.disabled=false;button.textContent='Import link';}
+    if(playlistLinkFlight===flight) playlistLinkFlight=null;
+    if(modal===dialog && !controller.signal.aborted && button?.isConnected) {
+      button.disabled=false;button.textContent='Import link';
+    }
   }
 }
 
 function openModal(kind, extra = {}) {
+  cancelPlaylistLinkFlight();
   setThemeMenuOpen(false);
   if(!modal) {
     const opener=document.activeElement;
@@ -1317,6 +1344,7 @@ function recordDecision(id, action, extra = {}) {
 
 function closeModal() {
   if (!modal) return;
+  cancelPlaylistLinkFlight();
   if (modal.kind === 'onboarding') { try {localStorage.setItem(INTRO_STORAGE_KEY,'1');} catch {} }
   const wasChoice = modal.kind === 'choice';
   const choice = modal;
