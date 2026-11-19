@@ -1,3 +1,9 @@
+## v0.12 development — Preserve listening controls through background redraws (November 18, 2026)
+
+- A provider refresh can replace the active listening card while keyboard users are adjusting preview volume, preview position or lyrics. The same-track card now restores focus to Play, preview volume, Lyrics or synchronized-lyrics offset controls when those controls remain visible.
+- A new song, route change or hidden/disabled control never inherits focus from an old card. Keyboard Arrow input remains native for sliders and cannot accidentally record Keep/Pass votes.
+- Added Node and real Chromium/Firefox fixture-browser checks for same-track rerenders, slider values, keyboard behavior and deliberate navigation. Physical screen-reader or touch-device interaction remains separately unverified.
+
 ## v0.12 development — Cancel obsolete timed-lyrics requests (November 18, 2026)
 
 - Optional LRCLIB lookups now receive an AbortSignal from the active listening card through the static browser adapter and lyrics helper. Advancing to another song, disabling lyrics or leaving Discover cancels pending work rather than only ignoring its eventual display.

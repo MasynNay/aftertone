@@ -144,6 +144,7 @@ let quizSession = null;
 const quizStorageKey = 'aftertone:tune-lab:v1';
 let quizStats = (() => { try { const data=JSON.parse(localStorage.getItem(quizStorageKey)||'null'); return {answered:Math.max(0,Number(data?.answered)||0),correct:Math.max(0,Number(data?.correct)||0)}; } catch { return {answered:0,correct:0}; } })();
 let current = null;
+let renderedListeningTrackId = null; // private: never expose blind-mode identity in card HTML
 let modal = null;
 let playlistLinkFlight = null;
 // Closing or replacing a playlist dialog must stop its in-flight provider
@@ -1016,6 +1017,17 @@ function render() {
   cancelStaleDiscovery();
   // Catalog refreshes may rerender the sidebar while a search is being typed.
   // Keep the unfinished text and its caret; only a deliberate submit commits it.
+  // The active listening card is rebuilt on background provider updates.
+  // Only restore an interactive player's focus if it is still the SAME song.
+  // A navigation, deliberate new song or hidden control must not steal focus.
+  const focusedOldControl=document.activeElement;
+  const previousCard=focusedOldControl?.closest?.('#listening-card');
+  const sameListeningTrack=view==='discover' && current &&
+    Boolean(previousCard) && renderedListeningTrackId===String(current.id);
+  const focusedListeningControl=sameListeningTrack && (
+    ['stage-play','preview-volume','lyrics-offset'].includes(focusedOldControl.id) ||
+    focusedOldControl.matches?.('[data-action="lyrics-toggle"]')
+  ) ? (focusedOldControl.id || 'lyrics-toggle') : null;
   const focusedFilterId=view==='discover' &&
     ['genre-select','language-select','discovery-mix-select'].includes(document.activeElement?.id)
     ? document.activeElement.id : null;
@@ -1054,6 +1066,18 @@ function render() {
   if (view === 'discover') {
     if (current && lyricsEnabled) void requestCurrentLyrics(current);
     updateLyricView();
+  }
+  // Track what we actually rendered for the NEXT refresh; a new card or
+  // leaving Discover resets the continuity check without exposing track IDs.
+  renderedListeningTrackId=view==='discover' && $('#listening-card')
+    ? String(current?.id ?? '') : null;
+  if(focusedListeningControl && view==='discover' && renderedListeningTrackId) {
+    const replacement=focusedListeningControl==='lyrics-toggle'
+      ? $('#listening-card [data-action="lyrics-toggle"]')
+      : $('#'+focusedListeningControl);
+    if(replacement && !replacement.disabled &&
+       !replacement.closest('[hidden], [inert]') && replacement.getClientRects().length)
+      replacement.focus({preventScroll:true});
   }
   if (view === 'discover' && current) prewarm(current);
   if (view === 'duels') refreshDuelAvailability();

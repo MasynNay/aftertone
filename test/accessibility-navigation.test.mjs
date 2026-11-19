@@ -50,6 +50,22 @@ test('theme tiles preserve modal focus rather than jumping to an inert header to
   assert.match(renderModal,/\.focus\(\)/);
 });
 
+test('only same-song listening controls regain focus through card redraws',()=>{
+  const views=readFileSync(new URL('../app/public/views.js',import.meta.url),'utf8');
+  assert.doesNotMatch(views,/id="listening-card" data-track-id=/,
+    'Blind challenges must not expose recording IDs in markup');
+  const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
+  assert.match(render,/Boolean\(previousCard\) && renderedListeningTrackId===String\(current\.id\)/);
+  assert.match(render,/renderedListeningTrackId=view==='discover' && \$\('#listening-card'\)/);
+  for(const id of ['stage-play','preview-volume','lyrics-offset','lyrics-toggle'])
+    assert.ok(render.includes(id),'No focus tracking for '+id);
+  assert.match(render,/!replacement\.closest\('\[hidden\], \[inert\]'\)/);
+  assert.match(render,/replacement\.getClientRects\(\)\.length/);
+  assert.match(render,/replacement\.focus\(\{preventScroll:true\}\)/);
+  const go=main.slice(main.indexOf('function goTo(nextView)'),main.indexOf('function render()'));
+  assert.match(go,/view = nextView;[\s\S]*?render\(\);[\s\S]*?main\.focus\(\{preventScroll:true\}\)/);
+});
+
 test('native keyboard activation takes priority over music hotkeys',()=>{
   const keys=main.match(/window\.addEventListener\('keydown', \(event\) => \{([\s\S]*?)\n\}\);/)?.[1];
   assert.ok(keys);

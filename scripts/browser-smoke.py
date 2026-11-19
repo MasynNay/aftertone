@@ -2397,6 +2397,106 @@ def check_optional_lyrics_request_cancellation(browser, base):
         context.close()
 
 
+def check_listening_control_focus_on_rerender(browser, base):
+    """Keep keyboard focus on the same recording, never on a changed page."""
+    context=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error: errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    def fake_lyrics(route):
+        cors={"Access-Control-Allow-Origin":"*",
+              "Access-Control-Allow-Methods":"GET, OPTIONS",
+              "Access-Control-Allow-Headers":"Accept, Lrclib-Client"}
+        if route.request.method=="OPTIONS":
+            route.fulfill(status=204,headers=cors)
+            return
+        params=parse_qs(urlsplit(route.request.url).query)
+        route.fulfill(status=200,content_type="application/json",headers=cors,
+                      body=json.dumps({
+            "artistName":params.get("artist_name",[""])[0],
+            "trackName":params.get("track_name",[""])[0],
+            "duration":208,
+            "syncedLyrics":"[00:01.00] Entirely fictional words for a browser test"
+        }))
+    context.route("https://lrclib.net/**",fake_lyrics)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        card=page.locator("#listening-card")
+        # Only inspect already-visible, non-blind metadata. Never add the
+        # current recording ID to DOM attributes: it may expose the answer.
+        original_title=card.locator(".track-identity h2").inner_text()
+        require(original_title,"No visible song title for focus test")
+        require(card.get_attribute("data-track-id") is None,
+                "Private song identity leaked into the HTML")
+        page.evaluate("window.__focusProbe='same-document'")
+        def redraw():
+            # Programmatic selection triggers a normal render without moving
+            # browser focus, like a background catalog-refresh callback.
+            page.evaluate("""() => document.querySelector(
+                '#listening-card [data-action="toggle-blind"]').click()""")
+        volume=page.locator("#preview-volume")
+        volume.focus()
+        initial=int(volume.input_value())
+        redraw()
+        require(page.evaluate("document.activeElement?.id==='preview-volume'"),
+                "A same-track refresh stranded focus on the volume slider")
+        require(card.get_attribute("data-track-id") is None,
+                "Blind-mode rerender exposed the current recording ID")
+        page.keyboard.press("ArrowUp")
+        after=int(page.locator("#preview-volume").input_value())
+        require(after==initial+1,
+                "Slider ArrowUp stopped adjusting volume after a card refresh")
+        require(page.evaluate("() => JSON.parse(localStorage.getItem('aftertone:session:v1')).volume")==after,
+                "Rerendered volume did not persist to the listener's preferences")
+
+        page.locator("#stage-play").focus()
+        redraw()
+        require(page.evaluate("document.activeElement?.id==='stage-play'"),
+                "Play lost its focused control during a same-track refresh")
+        require(card.locator(".track-identity h2").inner_text()==original_title,
+                "A same-track redraw unexpectedly changed the visible song")
+
+        page.locator('#listening-card [data-action="lyrics-toggle"]').focus()
+        redraw()
+        require(page.evaluate("document.activeElement?.dataset.action==='lyrics-toggle'"),
+                "Lyrics toggle lost focus on a same-track refresh")
+        page.locator('#listening-card [data-action="lyrics-toggle"]').click()
+        page.locator("#lyrics-offset").wait_for(state="visible",timeout=TIMEOUT)
+        offset=page.locator("#lyrics-offset")
+        offset.focus()
+        page.keyboard.press("ArrowRight")
+        new_offset=int(offset.input_value())
+        redraw()
+        require(page.evaluate("document.activeElement?.id==='lyrics-offset'"),
+                "Visible lyric offset slider lost focus during a refresh")
+        require(int(page.locator("#lyrics-offset").input_value())==new_offset,
+                "A same-track refresh reset the preview's calibrated timing")
+
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require(page.evaluate("document.activeElement?.id==='main-content'"),
+                "Deliberate navigation failed to focus the new named main area")
+        require(page.evaluate("window.__focusProbe")=="same-document",
+                "Control refresh triggered a page navigation/reload")
+        state=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')||'{}')""")
+        require(not state.get("history") and not state.get("favorites"),
+                "Keyboard arrows on sliders accidentally recorded a listening vote")
+        require(not errors,"Listening focus browser errors: "+"; ".join(errors))
+        print("PASS listening card same-track focus and slider keyboard continuity")
+    except Exception:
+        screenshot(page,"FAILED-listening-control-focus")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2415,6 +2515,7 @@ def firefox_main():
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
+            check_listening_control_focus_on_rerender(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
@@ -2451,6 +2552,7 @@ def main():
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
+            check_listening_control_focus_on_rerender(browser, base)
             check_safe_music_shortcuts(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
