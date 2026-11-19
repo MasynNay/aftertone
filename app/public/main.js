@@ -1749,8 +1749,14 @@ document.addEventListener('click', async (event) => {
     if (THEME_IDS.includes(theme.dataset.setTheme)) {
       state.theme = theme.dataset.setTheme;
       persist(); updateChrome();
-      if (modal?.kind === 'themes') renderModal();
-      setThemeMenuOpen(false, true);
+      if (modal?.kind === 'themes') {
+        // Keep focus on the re-rendered selected tile while the dialog remains
+        // modal; the header theme toggle is inert behind its backdrop.
+        renderModal();
+      } else {
+        // The non-modal header palette does close and return focus to its toggle.
+        setThemeMenuOpen(false, true);
+      }
     }
     return;
   }
