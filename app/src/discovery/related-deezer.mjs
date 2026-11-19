@@ -52,12 +52,16 @@ export async function fetchDeezerRelatedArtists(raw,fetcher=fetch) {
   const norm=key(artist);
   const cached=cache.get(norm);
   if(cached && cached.expires>Date.now()) return cached.result;
-  if(pending.has(norm)) return pending.get(norm);
+  // Only share in-flight work for the default fetcher. A static-site
+  // request supplies its own AbortSignal-bound fetcher; reusing that Promise
+  // would let one canceled caller cancel another listener's artist lookup.
+  const sharePending=fetcher===fetch;
+  if(sharePending && pending.has(norm)) return pending.get(norm);
   const promise=requestRelated(artist,fetcher).then(result=>{
     if(cache.size>=MAX_CACHE) cache.delete(cache.keys().next().value);
     cache.set(norm,{result,expires:Date.now()+CACHE_MS});
     return result;
-  }).finally(()=>pending.delete(norm));
-  pending.set(norm,promise);
+  }).finally(()=>{if(sharePending) pending.delete(norm);});
+  if(sharePending) pending.set(norm,promise);
   return promise;
 }

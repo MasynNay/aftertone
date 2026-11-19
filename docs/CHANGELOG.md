@@ -1,3 +1,9 @@
+## v0.12 development — Cancel other obsolete Deezer requests (November 18, 2026)
+
+- Forward the caller's cancellation signal to on-demand Deezer preview metadata, playlist-link import pages, and related-artist graph lookups, while retaining each provider helper's own timeout. Abandoned lookups now remove their JSONP scripts and stop follow-on playlist/artist requests instead of silently continuing after a user changes course.
+- Prevent independent related-artist callers from sharing one cancelable in-flight Promise. Canceling one listener's request must not terminate another listener's healthy request for the same artist; cached completed results and normal fetcher coalescing remain available.
+- Add deterministic tests that abort preview metadata and a multi-page playlist import, then exercise concurrent related-artist lookups with one cancellation and one successful result. Tests use fictional API responses; they do not establish live Deezer availability or permission to use commercial music.
+
 ## v0.12 development — Cancel an active swipe when a second finger arrives (November 18, 2026)
 
 - A second touch anywhere on the page now cancels a primary listening-card drag, resetting its animation and preventing the first finger's later release from saving an unintended Keep or Pass.
