@@ -58,7 +58,10 @@ def mock_deezer(route):
         route.abort()
         return
     if parsed.path.startswith("/track/"):
-        payload = demo_tracks()[0]
+        requested=parsed.path.rsplit("/",1)[-1]
+        payload=next((track for track in demo_tracks()
+                      if str(track["id"])==requested),
+                     {"error":{"code":800,"message":"Unavailable recording"}})
     elif parsed.path.startswith("/search/artist"):
         payload = {"data": [], "total": 0}
     else:
@@ -3169,6 +3172,88 @@ def check_duels_keyboard_continuity(browser, base):
     finally:
         context.close()
 
+
+def check_shared_deezer_challenge(browser, base):
+    """An actual shared link resolves the same song in a fresh browser profile."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    try:
+        page.add_init_script("""() => {
+          window.__aftertoneSharedCopy='';
+          Object.defineProperty(navigator,'clipboard',{configurable:true,
+            value:{writeText:async value=>{window.__aftertoneSharedCopy=value;}}});
+        }""")
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#listening-card [data-action="like"]').click()
+        page.wait_for_function("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return s.favorites?.length===1 && s.savedTracks?.length===1;
+        }""",timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="challenges"]').click()
+        share=page.locator('[data-action="share-challenge"]')
+        require(share.is_enabled(),"Saved public Deezer favorites cannot be shared")
+        share.click()
+        page.wait_for_function("() => Boolean(window.__aftertoneSharedCopy)",
+                               timeout=TIMEOUT)
+        link=page.evaluate("window.__aftertoneSharedCopy")
+        encoded=parse_qs(urlsplit(link).query).get("challenge",[""])[0]
+        require(encoded.startswith("v1.deezer:9100"),
+                "Share Challenge created an invalid or empty provider ID link")
+        require("jellyfin" not in link and "aftertone:session" not in link,
+                "A shared link must contain public track IDs only")
+        # Opening that URL in a new profile cannot rely on the sender's catalog.
+        fresh=browser.new_context(viewport={"width":390,"height":844},
+                                  service_workers="block")
+        fresh.route("**/*",lambda route:route.continue_()
+                    if urlsplit(route.request.url).netloc==origin else route.abort())
+        fresh.route("https://api.deezer.com/**",mock_deezer)
+        other=fresh.new_page()
+        other.on("pageerror",lambda error:errors.append(str(error)))
+        try:
+            other.goto(link,wait_until="load",timeout=TIMEOUT)
+            card=other.locator("#listening-card")
+            card.wait_for(state="visible",timeout=TIMEOUT)
+            require("CHALLENGE 01 / 1" in card.inner_text(),
+                    "Fresh visitor didn't load the exact shared recording")
+            require("BLIND CHALLENGE" in card.inner_text(),
+                    "Shared challenge didn't hide the recording identity")
+            require(other.locator('#modal-root [role="dialog"]').count()==0,
+                    "Shared visitor must not be blocked by first-run modal")
+            state=other.evaluate("""() => JSON.parse(
+                localStorage.getItem('aftertone:session:v1')||'{}')""")
+            require(not state.get('favorites') and not state.get('history'),
+                    "Shared link secretly transferred the sender's personal choices")
+            other.locator('#listening-card [data-action="pass"]').click()
+            other.locator(".discovery-empty-state").wait_for(state="visible",
+                                                              timeout=TIMEOUT)
+            require("Challenge Complete" in other.locator(".discovery-empty-state").inner_text(),
+                    "Voting on the shared recording didn't complete challenge")
+        finally:
+            fresh.close()
+        page.locator('[data-action="try-challenge"]').click()
+        require("challenge=" in page.url and
+                parse_qs(urlsplit(page.url).query).get("challenge",[""])[0].startswith("v1.deezer:"),
+                "Sample challenge created an invalid shared link")
+        require(page.locator("#listening-card").count()==1,
+                "Sample challenge must open actual blind discovery")
+        require(not errors,"Shared challenge browser exceptions: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: Deezer share, new profile, vote, sample")
+    except Exception:
+        screenshot(page,"FAILED-shared-challenge")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3191,6 +3276,7 @@ def firefox_main():
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
+            check_shared_deezer_challenge(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
@@ -3236,6 +3322,7 @@ def main():
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
+            check_shared_deezer_challenge(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
