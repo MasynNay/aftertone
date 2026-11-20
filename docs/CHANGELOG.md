@@ -1,3 +1,10 @@
+## v0.12 development — Repair public blind challenge links (November 20, 2026)
+
+- **Make my challenge** accepts saved Deezer recordings and creates an ID-only link; it never includes local preferences, listening history, signed playback URLs or private Jellyfin paths.
+- A new, bounded lookup resolves up to five requested Deezer tracks in a fresh visitor's browser on both static hosting and the Node server. Missing or rejected records are omitted without substituting unrelated songs.
+- **Try a sample** uses loaded Deezer tracks only and reports the actual clip count; no more empty or invalid challenge-link parameters.
+- Added Node provider-validation and local-endpoint tests plus Chromium/Firefox simulated browser journeys. Deezer availability and authorization for public music games remain separate, unresolved checks.
+
 ## v0.12 development — Continue keyboard navigation through Music Duels (November 20, 2026)
 
 - Starting and reopening brackets now put focus on the next available preview. Each vote moves to the following matchup; the last vote focuses a readable podium heading, without starting playback or changing any listening preferences.
