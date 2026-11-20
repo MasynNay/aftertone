@@ -2812,3 +2812,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 @media(max-width:360px) {
   .topbar-crumb {display:none;}
 }
+
+/* Programmatically focused Duels result heading must remain visible to keyboard users. */
+#duel-podium-heading:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+}

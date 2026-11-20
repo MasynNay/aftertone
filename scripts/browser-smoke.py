@@ -3102,6 +3102,73 @@ def check_tune_lab_keyboard_continuity(browser, base):
         context.close()
 
 
+
+def check_duels_keyboard_continuity(browser, base):
+    """A real keyboard can start, finish, close and reopen a Music Duels bracket."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="duels"]').click()
+        page.locator("#duel-size").select_option("4")
+        page.wait_for_function("""() => {
+            const button=document.querySelector('[data-duel-action="create"]');
+            return button && !button.disabled;
+        }""",timeout=TIMEOUT)
+        page.locator('[data-duel-action="create"]').focus()
+        page.keyboard.press("Enter")
+        page.locator("#duel-active-event [data-duel-vote]").first.wait_for(
+            state="visible",timeout=TIMEOUT)
+        require(page.evaluate("""() => document.activeElement ===
+            document.querySelector('#duel-active-event [data-duel-play]')"""),
+            "Starting a bracket left focus on the removed Start button")
+        for round_index in range(4):
+            vote=page.locator("#duel-active-event [data-duel-vote]").first
+            vote.focus()
+            page.keyboard.press("Enter")
+            if round_index<3:
+                require(page.evaluate("""() => document.activeElement ===
+                    document.querySelector('#duel-active-event [data-duel-play]')"""),
+                    "Voting did not focus the next playable contender")
+            else:
+                page.locator("#duel-podium-heading").wait_for(state="visible",
+                                                              timeout=TIMEOUT)
+                require(page.evaluate("""() => document.activeElement?.id ===
+                    'duel-podium-heading'"""),
+                    "Final vote left focus behind instead of announcing the podium")
+        period=page.locator("#duel-season")
+        period.focus()
+        page.evaluate("""() => document.querySelector('#duel-season')
+            .dispatchEvent(new Event('change',{bubbles:true}))""")
+        require(page.evaluate("document.activeElement?.id==='duel-season'"),
+                "Hall of Fame rerender discarded the focused period selector")
+        page.locator('[data-duel-action="dismiss"]').focus()
+        page.keyboard.press("Enter")
+        require(page.locator("#duel-active-event").count()==0,
+                "Close Bracket failed to close the current bracket")
+        require(page.evaluate("""() => document.activeElement?.dataset.duelAction
+            === 'open'"""),"Closing a bracket stranded focus")
+        page.keyboard.press("Enter")
+        require(page.evaluate("document.activeElement?.id==='duel-podium-heading'"),
+                "Reopening the finished bracket did not focus the podium")
+        require(not errors,"Duels keyboard browser errors: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: Duels bracket, votes, podium, archive and period focus")
+    except Exception:
+        screenshot(page,"FAILED-duels-keyboard-focus")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3123,6 +3190,7 @@ def firefox_main():
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
+            check_duels_keyboard_continuity(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
@@ -3167,6 +3235,7 @@ def main():
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
+            check_duels_keyboard_continuity(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)

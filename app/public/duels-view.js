@@ -34,7 +34,7 @@ function bracket(t) {
 }
 function podium(t) {
   const tracks=podiumTracks(t);
-  return `<section class="duel-podium"><div class="duel-section-title"><span class="eyebrow">THE FINAL STANDINGS</span><h2>${html(t.name)} winners</h2><p>These tracks earned their place. Keep the podium, export it, or bring the champion back for a new battle.</p></div><div class="duel-podium-grid">${tracks.map((track,i)=>`<article class="duel-podium-tile place-${track.place}"><div class="duel-medal">${medals[i]||'★'}</div>${cover(track)}<strong>${html(track.title)}</strong><small>${html(track.artist)}</small><span>${['Champion','Runner-up','Third place'][i]}</span></article>`).join('')}</div>
+  return `<section class="duel-podium"><div class="duel-section-title"><span class="eyebrow">THE FINAL STANDINGS</span><h2 id="duel-podium-heading" tabindex="-1">${html(t.name)} winners</h2><p>These tracks earned their place. Keep the podium, export it, or bring the champion back for a new battle.</p></div><div class="duel-podium-grid">${tracks.map((track,i)=>`<article class="duel-podium-tile place-${track.place}"><div class="duel-medal">${medals[i]||'★'}</div>${cover(track)}<strong>${html(track.title)}</strong><small>${html(track.artist)}</small><span>${['Champion','Runner-up','Third place'][i]}</span></article>`).join('')}</div>
   <div class="duel-finish-actions"><button class="accent-button" data-duel-action="save-podium" data-duel-id="${html(t.id)}">♡ Add Podium to Collection</button><button class="secondary-button" data-duel-action="export-podium" data-duel-id="${html(t.id)}">↧ Export Podium Playlist CSV</button></div></section>`;
 }
 function hallPanel(tournaments,season) {

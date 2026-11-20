@@ -1,3 +1,9 @@
+## Music Duels keyboard focus continuity (v0.12 development)
+
+- Starting a bracket and reopening a saved one move keyboard focus into the available contender preview, or to the final podium heading if the event is already finished. A vote advances focus to the new matchup; finishing the final announces the focusable podium heading without automatically playing audio.
+- Closing or deleting a bracket returns focus to a reachable Tournament History action (or arena setup if the archive is empty). Changing the Hall of Fame period retains focus in its select box instead of losing it to a replaced document node.
+- Added Node view/controller checks and a focused Chromium/Firefox phone-width keyboard journey. Screen-reader speech, physical devices, real-provider playback and usage permissions remain separately unverified.
+
 ## Tune Lab answer and mood focus (v0.12 development)
 
 - The Tune Lab question transition returns keyboard users to the first available answer (or a visible Skip), rather than leaving focus on the removed Start/Next button.

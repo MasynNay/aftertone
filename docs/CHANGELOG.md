@@ -1,3 +1,9 @@
+## v0.12 development — Continue keyboard navigation through Music Duels (November 20, 2026)
+
+- Starting and reopening brackets now put focus on the next available preview. Each vote moves to the following matchup; the last vote focuses a readable podium heading, without starting playback or changing any listening preferences.
+- Closing/deleting a bracket restores focus to an available archive action or arena choice, while Hall of Fame period changes preserve select focus across redraws.
+- Added a Node regression and simulated real-browser keyboard tournament journey in Chromium/Firefox. Physical screen-reader and live-provider playback checks remain open.
+
 ## v0.12 development — Keep keyboard focus through Tune Lab questions (November 19, 2026)
 
 - Starting or advancing a Tune Lab question now focuses the first available answer, or Skip if the current collection cannot provide multiple choices. Keyboard listeners no longer land on a deleted Start / Next button.
