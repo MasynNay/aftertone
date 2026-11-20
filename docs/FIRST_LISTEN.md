@@ -39,3 +39,9 @@ Collection lets you filter saved songs by title, artist or genre and sort them b
 ## Saved progress and provider limitations
 
 Open **Collection** to save or restore progress via [Backup and Restore](BACKUP_RESTORE.md). Real Deezer catalog and playback may be limited by upstream availability, region, browser policies, and content permissions. This project doesn't host or distribute copyrighted recordings, and the demo is not an official Deezer service.
+
+## Share a blind challenge
+
+Keep a Deezer preview, then open **Challenges** and choose **Make my challenge**. The link contains up to five public track IDs, not listening history, favorites, stored preferences, artwork copies, media files, or temporary audio links. A friend opening it in a new browser requests those same records from the provider. If a recording is unavailable, the challenge may be shorter or temporarily unavailable.
+
+**Try a sample** starts with the playable Deezer tracks already loaded in your browser. If none have loaded, visit Discover first. Preview availability does not establish authorization for public game use.

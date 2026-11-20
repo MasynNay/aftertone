@@ -44,6 +44,21 @@ export function normalizeDeezerTrack(item, { genre='all', language='unknown', er
 }
 
 
+/** Load fresh metadata for one public Deezer ID, without returning signed audio.
+ * A shared link cannot insert arbitrary track titles or remote URLs.
+ */
+export async function fetchDeezerTrackById(id,fetcher=fetch) {
+  if(!/^[1-9]\d{0,19}$/.test(String(id)))throw new Error('Invalid Deezer track ID');
+  const response=await fetcher(API+'/track/'+id,{
+    headers:{Accept:'application/json'},signal:AbortSignal.timeout(9000)
+  });
+  if(!response.ok)throw new Error('Deezer track returned HTTP '+response.status);
+  const item=await response.json();
+  if(item?.error)throw deezerRejected(item.error,'shared track request');
+  const track=normalizeDeezerTrack(item);
+  return track?.id==='deezer:'+id ? track : null;
+}
+
 // Signed Deezer preview URLs are temporary; never cache or persist them.
 export function validDeezerPreview(raw) {
   try {

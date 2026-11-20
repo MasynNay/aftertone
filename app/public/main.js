@@ -3,7 +3,7 @@ import { createInitialState, computeTaste, selectNext, recordChoice, removeFavor
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
 import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, restoreProgressBackup } from '/src/progress-backup.mjs';
-import { encodeChallenge, decodeChallenge } from '/src/challenge.mjs';
+import { encodeChallenge, decodeChallenge, isPublicDeezerChallengeId } from '/src/challenge.mjs';
 import { createViews } from './views.js';
 import { html, urlSafe, tag, setTextIfChanged } from './view-utils.js';
 import { THEMES, THEME_IDS } from '/src/themes.mjs';
@@ -1553,22 +1553,30 @@ function startQuizRound() {
 }
 
 function playSampleChallenge() {
-  challengeIds = catalog.slice(0, 5).map((track) => track.id);
-  challengeResponses = [];
-  history.replaceState(null, '', `${location.pathname}?challenge=${encodeURIComponent(encodeChallenge(challengeIds))}`);
-  current = null;
+  // Sample only genuine loaded public Deezer tracks. No blank challenge links.
+  const ids=catalog.filter(track=>isPublicDeezerChallengeId(track?.id))
+    .slice(0,5).map(track=>track.id);
+  const value=encodeChallenge(ids);
+  if(!value)return toast('No sample songs loaded yet. Visit Discover, then try again.');
+  challengeIds=ids;
+  challengeResponses=[];
+  history.replaceState(null,'',location.pathname+'?challenge='+encodeURIComponent(value));
+  current=null;
   chooseNext();
   goTo('discover');
-  toast('Sample challenge activated. Five blind tracks await.');
+  toast('Sample challenge activated · '+ids.length+' blind '+(ids.length===1?'track':'tracks')+' ready.');
 }
 
 async function shareChallenge() {
-  const ids = state.favorites.slice().reverse().filter((id) => lookup(id) && /^(audius|jamendo|commons):/.test(id)).slice(0, 5);
-  if (!ids.length) return toast('Save an Audius, Jamendo or Commons song to make a blind challenge. YouTube videos and private Jellyfin files are excluded.');
-  const value = encodeChallenge(ids);
-  const link = new URL(location.href);
-  link.searchParams.set('challenge', value);
-  await copy(link.toString(), 'Challenge link copied. Send it to a friend!');
+  // Share public track IDs only: never copy saved preferences, history,
+  // private library paths or short-lived provider preview URLs.
+  const ids=state.favorites.slice().reverse()
+    .filter(id=>isPublicDeezerChallengeId(id) && lookup(id)).slice(0,5);
+  const value=encodeChallenge(ids);
+  if(!value)return toast('Keep a Deezer preview first to make a shared challenge.');
+  const link=new URL(location.pathname,location.origin);
+  link.searchParams.set('challenge',value);
+  await copy(link.toString(),'Challenge link copied. Send it to a friend!');
 }
 
 async function copy(value, message) {
@@ -2361,10 +2369,24 @@ async function init() {
     catalogLive = Boolean(payload.live);
     // Only fetched live music is queued initially. Old search results remain outside the active discovery feed.
     if (!allGenres.includes(state.genre)) state.genre = 'all';
-    if (challengeIds.length) {
-      const available = challengeIds.filter((id) => Boolean(lookup(id)));
-      if (available.length !== challengeIds.length) toast('Some shared tracks are not available from this catalog.');
-      challengeIds = available;
+    if(challengeIds.length) {
+      // A fresh visitor doesn't have the sender's saved songs. Fetch only
+      // the exact shared IDs before deciding which recording to play.
+      const missing=challengeIds.filter(id=>isPublicDeezerChallengeId(id) && !lookup(id));
+      if(missing.length) {
+        try {
+          const res=await apiFetch('/api/challenge-tracks?ids='+encodeURIComponent(missing.join(',')));
+          if(!res.ok)throw new Error('Shared track lookup unavailable');
+          const data=await res.json();
+          if(Array.isArray(data.tracks))addToCatalog(data.tracks);
+        }catch {toast('Some shared recordings could not load. Refresh the link to try again.');}
+      }
+      const available=challengeIds.filter(id=>Boolean(lookup(id)));
+      if(available.length!==challengeIds.length)
+        toast(available.length
+          ? 'Some shared recordings are unavailable. The playable challenge is shorter.'
+          : 'This shared challenge is unavailable right now. Try the link again later.');
+      challengeIds=available;
     }
     // Portfolio entry links can open a requested discovery path directly.
     // Absent or invalid values preserve the listener's existing selection.

@@ -10,6 +10,7 @@
  * deployment prefer the original Node.js server and provider authorization.
  */
 import {fetchDeezerPage,resolveDeezerPreview} from './deezer.mjs';
+import {loadDeezerChallengeTracks} from './challenge-tracks.mjs';
 import {fetchRelatedArtists as fetchDeezerRelatedArtists} from './related-artists.mjs';
 import {importPlaylistLink} from './playlist-links.mjs';
 import {lookupLyrics} from './lyrics.mjs';
@@ -119,6 +120,7 @@ async function routeApi(url,options={}){
       const result=await fetchDeezerPage(p.get('genre')||'all',p.get('cursor')||'0',providerFetcher,p.get('q')||'',p.get('language')||'all',p.get('era')||'any',p.get('seed_artist')||'');
       return json(result);
     }
+    if(url.pathname==='/api/challenge-tracks')return json(await loadDeezerChallengeTracks(p.get('ids')||'',providerFetcher));
     if(url.pathname==='/api/audio'){
       const id=p.get('id')||'';
       if(!/^deezer:[1-9]\d{0,19}$/.test(id))return json({error:'Preview unavailable for this track.'},404);
