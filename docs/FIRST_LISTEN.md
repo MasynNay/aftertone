@@ -45,3 +45,7 @@ Open **Collection** to save or restore progress via [Backup and Restore](BACKUP_
 Keep a Deezer preview, then open **Challenges** and choose **Make my challenge**. The link contains up to five public track IDs, not listening history, favorites, stored preferences, artwork copies, media files, or temporary audio links. A friend opening it in a new browser requests those same records from the provider. If a recording is unavailable, the challenge may be shorter or temporarily unavailable.
 
 **Try a sample** starts with the playable Deezer tracks already loaded in your browser. If none have loaded, visit Discover first. Preview availability does not establish authorization for public game use.
+
+### When someone opens a challenge and songs are missing
+
+AFTERTONE keeps the original shared ID-only link unchanged. If Deezer cannot load every recording, the listener sees how many are available. **Retry Missing Songs** checks the unavailable public Deezer IDs without making a Keep/Pass choice. If some work, **Play Available Songs** deliberately starts a shorter challenge and marks the omitted count. **Back to Discovery** exits the challenge and loads regular music. If none work, the app does not silently switch to another song or mark a challenge complete. Older links for providers not configured on the public demo may show an unavailable state without a Deezer retry option. Refreshing the original link gives it another try.

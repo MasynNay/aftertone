@@ -167,3 +167,7 @@ This milestone addresses specific barriers discovered in the original browser ap
 - [ ] Check cross-browser backups, live provider failures and regional restrictions where applicable. Provider/rights review is tracked in separate roadmap issues.
 
 **Status:** A meaningful keyboard and responsive baseline shipped; issue #7 remains open for these acceptance steps. This is not a claim of WCAG conformance or of authorization to use third-party recordings.
+
+### Shared-challenge recovery (November 20, 2026)
+
+Shared-link outages present a named recovery region with a focusable heading and concise live status, including available and requested track counts. **Retry Missing Songs**, **Play Available Songs**, and **Back to Discovery** are native buttons with at least 44px touch height. Keyboard activation of Retry restores focus to its replacement or the recovered listening Play button; opting into a shorter challenge focuses Play. Discovery-path buttons and queue estimates are hidden while a shared challenge is active. Mocked Chromium/Firefox tests cover an unavailable link, successful retry, and partial continuation. Screen-reader and real-provider checks remain manual.

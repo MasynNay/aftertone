@@ -1,3 +1,10 @@
+## v0.12 development — Recover unavailable shared blind challenges (November 20, 2026)
+
+- Shared links no longer silently abandon the challenge when all requested tracks are temporarily missing. An explicit recovery screen retains the original IDs and offers **Retry Missing Songs** and **Back to Discovery**.
+- Partially available links require a listener's choice: retry the missing tracks, or **Play Available Songs** with the exact reduced count and a persistent notice. No selection or vote is invented; the original shared link is not rewritten.
+- Retry runs a bounded Deezer metadata lookup, is cancelable, and ignores stale responses if another action supersedes it. Exiting the challenge now refills the normal discovery feed instead of leaving a blank page.
+- Accessible, keyboard-focusable recovery status and phone-size action targets are included. Node and mocked Chromium/Firefox regression coverage added; live provider outages and public music rights are not verified.
+
 ## v0.12 development — Repair public blind challenge links (November 20, 2026)
 
 - **Make my challenge** accepts saved Deezer recordings and creates an ID-only link; it never includes local preferences, listening history, signed playback URLs or private Jellyfin paths.

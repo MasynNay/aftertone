@@ -2818,3 +2818,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   outline: 2px solid var(--accent);
   outline-offset: 5px;
 }
+
+/* Shared-link recovery must remain readable, focusable and distinct from radio. */
+.discovery-paths[hidden], .compact-queue[hidden] { display:none !important; }
+.challenge-recovery { padding:30px 20px; text-align:center; }
+.challenge-recovery p { max-width:42ch; color:var(--muted); line-height:1.65; }
+.challenge-recovery .empty-actions button { min-height:44px; }
+.challenge-recovery #challenge-recovery-heading:focus-visible {
+  outline:3px solid var(--accent);
+  outline-offset:6px;
+  border-radius:5px;
+}
+.challenge-short-notice {
+  margin:0 0 12px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface2);
+  color:var(--text);
+  line-height:1.5;
+  font-size:12px;
+}

@@ -268,6 +268,11 @@ let startedAt = Date.now();
 const initialChallenge = decodeChallenge(new URL(location.href).searchParams.get('challenge'));
 let challengeIds = initialChallenge;
 let challengeResponses = [];
+// Preserve the original shared IDs until the visitor chooses a shorter match.
+// Never silently fall through into ordinary discovery when a provider is down.
+let challengeRecovery = null;
+let challengeLookupController = null;
+let challengeLookupSerial = 0;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const lookup = (id) => catalog.find((track) => track.id === id) ?? null;
@@ -940,6 +945,10 @@ audio.addEventListener('error', async () => {
 });
 
 function chooseNext() {
+  if (challengeIds.length && challengeRecovery?.waiting) {
+    current=null; // An incomplete link needs a decision before any blind votes.
+    return;
+  }
   if (challengeIds.length) {
     const completed = new Set(challengeResponses.map(item=>item.id));
     current = challengeIds.map(lookup).find(track=>track && !completed.has(track.id)) ?? null;
@@ -1072,7 +1081,7 @@ function render() {
     ? {start:focusedSearch.selectionStart,end:focusedSearch.selectionEnd,direction:focusedSearch.selectionDirection}
     : null;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeRecovery, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1552,12 +1561,107 @@ function startQuizRound() {
      main.querySelector('[data-action="quiz-next"]') || main).focus({preventScroll:true});
 }
 
+function cancelSharedChallengeLookup() {
+  challengeLookupSerial++;
+  challengeLookupController?.abort();
+  challengeLookupController=null;
+}
+
+/** Preserve the full link on partial/outage failures. Resolve only public
+ * Deezer IDs; old provider IDs cannot be resolved on the Deezer-only site.
+ * Every response is generation-checked before it may enter the catalog.
+ */
+async function hydrateSharedChallenge({initial=false,returnFocus=false}={}) {
+  if(!challengeIds.length)return;
+  cancelSharedChallengeLookup();
+  const serial=challengeLookupSerial;
+  const missing=challengeIds.filter(id=>!lookup(id));
+  const deezerMissing=missing.filter(isPublicDeezerChallengeId);
+  const controller=new AbortController();
+  challengeLookupController=controller;
+  challengeRecovery={
+    waiting:true,loading:Boolean(deezerMissing.length),requested:challengeIds.length,
+    available:challengeIds.length-missing.length,missing,
+    canRetry:Boolean(deezerMissing.length),failed:false,
+  };
+  if(!initial) {
+    current=null;
+    stopContinuous();
+    stopAudio();
+    render();
+    if(returnFocus) (main.querySelector('#challenge-recovery-heading') || main)
+      .focus({preventScroll:true});
+  }
+  let failed=false;
+  if(deezerMissing.length) {
+    try {
+      const response=await apiFetch('/api/challenge-tracks?ids='+encodeURIComponent(deezerMissing.join(',')),
+        {signal:controller.signal});
+      if(!response.ok)throw new Error('Shared-track lookup rejected');
+      const payload=await response.json();
+      if(controller.signal.aborted || serial!==challengeLookupSerial)return;
+      const allowed=new Set(deezerMissing);
+      if(Array.isArray(payload.tracks))
+        addToCatalog(payload.tracks.filter(track=>allowed.has(track?.id)));
+    }catch(error) {
+      if(controller.signal.aborted || serial!==challengeLookupSerial)return;
+      failed=true; // Keep a persistent retry action instead of a disappearing toast.
+    }
+  }
+  if(controller.signal.aborted || serial!==challengeLookupSerial)return;
+  challengeLookupController=null;
+  const remaining=challengeIds.filter(id=>!lookup(id));
+  challengeRecovery=remaining.length ? {
+    waiting:true,loading:false,requested:challengeIds.length,
+    available:challengeIds.length-remaining.length,missing:remaining,
+    canRetry:remaining.some(isPublicDeezerChallengeId),failed,
+  } : null;
+  chooseNext();
+  if(!initial) {
+    render();
+    if(returnFocus) {
+      (main.querySelector('[data-action="retry-shared-challenge"]') ||
+        main.querySelector('#stage-play') || main).focus({preventScroll:true});
+    }
+  }
+}
+
+function continueSharedChallenge(returnFocus=false) {
+  if(!challengeRecovery?.waiting || challengeRecovery.loading)return;
+  const playable=challengeIds.filter(id=>Boolean(lookup(id)));
+  if(!playable.length)return; // No synthetic votes or empty bracket.
+  const skipped=challengeIds.length-playable.length;
+  challengeIds=playable;
+  challengeRecovery=skipped ? {waiting:false,skipped} : null;
+  chooseNext();
+  render();
+  if(returnFocus) (main.querySelector('#stage-play')||main).focus({preventScroll:true});
+  toast('Playing '+playable.length+' available '+(playable.length===1?'song':'songs')+
+    (skipped ? '; '+skipped+' unavailable in this link.' : '.'));
+}
+
+function exitSharedChallenge(returnFocus=false) {
+  cancelSharedChallengeLookup();
+  stopContinuous();
+  stopAudio();
+  challengeIds=[];
+  challengeResponses=[];
+  challengeRecovery=null;
+  history.replaceState(null,'',location.pathname);
+  chooseNext();
+  render();
+  // Shared links skip normal startup discovery. Refill it when leaving.
+  void loadMore(state.genre,true,false,returnFocus);
+  if(returnFocus) (main.querySelector('#stage-play')||main).focus({preventScroll:true});
+}
+
 function playSampleChallenge() {
-  // Sample only genuine loaded public Deezer tracks. No blank challenge links.
   const ids=catalog.filter(track=>isPublicDeezerChallengeId(track?.id))
     .slice(0,5).map(track=>track.id);
   const value=encodeChallenge(ids);
   if(!value)return toast('No sample songs loaded yet. Visit Discover, then try again.');
+  cancelSharedChallengeLookup();
+  challengeRecovery=null;
   challengeIds=ids;
   challengeResponses=[];
   history.replaceState(null,'',location.pathname+'?challenge='+encodeURIComponent(value));
@@ -2078,7 +2182,13 @@ document.addEventListener('click', async (event) => {
     case 'restore-progress': return $('#progress-backup-file')?.click();
     case 'share-challenge': return shareChallenge();
     case 'try-challenge': return playSampleChallenge();
-    case 'exit-challenge': challengeIds = []; challengeResponses = []; history.replaceState(null, '', location.pathname); chooseNext(); return render();
+    case 'retry-shared-challenge':
+      if(challengeRecovery?.waiting && !challengeRecovery.loading)
+        return void hydrateSharedChallenge({returnFocus:document.activeElement===action});
+      return;
+    case 'continue-shared-challenge':
+      return continueSharedChallenge(document.activeElement===action);
+    case 'exit-challenge': return exitSharedChallenge(document.activeElement===action);
     case 'reset-listens':
       if (!confirm('Restart discovery? Saved favorites will stay, but listening history and recognition scores will be cleared.')) return;
       state = { ...state, history: [] }; persist(); chooseNext(); return render();
@@ -2369,25 +2479,7 @@ async function init() {
     catalogLive = Boolean(payload.live);
     // Only fetched live music is queued initially. Old search results remain outside the active discovery feed.
     if (!allGenres.includes(state.genre)) state.genre = 'all';
-    if(challengeIds.length) {
-      // A fresh visitor doesn't have the sender's saved songs. Fetch only
-      // the exact shared IDs before deciding which recording to play.
-      const missing=challengeIds.filter(id=>isPublicDeezerChallengeId(id) && !lookup(id));
-      if(missing.length) {
-        try {
-          const res=await apiFetch('/api/challenge-tracks?ids='+encodeURIComponent(missing.join(',')));
-          if(!res.ok)throw new Error('Shared track lookup unavailable');
-          const data=await res.json();
-          if(Array.isArray(data.tracks))addToCatalog(data.tracks);
-        }catch {toast('Some shared recordings could not load. Refresh the link to try again.');}
-      }
-      const available=challengeIds.filter(id=>Boolean(lookup(id)));
-      if(available.length!==challengeIds.length)
-        toast(available.length
-          ? 'Some shared recordings are unavailable. The playable challenge is shorter.'
-          : 'This shared challenge is unavailable right now. Try the link again later.');
-      challengeIds=available;
-    }
+    if(challengeIds.length)await hydrateSharedChallenge({initial:true});
     // Portfolio entry links can open a requested discovery path directly.
     // Absent or invalid values preserve the listener's existing selection.
     const landingPath = new URLSearchParams(window.location.search).get('path');

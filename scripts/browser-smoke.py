@@ -3254,6 +3254,117 @@ def check_shared_deezer_challenge(browser, base):
     finally:
         context.close()
 
+
+def check_shared_challenge_outage_recovery(browser, base):
+    """Recover shared clips in a new profile: retry, shorten, or exit honestly."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    attempts={"9100001":0}
+    def flaky_deezer(route):
+        parsed=urlsplit(route.request.url)
+        if parsed.path=="/track/9100001":
+            attempts["9100001"]+=1
+            if attempts["9100001"]==1:
+                callback=parse_qs(parsed.query).get("callback",[""])[0]
+                route.fulfill(status=200,content_type="application/javascript",
+                    body=f'window[{json.dumps(callback)}]({json.dumps({"error":{"code":800,"message":"Temporarily unavailable"}})});')
+                return
+        if parsed.path in ("/track/9100003","/track/9100004"):
+            callback=parse_qs(parsed.query).get("callback",[""])[0]
+            route.fulfill(status=200,content_type="application/javascript",
+                body=f'window[{json.dumps(callback)}]({json.dumps({"error":{"code":800,"message":"Not currently playable"}})});')
+            return
+        mock_deezer(route)
+    context.route("https://api.deezer.com/**",flaky_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    try:
+        # No saved catalog: the first attempt fails, and retry restores the
+        # exact shared track without recording a vote or changing the link.
+        url=base+"/demo/?challenge=v1.deezer%3A9100001"
+        page.goto(url,wait_until="load",timeout=TIMEOUT)
+        recovery=page.locator(".challenge-recovery")
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require("Shared Challenge Unavailable" in recovery.inner_text(),
+                "Total provider outage silently became unrelated discovery")
+        require(page.locator("#listening-card").count()==0,
+                "A missing shared track was replaced by a general discovery card")
+        require(page.locator(".discovery-paths").is_hidden(),
+                "Recovery must not offer unrelated discovery paths")
+        require(page.locator("#modal-root [role='dialog']").count()==0,
+                "First-run modal must not cover a failed shared link")
+        retry=page.locator('[data-action="retry-shared-challenge"]')
+        retry.focus()
+        page.keyboard.press("Enter")
+        card=page.locator("#listening-card")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("CHALLENGE 01 / 1" in card.inner_text() and
+                "BLIND CHALLENGE" in card.inner_text(),
+                "Retry did not resume the exact blind challenge")
+        require(attempts["9100001"]==2,
+                "Retry was not limited to one missing shared recording")
+        require(page.evaluate("document.activeElement?.id")=="stage-play",
+                "Keyboard focus was lost after successful retry")
+        require("challenge=" in page.url,
+                "Retry must preserve the original share URL")
+        state=page.evaluate("""() => JSON.parse(
+          localStorage.getItem('aftertone:session:v1')||'{}')""")
+        require(not state.get("history") and not state.get("favorites"),
+                "A retry must not record a listening choice")
+
+        # A permanently missing recording must keep a visible exit, without
+        # starting normal music discovery until the visitor chooses to leave.
+        page.goto(base+"/demo/?challenge=v1.deezer%3A9100003",
+                  wait_until="load",timeout=TIMEOUT)
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require("None of the 1 shared song" in recovery.inner_text(),
+                "Missing share does not explain provider availability")
+        page.locator('[data-action="exit-challenge"]').click()
+        page.wait_for_url(base+"/demo/",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("NOW DISCOVERING" in card.inner_text(),
+                "Exiting an unavailable challenge did not refill discovery")
+
+        # A partially unavailable link must NOT silently shrink. The visitor
+        # explicitly chooses the available songs, then sees honest progress.
+        page.goto(base+"/demo/?challenge=v1.deezer%3A9100004~deezer%3A9100005",
+                  wait_until="load",timeout=TIMEOUT)
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require("1 of 2 shared songs available" in recovery.inner_text(),
+                "Partial shared outage was not disclosed")
+        require(page.locator('#listening-card').count()==0,
+                "Partially available challenge started without consent")
+        play=page.locator('[data-action="continue-shared-challenge"]')
+        play.focus()
+        page.keyboard.press("Enter")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("CHALLENGE 01 / 1" in card.inner_text(),
+                "The shorter challenge did not have the true match count")
+        require(page.evaluate("document.activeElement?.id")=="stage-play",
+                "Keyboard focus lost after choosing available song")
+        require("1 unavailable in the original shared link" in page.locator(
+                ".challenge-short-notice").inner_text(),
+                "Shortened challenge did not disclose the missing track")
+        require("9100004" in page.url and "9100005" in page.url,
+                "Choosing shorter playback must not silently rewrite the link")
+        card.locator('[data-action="pass"]').click()
+        finish=page.locator(".discovery-empty-state")
+        finish.wait_for(state="visible",timeout=TIMEOUT)
+        require("Challenge Complete" in finish.inner_text() and
+                "1 shared song was unavailable" in finish.inner_text(),
+                "Completed challenge did not disclose omitted shared songs")
+        require(not errors,"Shared outage browser exceptions: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: shared retry, all-missing exit, partial explicit playback")
+    except Exception:
+        screenshot(page,"FAILED-shared-outage-recovery")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3277,6 +3388,7 @@ def firefox_main():
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
+            check_shared_challenge_outage_recovery(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
@@ -3323,6 +3435,7 @@ def main():
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
+            check_shared_challenge_outage_recovery(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
