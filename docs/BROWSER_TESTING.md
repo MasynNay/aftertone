@@ -1,3 +1,8 @@
+## Cancel a pending preview with its own Play control (v0.12 development)
+
+- Chromium and Firefox at a 390px phone viewport hold a fictional Deezer track metadata lookup, verify that Play becomes a keyboard-accessible Cancel loading preview button, activate it, and assert that the JSONP request is aborted, no late callback starts audio, no recovery error/vote appears, and fresh Play can retry.
+- The test does not fetch a real preview or establish that a third-party audio source is available or licensed for public use.
+
 ## Preview interruption by modal dialogs (v0.12 development)
 
 - Opening a modal while a fictional Deezer preview metadata lookup is pending now aborts that lookup before the dialog becomes interactive. The phone-width Chromium/Firefox regression checks script removal, inert late callback behavior, paused/cleared audio, no automatic restart, correct return of focus, and a fresh explicit Play afterward.
