@@ -2839,3 +2839,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   line-height:1.5;
   font-size:12px;
 }
+
+/* Shared challenges should always offer a reachable way out; failed previews
+   expose the same neutral skip as ordinary discovery (never a Pass). */
+.challenge-early-exit {
+  display:flex;
+  justify-content:center;
+  margin:12px 0 0;
+}
+.challenge-early-exit button {
+  min-height:44px;
+  min-width:150px;
+}

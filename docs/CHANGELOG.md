@@ -1,3 +1,10 @@
+## v0.12 development — Skip an unplayable shared preview without voting (November 20, 2026)
+
+- A shared challenge that resolves track metadata but cannot play its preview no longer traps the listener: **Retry Preview** and **Skip Without Voting** are available, with a direct **Leave Challenge** control during active rounds.
+- A failed clip advances to the next shared recording without writing a Keep, Pass, favorite, or recommendation signal, and without rewriting the original challenge link. The completion summary separates actual ratings from unplayable previews; an all-failed challenge never invents a score.
+- Shared challenge previews now wait for an explicit choice when 22 seconds end instead of repeating in continuous-radio mode. Ordinary Discover autoplay and neutral skip behavior remain unchanged.
+- Added Node view/controller checks and fictional-provider Chromium/Firefox browser tests for two consecutive blocked clips, keyboard focus, a mixed skip/Pass result, and leaving the challenge. Live Deezer availability and media game-use permission remain unverified.
+
 ## v0.12 development — Recover unavailable shared blind challenges (November 20, 2026)
 
 - Shared links no longer silently abandon the challenge when all requested tracks are temporarily missing. An explicit recovery screen retains the original IDs and offers **Retry Missing Songs** and **Back to Discovery**.

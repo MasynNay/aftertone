@@ -3365,6 +3365,101 @@ def check_shared_challenge_outage_recovery(browser, base):
     finally:
         context.close()
 
+
+def check_shared_preview_failure_skip(browser, base):
+    """An audio failure inside a live shared round is NOT a Pass."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    url=base+"/demo/?challenge=v1.deezer%3A9100001~deezer%3A9100002"
+    try:
+        page.goto(url,wait_until="load",timeout=TIMEOUT)
+        card=page.locator("#listening-card")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("CHALLENGE 01 / 2" in card.inner_text(),
+                "Shared challenge didn't start on the first track")
+        require(not page.locator('#stop-session').is_visible(),
+                "Shared clips must wait for a vote, not autoplay another song")
+        require(page.locator('[data-action="exit-challenge"]').is_visible(),
+                "An active shared challenge has no explicit exit")
+        # All external CDN audio is blocked; the Deezer metadata fixture still
+        # resolves so the challenge only fails once the listener tries Play.
+        page.locator("#stage-play").click()
+        recovery=page.locator("#preview-recovery")
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require("without counting a Pass" in recovery.inner_text(),
+                "Shared playback failure lacks neutral recovery guidance")
+        skip=page.locator("#preview-skip")
+        require(skip.is_visible() and skip.is_enabled(),
+                "Shared challenge trapped a listener on a failed preview")
+        skip.focus()
+        page.keyboard.press("Enter")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("CHALLENGE 02 / 2" in card.inner_text(),
+                "Neutral skipping an unplayable clip didn't advance the round")
+        require(page.evaluate("document.activeElement?.id")=="stage-play",
+                "Keyboard focus didn't return to the next challenge's Play button")
+        require(page.url==url,"Neutral skip rewrote the original share link")
+        scores=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        require(not scores["history"] and not scores["favorites"],
+                "Neutral skipped recording was miscounted as a Keep or Pass")
+
+        page.locator("#stage-play").click()
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        page.locator("#preview-skip").click()
+        finished=page.locator(".discovery-empty-state")
+        finished.wait_for(state="visible",timeout=TIMEOUT)
+        require("Challenge Finished" in finished.inner_text() and
+                "No songs were rated" in finished.inner_text() and
+                "2 previews were unplayable and not counted as Passes"
+                   in finished.inner_text(),
+                "All-failed challenge fabricated ratings or had no honest summary")
+        require(page.url==url,"Finishing without votes rewrote the shared link")
+        page.locator('[data-action="exit-challenge"]').click()
+        page.wait_for_url(base+"/demo/",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("NOW DISCOVERING" in card.inner_text(),
+                "Exiting an all-unplayable challenge failed to refill discovery")
+        # A failed song and a real Pass must have separate totals.
+        page.goto(url,wait_until="load",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        page.locator("#stage-play").click()
+        page.locator("#preview-recovery").wait_for(state="visible",timeout=TIMEOUT)
+        page.locator("#preview-skip").click()
+        require("CHALLENGE 02 / 2" in card.inner_text(),
+                "Second challenge did not advance after preview skip")
+        card.locator('[data-action="pass"]').click()
+        finished.wait_for(state="visible",timeout=TIMEOUT)
+        require("Challenge Finished" in finished.inner_text() and
+                "You kept 0 of 1 rated songs" in finished.inner_text() and
+                "1 preview was unplayable and not counted as a Pass"
+                  in finished.inner_text(),
+                "Mixed voted/skipped summary is not truthful")
+        summary=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        require(len(summary["history"])==1 and
+                summary["history"][0]["action"]=="pass" and
+                not summary["favorites"],
+                "Exactly one explicit Pass should be saved, not an audio failure")
+        require(not errors,"JS errors during shared audio recovery: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: shared audio fail, neutral skip, correct results")
+    except Exception:
+        screenshot(page,"FAILED-shared-preview-skip")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3389,6 +3484,7 @@ def firefox_main():
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
+            check_shared_preview_failure_skip(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
@@ -3436,6 +3532,7 @@ def main():
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
+            check_shared_preview_failure_skip(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)

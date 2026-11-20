@@ -49,3 +49,7 @@ Keep a Deezer preview, then open **Challenges** and choose **Make my challenge**
 ### When someone opens a challenge and songs are missing
 
 AFTERTONE keeps the original shared ID-only link unchanged. If Deezer cannot load every recording, the listener sees how many are available. **Retry Missing Songs** checks the unavailable public Deezer IDs without making a Keep/Pass choice. If some work, **Play Available Songs** deliberately starts a shorter challenge and marks the omitted count. **Back to Discovery** exits the challenge and loads regular music. If none work, the app does not silently switch to another song or mark a challenge complete. Older links for providers not configured on the public demo may show an unavailable state without a Deezer retry option. Refreshing the original link gives it another try.
+
+### If a shared song loads but will not play
+
+Some public tracks can still fail at playback time even if their metadata loads. Press **Retry Preview** to request a fresh provider URL, or **Skip Without Voting** to move to the next shared song without marking a Pass. The result tells you exactly how many songs you actually rated and how many previews could not play. **Leave Challenge** is always available while rating. Challenge clips stop after their short preview and wait for your Keep/Pass decision rather than automatically looping or silently advancing. Regular Discover sessions still support continuous listening.

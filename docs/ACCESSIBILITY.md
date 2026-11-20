@@ -171,3 +171,7 @@ This milestone addresses specific barriers discovered in the original browser ap
 ### Shared-challenge recovery (November 20, 2026)
 
 Shared-link outages present a named recovery region with a focusable heading and concise live status, including available and requested track counts. **Retry Missing Songs**, **Play Available Songs**, and **Back to Discovery** are native buttons with at least 44px touch height. Keyboard activation of Retry restores focus to its replacement or the recovered listening Play button; opting into a shorter challenge focuses Play. Discovery-path buttons and queue estimates are hidden while a shared challenge is active. Mocked Chromium/Firefox tests cover an unavailable link, successful retry, and partial continuation. Screen-reader and real-provider checks remain manual.
+
+### Unplayable shared audio within a challenge (November 20, 2026)
+
+If an individual shared preview fails after metadata resolution, **Retry Preview** and **Skip Without Voting** remain visible, native keyboard-operable buttons. A neutral skip moves focus to the next challenge Play button, or the final results' exit action when no playable tracks remain. The player also exposes **Leave Challenge** while a round is active. The results distinguish rated songs from unavailable audio. Fictional-provider Chromium and Firefox runs verify skip focus and no false votes. Real media permissions, mobile assistive technology and screen-reader speech remain manual checks.
