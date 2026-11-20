@@ -1,3 +1,8 @@
+## Media-error refresh cancellation (v0.12 development)
+
+- New Chromium and Firefox phone-width checks simulate a media-element error after an explicit fixture preview has started, hold the replacement Deezer metadata request, cancel it through the player control and verify that the late callback cannot restart playback or change listening votes. An explicit subsequent Play starts a fresh metadata request.
+- The media fixture uses only generated silence and fictional catalog metadata, not third-party audio. Actual provider behavior and physical-device audio interruptions still require manual verification.
+
 ## Cancel a pending preview with its own Play control (v0.12 development)
 
 - Chromium and Firefox at a 390px phone viewport hold a fictional Deezer track metadata lookup, verify that Play becomes a keyboard-accessible Cancel loading preview button, activate it, and assert that the JSONP request is aborted, no late callback starts audio, no recovery error/vote appears, and fresh Play can retry.
