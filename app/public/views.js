@@ -1,5 +1,5 @@
 import { computeTaste } from '../src/taste.mjs';
-import {eligibleChallengeTracks,matchingChallengeTracks,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
+import {eligibleChallengeTracks,matchingChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
 import { PATH_DESCRIPTIONS } from '../src/discovery/mode-engine.mjs';
 import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
@@ -8,7 +8,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=[], challengeFilterQuery='', catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   const lookup = (id) => catalog.find((track) => track.id === id) ?? null;
 function waveform(id) {
   let seed = h32(id);
@@ -218,13 +218,13 @@ function renderTaste() {
 
 function renderChallenges() {
   const eligible=eligibleChallengeTracks(state.favorites,catalog);
-  const chosen=reconcileChallengeDraft(challengeDraft,eligible);
+  const chosen=reconcileChallengeDraft(challengeDraft??defaultChallengeDraft(eligible),eligible);
   const byId=new Map(eligible.map(track=>[track.id,track]));
   const matches=matchingChallengeTracks(eligible,challengeFilterQuery);
   const candidates=matches.tracks.filter(track=>!chosen.includes(track.id));
   const searchTerm=challengeFilterQuery.trim();
   return `<section><div class="eyebrow">GOOD MUSIC IS BETTER SHARED</div><div class="page-head"><div><h1>Pass the <em>Aux.</em></h1><p class="lead">Create a blind-listening challenge from your favorite recordings. Choose which songs to send and the order your friends will hear them.</p></div></div>
-  <div class="challenge-hero"><div><div class="eyebrow">THE FIVE-SONG TEST</div><h2>Think you know my taste?</h2><p>Choose up to five saved songs. Change their order, send a link, and find out who shares your ears.</p><div class="challenge-hero-actions"><button type="button" class="accent-button" data-action="share-challenge" ${chosen.length?'':'disabled'}>↗ Share ${chosen.length || ''}${chosen.length===1?' Song':chosen.length?' Songs':' My Challenge'}</button><button type="button" class="secondary-button" data-action="try-challenge">Try a sample →</button></div><p class="challenge-share-hint">${eligible.length ? `${eligible.length} saved Deezer ${eligible.length===1?'song':'songs'} available. The five most recent start selected; customize your list below. The link contains public track IDs only.` : 'Keep a Deezer song in Discover to create your challenge. No account, private library or listening history is shared.'}</p></div><div class="challenge-badge" aria-hidden="true">✳</div></div>
+  <div class="challenge-hero"><div><div class="eyebrow">THE FIVE-SONG TEST</div><h2>Think you know my taste?</h2><p>Choose up to five saved songs. Change their order, send a link, and find out who shares your ears.</p><div class="challenge-hero-actions"><button type="button" class="accent-button" data-action="share-challenge" ${chosen.length?'':'disabled'}>↗ Share ${chosen.length || ''}${chosen.length===1?' Song':chosen.length?' Songs':' My Challenge'}</button><button type="button" class="secondary-button" data-action="try-challenge">Try a sample →</button></div><p class="challenge-share-hint">${eligible.length ? `${eligible.length} saved Deezer ${eligible.length===1?'song':'songs'} available. The five most recent start selected; customize your list below. Songs are shared by ID only.` : 'Keep a Deezer song in Discover to create your challenge. No account, private library or listening history is shared.'}</p></div><div class="challenge-badge" aria-hidden="true">✳</div></div>
   <section class="challenge-builder" aria-labelledby="challenge-builder-heading">
     <div class="challenge-builder-header"><div><span class="eyebrow">YOUR MIXTAPE</span><h2 id="challenge-builder-heading">Choose the listening order.</h2><p>${chosen.length} of ${MAX_CHALLENGE_TRACKS} tracks selected · First song at the top</p></div><button type="button" class="secondary-button" data-action="reset-challenge-draft" ${eligible.length?'':'disabled'}>Use Latest Five</button></div>
     ${chosen.length ? `<ol class="challenge-draft-list" aria-label="Chosen challenge songs, in sharing order">
