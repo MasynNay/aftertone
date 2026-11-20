@@ -854,7 +854,9 @@ function updatePlaybackView() {
       // warning on screen after the new request fails for another reason.
       setTextIfChanged(recovery.querySelector('p'), failedAudioQuota
         ? 'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without counting it as a Pass.'
-        : 'This Deezer preview is unavailable. Retry a fresh provider link or skip without counting it as a Pass.');
+        : challengeIds.length
+          ? 'This shared preview could not play. Retry it, or skip this recording without counting a Pass.'
+          : 'This Deezer preview is unavailable. Retry a fresh provider link or skip without counting it as a Pass.');
     }
   }
   // Neutral skipping is essential when a shared clip fails after metadata
