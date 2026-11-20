@@ -3185,11 +3185,11 @@ def check_shared_deezer_challenge(browser, base):
     errors=[]
     page.on("pageerror",lambda error:errors.append(str(error)))
     try:
-        page.add_init_script("""() => {
+        page.add_init_script("""(() => {
           window.__aftertoneSharedCopy='';
           Object.defineProperty(navigator,'clipboard',{configurable:true,
             value:{writeText:async value=>{window.__aftertoneSharedCopy=value;}}});
-        }""")
+        })();""")
         page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
         page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
         close=page.locator('#modal-root button[data-modal="close"]')
