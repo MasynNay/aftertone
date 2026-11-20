@@ -1060,6 +1060,9 @@ function render() {
   // the selected button focused so keyboard users can compare another mood.
   const focusedQuizMood=view==='quiz' && focusedOldControl?.matches?.('[data-quiz-mood]')
     ? focusedOldControl.dataset.quizMood : null;
+  // Hall of Fame redraws its dropdown on a period change. Keep keyboard
+  // focus in that dropdown rather than resetting to the browser body.
+  const focusedDuelSeason=view==='duels' && focusedOldControl?.id==='duel-season';
   const focusedFilterId=view==='discover' &&
     ['genre-select','language-select','discovery-mix-select'].includes(document.activeElement?.id)
     ? document.activeElement.id : null;
@@ -1100,6 +1103,8 @@ function render() {
     if(replacement && !replacement.disabled && replacement.getClientRects().length)
       replacement.focus({preventScroll:true});
   }
+  if(focusedDuelSeason && view==='duels')
+    main.querySelector('#duel-season')?.focus({preventScroll:true});
   if(focusedPath && view==='discover') {
     const replacement=$('.discovery-paths .path-option[data-path="'+focusedPath+'"]');
     if(replacement && !replacement.disabled && replacement.getClientRects().length &&
@@ -1638,6 +1643,23 @@ function refreshDuelAvailability() {
     button.setAttribute('aria-pressed',String(selected));
   });
 }
+/** After a bracket rebuild, announce the new reachable stage by moving focus
+ * to its first preview, or to the final podium heading. No audio is started. */
+function focusDuelStage() {
+  if(view!=='duels') return;
+  const target=main.querySelector('#duel-active-event [data-duel-play]') ||
+    main.querySelector('#duel-podium-heading');
+  target?.focus({preventScroll:true});
+}
+/** Closing/deleting a bracket should return the keyboard to a usable archive
+ * action, not leave focus on a removed Close/Delete button. */
+function focusDuelArchive(id) {
+  const target=[...main.querySelectorAll('.duel-history [data-duel-action="open"]')]
+    .find(button=>button.dataset.duelId===id) ||
+    main.querySelector('.duel-history [data-duel-action="open"]') ||
+    main.querySelector('[data-duel-theme]') || main;
+  target.focus({preventScroll:true});
+}
 function registerTournament(event) {
   if (duelTournaments.length>=40) {
     toast('The tournament archive is full (40). Delete an old event to create another.');
@@ -1645,7 +1667,7 @@ function registerTournament(event) {
   }
   if(!writeDuelArchive([...duelTournaments,event]))return;
   setDuelSelection(event.id);
-  stopContinuous();render();
+  stopContinuous();render();focusDuelStage();
   document.querySelector('#duel-active-event')?.scrollIntoView({behavior:motionSafeScroll(),block:'start'});
 }
 function createDuelId() {
@@ -1706,14 +1728,14 @@ function handleDuelAction(action, id=null) {
     catch(error){toast(error.message);}
     return;
   }
-  if(action==='open') {if(!duelTournaments.some(t=>t.id===id))return;setDuelSelection(id);stopAudio();render();return;}
-  if(action==='dismiss') {setDuelSelection(null);stopAudio();render();return;}
+  if(action==='open') {if(!duelTournaments.some(t=>t.id===id))return;setDuelSelection(id);stopAudio();render();focusDuelStage();return;}
+  if(action==='dismiss') {const previousId=selectedDuelId;setDuelSelection(null);stopAudio();render();focusDuelArchive(previousId);return;}
   if(action==='delete') {
     const event=duelTournaments.find(t=>t.id===id);
     if(!event || !confirm(`Delete tournament “${event.name}”? This cannot be undone.`)) return;
     if(!writeDuelArchive(duelTournaments.filter(t=>t.id!==id)))return;
     if(selectedDuelId===id)setDuelSelection(null);
-    stopAudio();render();return;
+    stopAudio();render();focusDuelArchive(id);return;
   }
   const event=duelTournaments.find(t=>t.id===id);
   if(!event || event.status!=='complete')return;
@@ -1739,7 +1761,7 @@ function voteActiveDuel(winnerId) {
   try {
     const updated=voteDuel(duelTournaments[index],match.id,winnerId);
     if(!writeDuelArchive(duelTournaments.map((event,i)=>i===index?updated:event)))return;
-    stopAudio();render();
+    stopAudio();render();focusDuelStage();
     if(updated.status==='complete') toast('Tournament complete! Your podium is ready.');
     else if(match.stage==='third')toast('Bronze decided. Time for the grand final!');
     else toast('Winner advances!');
