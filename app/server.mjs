@@ -12,6 +12,7 @@ import { fetchChartHitsPage } from './src/chart-hits.mjs';
 import { fetchAdFreeHitsPage } from './src/library-hits.mjs';
 import { fetchFeaturedPage, FEATURED_VIDEOS } from './src/featured-hits.mjs';
 import { fetchDeezerPage, resolveDeezerPreview } from './src/deezer.mjs';
+import {loadDeezerChallengeTracks} from './src/challenge-tracks.mjs';
 import { fetchRelatedArtists } from './src/related-artists.mjs';
 import { importPlaylistLink } from './src/playlist-links.mjs';
 import { lookupLyrics } from './src/lyrics.mjs';
@@ -195,6 +196,11 @@ async function route(req, res, fetcher = fetch) {
   if (url.pathname === '/api/discover') {
     try { return json(res, 200, await discover(url.searchParams, fetcher)); }
     catch (error) { return json(res, 502, { error: `The music source did not respond: ${error.message}` }); }
+  }
+  if (url.pathname === '/api/challenge-tracks') {
+    try {return json(res,200,await loadDeezerChallengeTracks(url.searchParams.get('ids')||'',fetcher));}
+    catch(error) {return json(res,error.message==='Invalid shared track IDs.'?400:(error.status===429?429:502),
+      {error:'Shared tracks are temporarily unavailable.'});}
   }
   if (url.pathname === '/api/audius-stream') return proxyAudius(req, res, url.searchParams.get('id') || '', fetcher);
   if (url.pathname === '/api/jellyfin-art' || url.pathname === '/api/jellyfin-stream') {
