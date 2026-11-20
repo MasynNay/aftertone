@@ -1,3 +1,11 @@
+## v0.12 development — Curate your shared five-song challenge (November 20, 2026)
+
+- **Pass the Aux** now lets listeners choose the exact saved Deezer songs to send, rather than silently always choosing only the five newest. The newest five remain preselected for one-click quick sharing.
+- Add or remove tracks, use **Move Earlier/Move Later** to set playback order, search the saved catalog beyond the initial 40 visible results, and restore the newest five at any time. The Share button displays the selected count and stays disabled for an empty draft.
+- The resulting link contains only validated public Deezer track IDs in the chosen order; private Jellyfin sources, history, track names, preview URLs and browser preferences are excluded. Selection is tab-local; regular Keep/Pass progress and collection are not changed by editing it.
+- Native, focusable 44px reorder buttons and search-caret recovery are covered by Node unit tests and fictional-provider Chromium/Firefox mobile browser flows, including opening a deliberately reordered two-song link in a clean browser profile.
+- Browser fixtures do not establish live third-party playback or authorize public media use.
+
 ## v0.12 development — Skip an unplayable shared preview without voting (November 20, 2026)
 
 - A shared challenge that resolves track metadata but cannot play its preview no longer traps the listener: **Retry Preview** and **Skip Without Voting** are available, with a direct **Leave Challenge** control during active rounds.

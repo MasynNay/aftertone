@@ -53,3 +53,7 @@ AFTERTONE keeps the original shared ID-only link unchanged. If Deezer cannot loa
 ### If a shared song loads but will not play
 
 Some public tracks can still fail at playback time even if their metadata loads. Press **Retry Preview** to request a fresh provider URL, or **Skip Without Voting** to move to the next shared song without marking a Pass. The result tells you exactly how many songs you actually rated and how many previews could not play. **Leave Challenge** is always available while rating. Challenge clips stop after their short preview and wait for your Keep/Pass decision rather than automatically looping or silently advancing. Regular Discover sessions still support continuous listening.
+
+### Choose and order the songs in Pass the Aux
+
+On the **Challenges** tab, your five latest eligible Deezer favorites start selected, so the Share action works immediately. To make it personal, **Remove** a selected song, search by title or artist to find another saved recording, and use **+ Add** to include it. Move songs earlier or later with the up/down buttons; the first selected song is what a friend hears first. At most five songs can be shared. **Use Latest Five** restores the default. Search looks through all saved eligible recordings, showing up to 40 at once (narrow the query for older tracks). The selected order remains in the current tab until a refresh, but the shared link keeps its song IDs and order when opened elsewhere. Editing a challenge does not remove favorites or create listening votes.

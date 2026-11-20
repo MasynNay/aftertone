@@ -175,3 +175,7 @@ Shared-link outages present a named recovery region with a focusable heading and
 ### Unplayable shared audio within a challenge (November 20, 2026)
 
 If an individual shared preview fails after metadata resolution, **Retry Preview** and **Skip Without Voting** remain visible, native keyboard-operable buttons. A neutral skip moves focus to the next challenge Play button, or the final results' exit action when no playable tracks remain. The player also exposes **Leave Challenge** while a round is active. The results distinguish rated songs from unavailable audio. Fictional-provider Chromium and Firefox runs verify skip focus and no false votes. Real media permissions, mobile assistive technology and screen-reader speech remain manual checks.
+
+### Curated sharing controls (November 20, 2026)
+
+The Pass the Aux editor uses an ordered list for the selected songs, labelled native up/down/remove buttons, and a search field whose focus and caret are preserved across filtered view updates. Control hit targets are at least 44px high; selection count and result count are described in text. A real-browser (fictional catalog) Chromium and Firefox regression at a narrow phone viewport covers keyboard reordering, song search, exact shared-ID order in a fresh 320px browser profile and no horizontal page overflow. A manual screen-reader, zoom and touch-device review remains outstanding.

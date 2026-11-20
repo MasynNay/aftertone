@@ -3460,6 +3460,136 @@ def check_shared_preview_failure_skip(browser, base):
     finally:
         context.close()
 
+
+def check_curated_shared_challenge(browser, base):
+    """Choose and reorder favorites, then play the exact link in a clean browser."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    try:
+        page.add_init_script("""(() => {
+          window.__aftertoneCuratedCopy='';
+          Object.defineProperty(navigator,'clipboard',{configurable:true,
+            value:{writeText:async value=>{window.__aftertoneCuratedCopy=value;}}});
+        })();""")
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        card=page.locator("#listening-card")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        for count in range(1,4):
+            card.locator('[data-action="like"]').click(timeout=TIMEOUT)
+            page.wait_for_function("""n => {
+              const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+              return s.favorites?.length===n && s.savedTracks?.length>=n;
+            }""",arg=count,timeout=TIMEOUT)
+        saved=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {ids:s.favorites,titles:Object.fromEntries(
+            s.savedTracks.map(t=>[t.id,t.title]))};
+        }""")
+        require(len(set(saved["ids"]))==3,
+                "Could not save three distinct songs for challenge curation")
+        page.locator('#main-nav button[data-view="challenges"]').click()
+        chosen=page.locator('.challenge-draft-item').evaluate_all(
+            "els=>els.map(el=>el.dataset.chosenId)")
+        require(chosen==list(reversed(saved["ids"])),
+                f"Latest favorites not selected by default: {chosen}")
+        require("3 of 5 tracks selected" in page.locator(".challenge-builder").inner_text(),
+                "Curated challenge builder lacks live selection count")
+        require(page.locator('[data-action="share-challenge"]').is_enabled(),
+                "Default quick-share was accidentally disabled")
+
+        # Unselect the latest song. Find it again with the search and add it;
+        # a narrow phone screen and keyboard caret must remain functional.
+        newest=saved["ids"][-1]
+        page.locator('[data-action="remove-challenge-track"][data-id="'+newest+'"]').click()
+        chosen=page.locator('.challenge-draft-item').evaluate_all(
+            "els=>els.map(el=>el.dataset.chosenId)")
+        require(chosen==list(reversed(saved["ids"][:-1])),
+                f"Removing one song unexpectedly changed draft order: {chosen}")
+        page.locator('#challenge-track-search').fill(saved["titles"][newest])
+        require(page.evaluate("document.activeElement?.id")=="challenge-track-search",
+                "Filtering saved favorites lost the keyboard search focus")
+        found=page.locator('[data-action="add-challenge-track"][data-id="'+newest+'"]')
+        require(found.is_visible() and found.is_enabled(),
+                "An unselected older favorite could not be found and added")
+        for selector in ['[data-action="remove-challenge-track"]',
+                         '[data-action="move-challenge-down"]',
+                         '[data-action="add-challenge-track"]']:
+            b=page.locator(selector).first.bounding_box()
+            require(b and b["height"]>=43.5,
+                    "Challenge controls are too small for phone touch: "+selector)
+        found.click()
+        require(page.locator('.challenge-draft-item').count()==3,
+                "Adding a saved recording did not update selection")
+        page.locator('[data-action="remove-challenge-track"][data-id="'+newest+'"]').click()
+        require(page.locator('.challenge-draft-item').count()==2,
+                "Removing a re-added song lost the draft")
+        remaining=page.locator('.challenge-draft-item').evaluate_all(
+            "els=>els.map(el=>el.dataset.chosenId)")
+        first=remaining[0]
+        page.locator('[data-action="move-challenge-down"][data-id="'+first+'"]').focus()
+        page.keyboard.press("Enter")
+        ordered=page.locator('.challenge-draft-item').evaluate_all(
+            "els=>els.map(el=>el.dataset.chosenId)")
+        require(ordered==list(reversed(remaining)),
+                f"Keyboard reorder did not preserve selected recordings: {ordered}")
+
+        page.locator('[data-action="share-challenge"]').click()
+        page.wait_for_function("() => Boolean(window.__aftertoneCuratedCopy)",
+                               timeout=TIMEOUT)
+        link=page.evaluate("window.__aftertoneCuratedCopy")
+        encoded=parse_qs(urlsplit(link).query).get("challenge",[""])[0]
+        require(encoded=="v1."+"~".join(ordered),
+                f"Shared challenge ignored the selected custom order: {encoded}")
+        require(newest not in link and
+                "jellyfin" not in link and "preview" not in link and
+                "aftertone:session" not in link,
+                "Shared link leaked an excluded song or personal metadata")
+
+        fresh=browser.new_context(viewport={"width":320,"height":740},
+                                  service_workers="block")
+        fresh.route("**/*",lambda route:route.continue_()
+                    if urlsplit(route.request.url).netloc==origin else route.abort())
+        fresh.route("https://api.deezer.com/**",mock_deezer)
+        other=fresh.new_page()
+        other.on("pageerror",lambda error:errors.append(str(error)))
+        try:
+            other.goto(link,wait_until="load",timeout=TIMEOUT)
+            listening=other.locator("#listening-card")
+            listening.wait_for(state="visible",timeout=TIMEOUT)
+            require("CHALLENGE 01 / 2" in listening.inner_text(),
+                    "Customized link did not load its first blind recording")
+            other.locator('#listening-card [data-action="pass"]').click()
+            other.wait_for_function("""() =>
+              document.querySelector('#listening-card')?.textContent?.includes('CHALLENGE 02 / 2')""",
+              timeout=TIMEOUT)
+            require("BLIND CHALLENGE" in listening.inner_text(),
+                    "Second customized recording was not blind")
+            other.locator('#listening-card [data-action="pass"]').click()
+            other.locator(".discovery-empty-state").wait_for(state="visible",
+                                                                timeout=TIMEOUT)
+            require("Challenge Complete" in other.locator(".discovery-empty-state").inner_text(),
+                    "Customized two-song challenge did not finish")
+            require(other.evaluate("document.documentElement.scrollWidth <= innerWidth+2"),
+                    "Custom shared link overflows a 320px phone viewport")
+        finally:
+            fresh.close()
+        require(not errors,"Curated challenge JS errors: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: selected order, search, keyboard, ID-only fresh link")
+    except Exception:
+        screenshot(page,"FAILED-curated-challenge")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3483,6 +3613,7 @@ def firefox_main():
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
+            check_curated_shared_challenge(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
             check_shared_preview_failure_skip(browser, base)
             check_theme_dialog_focus(browser, base)
@@ -3531,6 +3662,7 @@ def main():
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
+            check_curated_shared_challenge(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
             check_shared_preview_failure_skip(browser, base)
             check_theme_dialog_focus(browser, base)
