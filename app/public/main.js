@@ -268,6 +268,8 @@ let startedAt = Date.now();
 const initialChallenge = decodeChallenge(new URL(location.href).searchParams.get('challenge'));
 let challengeIds = initialChallenge;
 let challengeResponses = [];
+// A failed audio preview is neither a Keep nor a Pass. Only this tab needs it.
+let challengeSkippedIds = new Set();
 // Preserve the original shared IDs until the visitor chooses a shorter match.
 // Never silently fall through into ordinary discovery when a provider is down.
 let challengeRecovery = null;
@@ -697,17 +699,22 @@ function retryFailedPreview() {
 }
 /** A failed preview is not a vote. Leave collection and history unchanged. */
 function skipUnavailablePreview() {
-  if (!current || view !== 'discover' || challengeIds.length) return;
+  if (!current || view !== 'discover' || failedAudioId !== current.id ||
+      challengeRecovery?.waiting) return;
   const returnFocus = $('#preview-recovery')?.contains(document.activeElement);
-  unvotedPreviews.add(current.id);
+  if(challengeIds.length) {
+    // This preview truly failed; count it only as unavailable in this attempt.
+    // Do not touch history, collection, taste signals, or the original share URL.
+    challengeSkippedIds.add(current.id);
+  } else unvotedPreviews.add(current.id);
   continuousListening=false;
   stopAudio();
   chooseNext();
   render();
-  // Skipping rebuilds the listening card. Restore focus to an actual visible
-  // control, or to the labelled main region if the feed is exhausted.
-  if (returnFocus) (current ? $('#stage-play') : main)?.focus({preventScroll:true});
-  maybeTopUp();
+  // Skipping rebuilds the listening card. Keyboard focus must not be lost.
+  if (returnFocus) (current ? $('#stage-play') :
+    main.querySelector('[data-action="exit-challenge"]') || main)?.focus({preventScroll:true});
+  if (!challengeIds.length) maybeTopUp();
 }
 function advancePreview() {
   if (advancingPreview || !current || view !== 'discover' || modal || !continuousListening) return;
@@ -741,7 +748,8 @@ async function togglePlayback(track, automatic = false) {
     updatePlaybackView();
     return;
   }
-  if (!automatic && view === 'discover' && current?.id === track.id) continuousListening = true;
+  if (!automatic && view === 'discover' && current?.id === track.id)
+    continuousListening = !challengeIds.length; // Blind challenge clips wait for an explicit Keep/Pass.
   else if (!automatic) continuousListening = false; // Collection playback is manual.
   const sameTrack = activeAudioId === track.id;
   if (!sameTrack) stopAudio();
@@ -806,7 +814,9 @@ function updatePlaybackView() {
   const stop = $('#stop-session');
   if (stop) stop.hidden = !continuousListening;
   const hint = $('#continuity-hint');
-  if (hint) hint.textContent = continuousListening ? '● Auto-playing · Stop to end' : '▶ Play once for continuous listening';
+  if (hint) hint.textContent = challengeIds.length
+    ? 'Listen, then Keep or Pass. Failed clips can be skipped without a vote.'
+    : continuousListening ? '● Auto-playing · Stop to end' : '▶ Play once for continuous listening';
   const button = $('#stage-play');
   if (button && current) {
     if (current.source === 'youtube') {
@@ -847,8 +857,8 @@ function updatePlaybackView() {
         : 'This Deezer preview is unavailable. Retry a fresh provider link or skip without counting it as a Pass.');
     }
   }
-  const skipRecovery=$('#preview-skip');
-  if(skipRecovery) skipRecovery.hidden=Boolean(challengeIds.length);
+  // Neutral skipping is essential when a shared clip fails after metadata
+  // successfully loaded. Hiding it trapped visitors on an unplayable song.
   // Tournament previews have their own, quiet status bar. Never accidentally
   // start continuous radio playback while the user is evaluating contenders.
   const duelStatus=$('#duel-now-playing');
@@ -950,7 +960,7 @@ function chooseNext() {
     return;
   }
   if (challengeIds.length) {
-    const completed = new Set(challengeResponses.map(item=>item.id));
+    const completed = new Set([...challengeResponses.map(item=>item.id),...challengeSkippedIds]);
     current = challengeIds.map(lookup).find(track=>track && !completed.has(track.id)) ?? null;
     return;
   }
@@ -1081,7 +1091,7 @@ function render() {
     ? {start:focusedSearch.selectionStart,end:focusedSearch.selectionEnd,direction:focusedSearch.selectionDirection}
     : null;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeRecovery, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1646,6 +1656,7 @@ function exitSharedChallenge(returnFocus=false) {
   stopAudio();
   challengeIds=[];
   challengeResponses=[];
+  challengeSkippedIds.clear();
   challengeRecovery=null;
   history.replaceState(null,'',location.pathname);
   chooseNext();
@@ -1664,6 +1675,7 @@ function playSampleChallenge() {
   challengeRecovery=null;
   challengeIds=ids;
   challengeResponses=[];
+  challengeSkippedIds.clear();
   history.replaceState(null,'',location.pathname+'?challenge='+encodeURIComponent(value));
   current=null;
   chooseNext();
