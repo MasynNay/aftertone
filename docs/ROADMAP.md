@@ -1,3 +1,5 @@
+**v0.12 development note (November 20, 2026):** Shared blind-challenge reliability and customization advanced through [PR #74](https://github.com/MasynNay/aftertone/pull/74) (valid fresh-browser Deezer links), [PR #75](https://github.com/MasynNay/aftertone/pull/75) (provider-outage retry and honest partial continuation), and [PR #76](https://github.com/MasynNay/aftertone/pull/76) (skip broken audio without false votes). The next milestone adds a searchable, ordered five-song challenge editor. Mocked Node/Chromium/Firefox evidence is not evidence of licensed or reliably available real playback. Leave provider permissions and real-device accessibility issues open.
+
 # AFTERTONE — Product & Engineering Roadmap
 
 **Project:** [AFTERTONE](https://aftertone.masynnay.com/) · **Full-screen app:** [Launch the app](https://aftertone.masynnay.com/demo/) · **Backlog:** [Open issues](https://github.com/MasynNay/aftertone/issues) · **Releases:** [Changelog](CHANGELOG.md)
