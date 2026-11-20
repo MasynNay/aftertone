@@ -1,3 +1,8 @@
+## Loading-preview cancel control (v0.12 development)
+
+- The Discover Play button now visibly becomes × with an accessible **Cancel loading preview** label while its preview metadata request is pending. Repeated manual activation aborts that request and keeps keyboard focus on the same button; ordinary automated resume checks do not cancel an active lookup.
+- Collection and Music Duels preview controls display a Cancel loading label when appropriate. Chromium/Firefox fixtures test Play, cancel, delayed callbacks, retry, and the absence of incidental Keep/Pass votes. Actual screen-reader announcement quality and physical touch behavior still need manual checks.
+
 ## Discovery-path keyboard continuity (v0.12 development)
 
 - The three Discover listening-path buttons retain focus after a keyboard selection. The focused button remains reachable after the screen is rebuilt, and users can Tab to another path without being transported to Play or the main landmark.

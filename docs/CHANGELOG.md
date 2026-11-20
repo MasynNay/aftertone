@@ -1,3 +1,9 @@
+## v0.12 development — Let listeners cancel a loading preview (November 19, 2026)
+
+- Clicking Play again while the same preview is still resolving now **cancels** the pending metadata request instead of silently doing nothing. The button changes to a labeled Cancel loading preview control while busy, and a later Play starts a fresh request.
+- The cancellation ends continuous listening, stops the old provider lookup, prevents delayed callbacks from starting playback, and leaves Keep/Pass, saves and history untouched. Automatic resume checks still ignore duplicate requests rather than canceling themselves.
+- Saved Collection and Music Duels preview controls now show a Cancel loading label for their pending track as well. Added Node assertions and Chromium/Firefox phone-width fixture checks; real-provider reliability and permission reviews remain separate gates.
+
 ## v0.12 development — Stop pending playback when opening dialogs (November 19, 2026)
 
 - Opening Help, Appearance themes, a playlist dialog, onboarding or an official video modal now ends the automatic listening session. If a short preview is still resolving, its on-demand metadata request is canceled and its playback generation invalidated before the dialog is shown, preventing the recording from starting behind the modal.

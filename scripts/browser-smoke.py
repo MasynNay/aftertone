@@ -2817,6 +2817,104 @@ def check_modal_interrupts_pending_preview(browser, base):
         context.close()
 
 
+def check_play_cancels_pending_preview(browser, base):
+    """Second manual Play must abort a held lookup without voting or a false error."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        before=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        page.evaluate("""() => {
+            const append=document.head.append.bind(document.head);
+            window.__heldCancelPreview=[];
+            document.head.append=(...nodes)=>{
+                for(const node of nodes){
+                    const url=node?.src ? new URL(node.src,location.href) : null;
+                    if(url?.hostname==='api.deezer.com' &&
+                       url.pathname.startsWith('/track/')){
+                        const flight={
+                            callback:url.searchParams.get('callback'),
+                            removed:false
+                        };
+                        const remove=node.remove.bind(node);
+                        node.remove=()=>{flight.removed=true;return remove();};
+                        window.__heldCancelPreview.push(flight);
+                    } else append(node);
+                }
+            };
+        }""")
+        play=page.locator("#stage-play")
+        play.click()
+        page.wait_for_function("() => window.__heldCancelPreview.length===1",
+                               timeout=TIMEOUT)
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+            ?.getAttribute('aria-label')==='Cancel loading preview'""",
+            timeout=TIMEOUT)
+        require(play.get_attribute('title')=="Cancel loading preview",
+                "Loading button has no visible cancellation tooltip")
+        require("Cancel loading preview" in page.locator("#audio-status").inner_text(),
+                "Loading status does not explain the cancel action")
+        require(not page.evaluate("window.__heldCancelPreview[0].removed"),
+                "Provider callback completed before cancellation")
+        play.click()
+        page.wait_for_function("() => window.__heldCancelPreview[0].removed",
+                               timeout=TIMEOUT)
+        require(play.get_attribute("aria-label")=="Play preview",
+                "Cancel did not return the button to Play")
+        require(page.evaluate("document.activeElement?.id==='stage-play'"),
+                "Cancel moved focus away from the Play control")
+        require(page.locator("#stop-session").is_hidden(),
+                "Cancel did not end the automatic listening session")
+        page.evaluate("""() => {
+            const cb=window.__heldCancelPreview[0].callback;
+            window[cb]?.({id:9100001,
+                preview:'https://fixture.invalid/late-preview.mp3'});
+        }""")
+        require(page.locator("#preview-recovery").is_hidden(),
+                "Canceled metadata produced a false failure or retry state")
+        require(page.evaluate("""() => {
+            const player=document.querySelector('#player');
+            return player.paused && !player.getAttribute('src');
+        }"""),"Canceled preview kept a live media source")
+        play.click()
+        page.wait_for_function("() => window.__heldCancelPreview.length===2",
+                               timeout=TIMEOUT)
+        require(page.evaluate("""() =>
+            window.__heldCancelPreview[1].callback!==
+            window.__heldCancelPreview[0].callback"""),
+            "Fresh Play reused the aborted provider callback")
+        # Cancel again with the keyboard to cover the native focused control.
+        play.focus()
+        page.keyboard.press("Space")
+        page.wait_for_function("() => window.__heldCancelPreview[1].removed",
+                               timeout=TIMEOUT)
+        after=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        require(before==after,"Canceling a preview changed Keeps or Passes")
+        require(not errors,"Cancel loading browser errors: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: loading Play cancels without voting; fresh retry works")
+    except Exception:
+        screenshot(page,"FAILED-loading-preview-cancel")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2833,6 +2931,7 @@ def firefox_main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
+            check_play_cancels_pending_preview(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
@@ -2874,6 +2973,7 @@ def main():
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
+            check_play_cancels_pending_preview(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
