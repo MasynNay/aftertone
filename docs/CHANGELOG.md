@@ -1,3 +1,9 @@
+## v0.12 development — Keep keyboard focus through Tune Lab questions (November 19, 2026)
+
+- Starting or advancing a Tune Lab question now focuses the first available answer, or Skip if the current collection cannot provide multiple choices. Keyboard listeners no longer land on a deleted Start / Next button.
+- After an answer, focus moves to the visible, polite result announcement rather than being stranded on a now-disabled answer button. Mood selections expose `aria-pressed` and retain the focused mood through rerenders so users can compare choices without restarting keyboard navigation.
+- Added Node view/controller checks and full Chromium/Firefox phone-width keyboard tests for Start, answer/result, mood switching, and Next. Real screen-reader speech and physical-device testing remain outstanding.
+
 ## v0.12 development — Cancel stale media-error recovery (November 19, 2026)
 
 - After an already-started preview encounters a media error, the Deezer URL refresh or Audius fallback now enters the same cancelable **loading preview** state as a normal Play request. A second manual Play cancels the retry; Stop or changing sections also invalidates it.
