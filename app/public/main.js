@@ -717,9 +717,15 @@ function advancePreview() {
   maybeResumeContinuous();
 }
 async function togglePlayback(track, automatic = false) {
-  if (!track || (isLoadingAudio && activeAudioId === track.id)) return;
+  if (!track) return;
+  if (isLoadingAudio && activeAudioId === track.id) {
+    // A second *manual* Play is an explicit cancel, not a dead button.
+    // Automatic resume checks must still avoid interrupting their own lookup.
+    if (!automatic) stopContinuous();
+    return;
+  }
   // Switching contestants while a prior preview is resolving cancels the stale
-  // request via audioGeneration rather than ignoring the user's second click.
+  // request and invalidates its eventual reply via audioGeneration.
   if (track.source === 'youtube') {
     continuousListening = false;
     return openModal('youtube', { id: track.id, from: view });
@@ -810,8 +816,10 @@ function updatePlaybackView() {
       return;
     }
     const playing = activeAudioId === current.id && !audio.paused;
-    button.textContent = isLoadingAudio ? '···' : playing ? 'Ⅱ' : '▶';
-    button.setAttribute('aria-label', isLoadingAudio ? 'Loading audio' : playing ? 'Pause preview' : 'Play preview');
+    const loadingThisTrack=isLoadingAudio && activeAudioId===current.id;
+    button.textContent = loadingThisTrack ? '×' : playing ? 'Ⅱ' : '▶';
+    button.setAttribute('aria-label', loadingThisTrack ? 'Cancel loading preview' : playing ? 'Pause preview' : 'Play preview');
+    button.title = loadingThisTrack ? 'Cancel loading preview' : playing ? 'Pause preview' : 'Play preview';
     $('#waveform')?.classList.toggle('playing', playing);
     $('#vinyl')?.classList.toggle('spin', playing);
     const seconds = activeAudioId === current.id ? Math.min(previewLength, audio.currentTime || 0) : 0;
@@ -820,7 +828,7 @@ function updatePlaybackView() {
     if (fill) fill.style.width = `${seconds / previewLength * 100}%`;
     if (time) time.textContent = `0:${String(Math.floor(seconds)).padStart(2, '0')} / 0:${previewLength}`;
     const status = $('#audio-status');
-    setTextIfChanged(status, isLoadingAudio ? 'Finding the recording…' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? (failedAudioQuota ? 'Deezer requests limited — wait before retrying' : 'Stream unavailable — try another song or source') : 'Press play to sample this track');
+    setTextIfChanged(status, loadingThisTrack ? 'Finding the recording… Activate Cancel loading preview to stop' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : failedAudioId === current.id ? (failedAudioQuota ? 'Deezer requests limited — wait before retrying' : 'Stream unavailable — try another song or source') : 'Press play to sample this track');
   }
   // Recoverable failure controls belong to the discovery card, never the saved collection.
   const recovery=$('#preview-recovery');
@@ -857,7 +865,8 @@ function updatePlaybackView() {
   document.querySelectorAll('[data-preview], [data-duel-play]').forEach((button) => {
     const id=button.dataset.preview || button.dataset.duelPlay;
     const playing=activeAudioId===id && !audio.paused;
-    button.textContent=playing ? 'Ⅱ Pause' : button.dataset.duelPlay ? `▶ Preview ${button.closest('.duel-contender')?.querySelector('.duel-side-label')?.textContent?.slice(-1) || ''}` : '▶ Listen';
+    button.textContent=isLoadingAudio && activeAudioId===id ? '× Cancel loading' :
+      playing ? 'Ⅱ Pause' : button.dataset.duelPlay ? `▶ Preview ${button.closest('.duel-contender')?.querySelector('.duel-side-label')?.textContent?.slice(-1) || ''}` : '▶ Listen';
   });
 }
 
