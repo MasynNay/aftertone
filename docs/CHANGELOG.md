@@ -1,3 +1,9 @@
+## v0.12 development — Cancel stale media-error recovery (November 19, 2026)
+
+- After an already-started preview encounters a media error, the Deezer URL refresh or Audius fallback now enters the same cancelable **loading preview** state as a normal Play request. A second manual Play cancels the retry; Stop or changing sections also invalidates it.
+- Both the provider-response and later media-playback continuations check the original playback generation. Abandoned retries cannot attach a replacement source, set success/failure status, or restart audio for a newer listening session, even if the same track was quickly replayed.
+- Added focused Node regression checks and phone-width Chromium/Firefox browser coverage for aborting an in-flight media-error refresh, harmless late callbacks and a fresh manual retry. Automated fixtures do not validate actual Deezer/Audius playback or media permissions.
+
 ## v0.12 development — Let listeners cancel a loading preview (November 19, 2026)
 
 - Clicking Play again while the same preview is still resolving now **cancels** the pending metadata request instead of silently doing nothing. The button changes to a labeled Cancel loading preview control while busy, and a later Play starts a fresh request.

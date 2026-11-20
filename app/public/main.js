@@ -884,38 +884,48 @@ audio.addEventListener('play', updatePlaybackView);
 audio.addEventListener('pause', updatePlaybackView);
 audio.addEventListener('error', async () => {
   if (!activeAudioId) return;
-  const track = lookup(activeAudioId);
   const activeId = activeAudioId;
+  const track = lookup(activeId);
+  const generation = audioGeneration;
+  const isCurrent = () => activeAudioId === activeId && generation === audioGeneration;
+  // Media errors can arrive after a preview has started successfully. While
+  // refreshing a failed URL, expose the same cancelable loading control used
+  // by the initial Play. Stop, navigation and a second manual Play then abort
+  // the request rather than allowing an old retry to start sound later.
+  async function recoverWithUrl(selectUrl, warning) {
+    isLoadingAudio = true;
+    updatePlaybackView();
+    try {
+      const source = await resolveAudio(track);
+      if (!isCurrent()) return true; // An obsolete recovery is already canceled.
+      const nextUrl = selectUrl(source);
+      if (!nextUrl) throw new Error('No local stream fallback');
+      audio.src = nextUrl;
+      await audio.play();
+      if (!isCurrent()) return true; // A delayed play() must not change new state.
+      failedAudioId = null;
+      return true;
+    } catch (error) {
+      if (!isCurrent()) return true; // No stale warnings or failure state.
+      console.warn(warning, error);
+      return false;
+    } finally {
+      if (isCurrent()) {
+        isLoadingAudio = false;
+        updatePlaybackView();
+      }
+    }
+  }
   if (track?.source === 'deezer' && !isLoadingAudio && !deezerRefreshedOnce.has(activeId)) {
     deezerRefreshedOnce.add(activeId);
     resolved.delete(activeId);
-    const generation = audioGeneration;
-    try {
-      const fresh = await resolveAudio(track);
-      if (activeAudioId !== activeId || generation !== audioGeneration) return;
-      audio.src = fresh.url;
-      await audio.play();
-      failedAudioId = null;
-      return;
-    } catch (error) {
-      console.warn('Deezer preview URL refresh failed:', error);
-    }
+    if (await recoverWithUrl(source => source.url, 'Deezer preview URL refresh failed:')) return;
   }
-  if (track?.source === 'audius'  && !activeAudioFallback && !isLoadingAudio) {
+  if (track?.source === 'audius' && !activeAudioFallback && !isLoadingAudio && isCurrent()) {
     activeAudioFallback = true;
-    try {
-      const source = await resolveAudio(track);
-      if (activeAudioId !== activeId) return;
-      if (!source.fallbackUrl) throw new Error('No local stream fallback');
-      audio.src = source.fallbackUrl;
-      await audio.play();
-      failedAudioId = null;
-      return;
-    } catch (error) {
-      console.warn('Audius local stream fallback failed:', error);
-    }
+    if (await recoverWithUrl(source => source.fallbackUrl, 'Audius local stream fallback failed:')) return;
   }
-  if (activeAudioId === activeId && !isLoadingAudio) {
+  if (isCurrent() && !isLoadingAudio) {
     if(failedAudioId===activeId) return; // A failed media element can emit more than one error.
     failedAudioId = activeId;
     failedSources.add(activeId);
