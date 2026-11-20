@@ -1,3 +1,9 @@
+## Tune Lab answer and mood focus (v0.12 development)
+
+- The Tune Lab question transition returns keyboard users to the first available answer (or a visible Skip), rather than leaving focus on the removed Start/Next button.
+- Choosing an answer focuses a short result status; mood buttons form a labelled group, expose selected state through `aria-pressed`, and keep the selected button focused after the page rerenders.
+- Chromium and Firefox phone-width tests exercise the full keyboard path with fictional tracks. Manual VoiceOver/TalkBack/NVDA verification remains open.
+
 ## Loading-preview cancel control (v0.12 development)
 
 - The Discover Play button now visibly becomes × with an accessible **Cancel loading preview** label while its preview metadata request is pending. Repeated manual activation aborts that request and keeps keyboard focus on the same button; ordinary automated resume checks do not cancel an active lookup.

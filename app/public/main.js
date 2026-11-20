@@ -1056,6 +1056,10 @@ function render() {
     focusedOldControl?.matches?.('.discovery-paths .path-option[data-path]') &&
     ['familiar','balanced','explore'].includes(focusedOldControl.dataset.path)
     ? focusedOldControl.dataset.path : null;
+  // Tune Lab mood choices are replaced when the preference is saved. Keep
+  // the selected button focused so keyboard users can compare another mood.
+  const focusedQuizMood=view==='quiz' && focusedOldControl?.matches?.('[data-quiz-mood]')
+    ? focusedOldControl.dataset.quizMood : null;
   const focusedFilterId=view==='discover' &&
     ['genre-select','language-select','discovery-mix-select'].includes(document.activeElement?.id)
     ? document.activeElement.id : null;
@@ -1091,6 +1095,11 @@ function render() {
   }
   applySavedVolume();
   updatePlaybackView();
+  if(focusedQuizMood && view==='quiz') {
+    const replacement=main.querySelector('[data-quiz-mood="'+focusedQuizMood+'"]');
+    if(replacement && !replacement.disabled && replacement.getClientRects().length)
+      replacement.focus({preventScroll:true});
+  }
   if(focusedPath && view==='discover') {
     const replacement=$('.discovery-paths .path-option[data-path="'+focusedPath+'"]');
     if(replacement && !replacement.disabled && replacement.getClientRects().length &&
@@ -1523,12 +1532,19 @@ function handleModalAction(action) {
 }
 
 function startQuizRound() {
+  const returnFocus=view==='quiz' && document.activeElement?.matches?.(
+    '[data-action="quiz-start"], [data-action="quiz-next"]');
   const ids=state.favorites.filter(id=>Boolean(lookup(id)));
   if (!ids.length) {quizSession=null; render(); return;}
   const candidates = ids.filter(id=>id!==quizSession?.id);
   const chosen = (candidates.length ? candidates : ids)[Math.floor(Math.random()*(candidates.length||ids.length))];
   quizSession={id:chosen,quiz:makeRecognitionQuiz(lookup(chosen),catalog),answer:null,mood:null};
   render();
+  // Start / Next replace their own button. Move only a keyboard-initiated
+  // action to an answer or the visible Skip control on the new question.
+  if(returnFocus)
+    (main.querySelector('[data-quiz-answer]:not(:disabled)') ||
+     main.querySelector('[data-action="quiz-next"]') || main).focus({preventScroll:true});
 }
 
 function playSampleChallenge() {
@@ -1878,13 +1894,18 @@ document.addEventListener('click', async (event) => {
   }
   const quizAnswer = event.target.closest('[data-quiz-answer]');
   if (quizAnswer && view === 'quiz' && quizSession?.answer === null) {
+    const returnFocus=document.activeElement===quizAnswer;
     const answer=Number(quizAnswer.dataset.quizAnswer);
     if (!Number.isInteger(answer) || answer<0 || answer>=quizSession.quiz.options.length) return;
     quizSession.answer=answer;
     quizStats.answered++;
     if(quizSession.quiz.options[answer] === quizSession.quiz.correct) quizStats.correct++;
     try {localStorage.setItem(quizStorageKey,JSON.stringify(quizStats));} catch {}
-    return render();
+    render();
+    // Answer buttons are disabled after selection. Move focus to the result
+    // instead of leaving it on a detached/disabled element.
+    if(returnFocus) (main.querySelector('#quiz-feedback') || main).focus({preventScroll:true});
+    return;
   }
   const quizMood=event.target.closest('[data-quiz-mood]');
   if(quizMood && view==='quiz' && quizSession?.answer!==null) {

@@ -3019,6 +3019,89 @@ def check_media_error_refresh_cancellation(browser, base):
         context.close()
 
 
+def check_tune_lab_keyboard_continuity(browser, base):
+    """Start, answer, mood and Next must preserve a usable keyboard position."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#listening-card [data-action="like"]').click()
+        page.wait_for_function("""() => {
+            const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return state.favorites?.length===1 && state.history?.length===1;
+        }""",timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="quiz"]').click()
+        start=page.locator('[data-action="quiz-start"]')
+        start.focus()
+        page.keyboard.press("Enter")
+        page.locator('[data-quiz-answer]').first.wait_for(state="visible",timeout=TIMEOUT)
+        require(page.evaluate("""() => document.activeElement?.hasAttribute(
+            'data-quiz-answer')"""),"Tune Lab Start abandoned keyboard focus")
+        page.keyboard.press("Enter")
+        feedback=page.locator("#quiz-feedback")
+        feedback.wait_for(state="visible",timeout=TIMEOUT)
+        require(page.evaluate("document.activeElement?.id==='quiz-feedback'"),
+                "Disabled answer button stranded focus instead of announcing feedback")
+        require(feedback.get_attribute("role")=="status",
+                "Answer feedback has no concise accessible status")
+        require(page.locator("[data-quiz-answer]:not([disabled])").count()==0,
+                "A completed quiz retained active answer buttons")
+        require(page.locator(".quiz-moods [data-quiz-mood]").count()==6,
+                "Tune Lab moods disappeared after answer")
+        page.keyboard.press("Tab")
+        require(page.evaluate("document.activeElement?.dataset.quizMood==='Bright'"),
+                "Tab from answer feedback did not enter the mood group")
+        page.keyboard.press("Enter")
+        require(page.evaluate("""() =>
+            document.activeElement?.dataset.quizMood==='Bright' &&
+            document.activeElement?.getAttribute('aria-pressed')==='true'"""),
+            "Selecting a mood failed to retain focus and pressed state")
+        page.keyboard.press("Tab")
+        require(page.evaluate("document.activeElement?.dataset.quizMood==='Warm'"),
+                "Keyboard navigation could not move to a neighboring mood")
+        page.keyboard.press("Enter")
+        require(page.evaluate("""() => {
+            const selected=[...document.querySelectorAll('.quiz-moods [aria-pressed="true"]')];
+            return selected.length===1 && selected[0].dataset.quizMood==='Warm' &&
+                document.activeElement===selected[0];
+        }"""),"Switching moods did not update pressed state or retain focus")
+        stats=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:tune-lab:v1')||'{}')""")
+        require(stats.get("answered")==1,
+                "Changing moods recorded duplicate quiz answers")
+        next_button=page.locator('[data-action="quiz-next"]')
+        next_button.focus()
+        page.keyboard.press("Enter")
+        page.locator('[data-quiz-answer]').first.wait_for(state="visible",timeout=TIMEOUT)
+        require(page.evaluate("""() =>
+            document.activeElement?.hasAttribute('data-quiz-answer')"""),
+            "Next question removed the focused button without moving into new answers")
+        require(page.locator("#quiz-feedback").count()==0,
+                "Next question retained the previous answer's feedback")
+        final=page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')||'{}')""")
+        require(len(final.get("history",[]))==1 and
+                len(final.get("favorites",[]))==1,
+                "Tune Lab keyboard interactions created an extra Keep/Pass")
+        require(not errors,"Tune Lab browser errors: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: Tune Lab keyboard question, feedback, moods and next")
+    except Exception:
+        screenshot(page,"FAILED-tune-lab-focus")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3039,6 +3122,7 @@ def firefox_main():
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
+            check_tune_lab_keyboard_continuity(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
@@ -3082,6 +3166,7 @@ def main():
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
+            check_tune_lab_keyboard_continuity(browser, base)
             check_theme_dialog_focus(browser, base)
             check_optional_lyrics_request_cancellation(browser, base)
             check_listening_control_focus_on_rerender(browser, base)
