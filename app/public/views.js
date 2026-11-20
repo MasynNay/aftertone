@@ -7,7 +7,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeRecovery=null, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   const lookup = (id) => catalog.find((track) => track.id === id) ?? null;
 function waveform(id) {
   let seed = h32(id);
@@ -20,6 +20,31 @@ function waveform(id) {
 
 function renderListeningCard() {
   const isBlind = Boolean(state.blind || challengeIds.length > 0);
+  if(challengeIds.length && challengeRecovery?.waiting) {
+    const {available,requested,loading,canRetry,failed}=challengeRecovery;
+    const status=loading
+      ? 'Checking the shared songs with Deezer. No choices have been recorded.'
+      : available
+        ? available+' of '+requested+' shared songs available. The other '+(requested-available)+' '+(requested-available===1?'song is':'songs are')+' unavailable right now.'
+        : 'None of the '+requested+' shared '+(requested===1?'song is':'songs are')+' available right now.';
+    const heading=loading?'Checking Shared Songs…'
+      : available?'Some Shared Songs Are Unavailable':'Shared Challenge Unavailable';
+    const guidance=loading?''
+      : failed?'The music provider could not complete the request. Your original challenge link is unchanged.'
+      : !canRetry?'These recordings cannot be resolved through the current public music source.'
+      : 'You can retry missing recordings without changing the link or making a vote.';
+    return `<section class="empty-state discovery-empty-state challenge-recovery" role="region" aria-labelledby="challenge-recovery-heading">
+      <div class="empty-icon" aria-hidden="true">${loading?'♫':'◎'}</div>
+      <h2 id="challenge-recovery-heading" tabindex="-1">${heading}</h2>
+      <p id="challenge-recovery-status" role="status" aria-live="polite" aria-atomic="true">${status}</p>
+      ${guidance?`<p>${guidance}</p>`:''}
+      <div class="empty-actions">
+        ${canRetry?`<button type="button" class="accent-button" data-action="retry-shared-challenge" ${loading?'disabled':''}>${loading?'Checking…':'Retry Missing Songs'}</button>`:''}
+        ${available?`<button type="button" class="${canRetry?'secondary-button':'accent-button'}" data-action="continue-shared-challenge" ${loading?'disabled':''}>Play ${available} Available ${available===1?'Song':'Songs'}</button>`:''}
+        <button type="button" class="secondary-button" data-action="exit-challenge">Back to Discovery</button>
+      </div>
+    </section>`;
+  }
   if (!current) {
     const challengeDone = challengeIds.length > 0 && challengeResponses.length >= challengeIds.length;
     const liked = challengeResponses.filter((item) => item.action === 'like').length;
@@ -29,7 +54,7 @@ function renderListeningCard() {
     const heading=challengeDone ? 'Challenge Complete' : feed.loading ? 'Finding Your Next Song…' :
       feed.error ? 'Music Is Temporarily Unavailable' :
       searchQuery ? 'No Matching Songs Found' : 'Ready for a Different Direction?';
-    const explanation=challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.` :
+    const explanation=challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.${challengeRecovery?.skipped ? ' '+challengeRecovery.skipped+' shared songs were unavailable.' : ''}` :
       feed.loading ? 'Searching for real music from your selected provider. Your saved songs stay safe.' :
       feed.error ? html(feed.error) :
       searchQuery ? `No recordings matched “${html(searchQuery)}” with the current filters. Try a broader search or listening path.` :
@@ -54,7 +79,7 @@ function renderListeningCard() {
   const ordinal = challengeIds.length ? challengeResponses.length + 1 : state.history.length + 1;
   const deezerId = current.source === 'deezer' && /^deezer:(\d{1,20})$/.exec(current.id)?.[1];
   const art = `<div class="cover-fallback"><span>♫</span><small>NO ARTWORK AVAILABLE</small></div>${current.artwork ? `<img class="current-cover-img" src="${urlSafe(current.artwork)}" loading="eager" alt="Artwork for ${html(current.title)}" />` : ''}`;
-  return `<div id="listening-card" class="listening-card ${isBlind ? 'blind-card' : 'known-card'} ${deezerId ? 'deezer-card' : ''}" role="group" aria-label="${isBlind ? 'Blind listening' : `${html(current.title)} by ${html(current.artist)}`}. Swipe left to pass, right to keep.">
+  return `${challengeRecovery?.skipped ? `<p class="challenge-short-notice">Playing ${challengeIds.length} available ${challengeIds.length===1?'song':'songs'} · ${challengeRecovery.skipped} unavailable in the original shared link.</p>` : ''}`<div id="listening-card" class="listening-card ${isBlind ? 'blind-card' : 'known-card'} ${deezerId ? 'deezer-card' : ''}" role="group" aria-label="${isBlind ? 'Blind listening' : `${html(current.title)} by ${html(current.artist)}`}. Swipe left to pass, right to keep.">
     <div id="decision-stamp" class="decision-stamp" aria-hidden="true"></div>
     <div class="card-top"><span class="on-air"><i></i>${isBlind ? 'BLIND CHALLENGE' : 'NOW DISCOVERING'}</span><span class="card-number">${challengeIds.length ? `CHALLENGE ${String(ordinal).padStart(2, '0')} / ${challengeIds.length}` : `DISCOVERY ${String(ordinal).padStart(3, '0')}`}</span></div>
     <div class="record-visual ${isBlind ? '' : 'cover-visual'}">${isBlind ? '<div class="record-halo"></div><div class="vinyl" id="vinyl"><div class="record-sheen"></div></div>' : `<div class="current-cover">${art}</div>`}</div>
@@ -76,7 +101,7 @@ function renderDiscovery() {
   const isBlind = Boolean(state.blind || challengeIds.length > 0);
   const countCopy = feed.total && state.source === 'jellyfin' ? `${Number(feed.total).toLocaleString()} tracks in your library` : `${catalog.length.toLocaleString()} loaded this session`;
   return `<section><div class="eyebrow">THE LISTENING ROOM ${challengeIds.length ? ' / SHARED CHALLENGE' : '/ DISCOVER'}</div>
-    <div class="heading-row streamlined-head"><div><h1>${isBlind ? 'Blind Discovery.' : 'Find Your Next Favorite.'}</h1><p class="lead">Listen. Swipe. Save. Explore deeper in Tune Lab when you want.</p><div class="discovery-invitation"><span>♡ The more different artists you <strong>Keep</strong>, the better AFTERTONE can find your sound.</span><button type="button" data-action="focus-music-search">Search for an Artist ↗</button></div></div></div>
+    <div class="heading-row streamlined-head"><div><h1>${challengeIds.length ? 'Your Shared Challenge.' : isBlind ? 'Blind Discovery.' : 'Find Your Next Favorite.'}</h1><p class="lead">${challengeIds.length ? 'Hear the shared recordings in order. No spoilers, no account required.' : 'Listen. Swipe. Save. Explore deeper in Tune Lab when you want.'}</p>${challengeIds.length ? '' : '<div class="discovery-invitation"><span>♡ The more different artists you <strong>Keep</strong>, the better AFTERTONE can find your sound.</span><button type="button" data-action="focus-music-search">Search for an Artist ↗</button></div>'}</div></div>
     ${!state.history.length && !challengeIds.length ? `<section class="first-listen-guide" aria-label="How to start discovering music">
       <div class="first-listen-intro"><span class="eyebrow">YOUR FIRST LISTEN</span><strong>Three steps to find your sound.</strong></div>
       <ol><li><b>Choose a Path</b><span>Comfort Zone, New Territory, or Wild Card.</span></li><li><b>Press Play</b><span>Start a short music preview.</span></li><li><b>Keep or Pass</b><span>Guide the next discoveries. You can undo a choice.</span></li></ol>
@@ -84,10 +109,10 @@ function renderDiscovery() {
     </section>` : ''}
     ${seedInfo.active ? `<div class="discovery-mode-note">♫ ${seedInfo.kind==='artists'?'Your '+seedInfo.artists+' starting artists':'Your '+seedInfo.count+' imported songs'} · ${seedInfo.related ? seedInfo.related+' related artists found' : seedInfo.lookupStatus==='searching' ? 'Finding related artists…' : 'Mixing in chart discoveries'} <button data-action="fresh-discovery" class="secondary-button">Back to fresh</button></div>` : ''}
     ${(feed.error && current) ? `<div class="discovery-mode-note" role="status">${html(feed.error)} <button type="button" class="secondary-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Retrying…' : 'Retry Discovery'}</button></div>` : ''}
-    <div class="discovery-paths" aria-label="Choose your discovery path"><div class="path-heading"><span class="eyebrow">PICK A PATH</span><span>Change direction whenever you want</span></div><div class="path-options">
+    <div class="discovery-paths" aria-label="Choose your discovery path" ${challengeIds.length?'hidden':''}><div class="path-heading"><span class="eyebrow">PICK A PATH</span><span>Change direction whenever you want</span></div><div class="path-options">
       ${[['familiar','◎','Comfort Zone','Saved artists & neighbors'],['balanced','✳','New Territory','Related music + broad hits'],['explore','↗','Wild Card','Unfamiliar genres & voices']].map(([mode,icon,title,sub])=>`<button class="path-option ${state.discoveryMix===mode?'selected':''}" data-path="${mode}" aria-pressed="${state.discoveryMix===mode}"><span>${icon}</span><strong>${title}</strong><small>${sub}</small></button>`).join('')}
     </div><p class="path-explainer" role="status"><strong>${state.discoveryMix==='familiar'?'Comfort Zone':state.discoveryMix==='explore'?'Wild Card':'New Territory'}:</strong> ${html(PATH_DESCRIPTIONS[state.discoveryMix] || PATH_DESCRIPTIONS.balanced)} ${searchQuery ? 'You are searching manually; the path resumes when you clear the search.' : ''}</p></div>
-    <div class="discovery-grid"><div>${renderListeningCard()}<div class="compact-queue"><span class="queue-light" aria-hidden="true"></span><span><b id="queue-count">${feed.available ?? 0}</b> songs ahead <small>Refills automatically every 3 seconds</small></span><span class="queue-loaded">${feed.ids?.size ?? catalog.length} loaded · Deezer</span></div></div>
+    <div class="discovery-grid"><div>${renderListeningCard()}<div class="compact-queue" ${challengeIds.length?'hidden':''}><span class="queue-light" aria-hidden="true"></span><span><b id="queue-count">${feed.available ?? 0}</b> songs ahead <small>Refills automatically every 3 seconds</small></span><span class="queue-loaded">${feed.ids?.size ?? catalog.length} loaded · Deezer</span></div></div>
     <aside class="right-column" aria-label="Your discovery journey"><div class="panel journey-panel"><div class="panel-heading"><span class="panel-title">Your Journey</span><span class="panel-accent">✳</span></div><div class="journey-metrics"><div><strong>${taste.total}</strong><small>Explored</small></div><div><strong>${taste.liked}</strong><small>Kept</small></div><div><strong>${new Set(state.history.map(item=>item.artist).filter(Boolean)).size}</strong><small>Artists explored</small></div></div><div class="journey-progress"><span>Next Milestone</span><b>${10 - (taste.total % 10)} listens away</b></div><div class="journey-meter"><i style="width:${(taste.total % 10)*10}%"></i></div><p class="journey-caption">Every ten songs is another step into your musical map.</p></div>
     <div class="panel"><div class="panel-heading"><span class="panel-title">Your Sound</span><span style="color:var(--dim);font-size:12px">↗</span></div>${(()=>{const kept=state.history.filter(h=>h.action==='like'&&h.artist);const counts=new Map();for(const item of kept)counts.set(item.artist,(counts.get(item.artist)||0)+1);const best=[...counts].sort((a,b)=>b[1]-a[1]).slice(0,3);return best.length ? `<div class="favorite-artists">${best.map(([artist,count])=>`<div><strong>${html(artist)}</strong><span>${count} kept</span></div>`).join('')}</div><p class="journey-caption">Based on songs you kept. Genre labels are only used when the catalog supplies them.</p>` : '<p class="empty-micro">Your choices will sketch your sound here.</p>';})()}</div>
     <section class="passport-panel" aria-label="Discovery Passport"><div class="passport-heading"><div><span class="eyebrow">YOUR DISCOVERY PASSPORT</span><strong>Earn your stamps.</strong></div><span class="passport-count" aria-label="${passport.earned} of ${passport.total} stamps earned">${passport.earned} / ${passport.total} ✦</span></div><p class="passport-intro">Tiny listening quests, no streak pressure. Explore on your own schedule.</p>
