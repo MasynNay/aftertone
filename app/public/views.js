@@ -54,7 +54,7 @@ function renderListeningCard() {
     const heading=challengeDone ? 'Challenge Complete' : feed.loading ? 'Finding Your Next Song…' :
       feed.error ? 'Music Is Temporarily Unavailable' :
       searchQuery ? 'No Matching Songs Found' : 'Ready for a Different Direction?';
-    const explanation=challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.${challengeRecovery?.skipped ? ' '+challengeRecovery.skipped+' shared songs were unavailable.' : ''}` :
+    const explanation=challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.${challengeRecovery?.skipped ? ' '+challengeRecovery.skipped+' shared '+(challengeRecovery.skipped===1?'song was':'songs were')+' unavailable.' : ''}` :
       feed.loading ? 'Searching for real music from your selected provider. Your saved songs stay safe.' :
       feed.error ? html(feed.error) :
       searchQuery ? `No recordings matched “${html(searchQuery)}” with the current filters. Try a broader search or listening path.` :
