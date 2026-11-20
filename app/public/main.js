@@ -1,3 +1,4 @@
+import {eligibleChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,toggleChallengeDraft,moveChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import {apiFetch} from './api-browser.js';
 import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
@@ -270,6 +271,18 @@ let challengeIds = initialChallenge;
 let challengeResponses = [];
 // A failed audio preview is neither a Keep nor a Pass. Only this tab needs it.
 let challengeSkippedIds = new Set();
+// The five newest favorites are selected by default, preserving quick-sharing.
+// A customized draft is tab-local and never rewrites saved listening choices.
+let challengeDraftIds = [];
+let challengeDraftCustomized = false;
+let challengeFilterQuery = '';
+function syncChallengeDraft() {
+  const eligible=eligibleChallengeTracks(state.favorites,catalog);
+  challengeDraftIds=challengeDraftCustomized
+    ? reconcileChallengeDraft(challengeDraftIds,eligible)
+    : defaultChallengeDraft(eligible);
+  return eligible;
+}
 // Preserve the original shared IDs until the visitor chooses a shorter match.
 // Never silently fall through into ordinary discovery when a provider is down.
 let challengeRecovery = null;
@@ -1092,8 +1105,14 @@ function render() {
   const searchSelection=focusedSearch
     ? {start:focusedSearch.selectionStart,end:focusedSearch.selectionEnd,direction:focusedSearch.selectionDirection}
     : null;
+  const focusedChallengeSearch=view==='challenges' &&
+    document.activeElement?.id==='challenge-track-search' ? document.activeElement : null;
+  const challengeSearchSelection=focusedChallengeSearch
+    ? {start:focusedChallengeSearch.selectionStart,end:focusedChallengeSearch.selectionEnd,
+       direction:focusedChallengeSearch.selectionDirection} : null;
+  syncChallengeDraft();
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1116,6 +1135,14 @@ function render() {
     case 'quiz': main.innerHTML = pages.renderQuizLab(); break;
     case 'duels': main.innerHTML = renderDuels({tournaments:duelTournaments,selectedId:selectedDuelId,catalog,favorites:state.favorites,savedTracks:state.savedTracks,volume:state.volume,sound:state.sound,hallSeason}); break;
     default: main.innerHTML = pages.renderDiscovery();
+  }
+  if(challengeSearchSelection && view==='challenges') {
+    const replacement=main.querySelector('#challenge-track-search');
+    if(replacement) {
+      replacement.focus({preventScroll:true});
+      replacement.setSelectionRange(challengeSearchSelection.start,
+        challengeSearchSelection.end,challengeSearchSelection.direction);
+    }
   }
   applySavedVolume();
   updatePlaybackView();
@@ -1686,15 +1713,15 @@ function playSampleChallenge() {
 }
 
 async function shareChallenge() {
-  // Share public track IDs only: never copy saved preferences, history,
-  // private library paths or short-lived provider preview URLs.
-  const ids=state.favorites.slice().reverse()
-    .filter(id=>isPublicDeezerChallengeId(id) && lookup(id)).slice(0,5);
+  // Revalidate against the CURRENT saved public catalog, not stale draft DOM.
+  // No private paths, saved preferences, history, or preview URLs are shared.
+  const eligible=syncChallengeDraft();
+  const ids=reconcileChallengeDraft(challengeDraftIds,eligible);
   const value=encodeChallenge(ids);
-  if(!value)return toast('Keep a Deezer preview first to make a shared challenge.');
+  if(!value)return toast('Select a saved Deezer song to make a shared challenge.');
   const link=new URL(location.pathname,location.origin);
   link.searchParams.set('challenge',value);
-  await copy(link.toString(),'Challenge link copied. Send it to a friend!');
+  await copy(link.toString(),ids.length+'-song challenge link copied. Send it to a friend!');
 }
 
 async function copy(value, message) {
@@ -2195,6 +2222,47 @@ document.addEventListener('click', async (event) => {
     case 'backup-progress': return downloadProgressBackup();
     case 'restore-progress': return $('#progress-backup-file')?.click();
     case 'share-challenge': return shareChallenge();
+    case 'reset-challenge-draft': {
+      const focused=document.activeElement===action;
+      challengeDraftCustomized=false;
+      syncChallengeDraft();
+      render();
+      if(focused)main.querySelector('[data-action="reset-challenge-draft"]')?.focus({preventScroll:true});
+      return;
+    }
+    case 'add-challenge-track':
+    case 'remove-challenge-track':
+    case 'move-challenge-up':
+    case 'move-challenge-down': {
+      const focused=document.activeElement===action;
+      const eligible=syncChallengeDraft();
+      if(!eligible.some(track=>track.id===id))return;
+      if(action.dataset.action==='add-challenge-track' &&
+          challengeDraftIds.length>=MAX_CHALLENGE_TRACKS) {
+        toast('A challenge holds up to five songs. Remove one to add another.');
+        return;
+      }
+      challengeDraftCustomized=true;
+      const kind=action.dataset.action;
+      challengeDraftIds=kind==='add-challenge-track' || kind==='remove-challenge-track'
+        ? toggleChallengeDraft(challengeDraftIds,id,eligible)
+        : moveChallengeDraft(challengeDraftIds,id,
+            kind==='move-challenge-up'?-1:1,eligible);
+      render();
+      if(focused) {
+        const selector=kind==='remove-challenge-track'
+          ? '[data-action="add-challenge-track"][data-id="'+id+'"]'
+          : kind==='add-challenge-track'
+            ? '[data-action="remove-challenge-track"][data-id="'+id+'"]'
+            : '[data-action="'+kind+'"][data-id="'+id+'"]';
+        const replacement=main.querySelector(selector);
+        const fallback=main.querySelector('[data-action="remove-challenge-track"][data-id="'+id+'"]')
+          || main.querySelector('#challenge-track-search') || main;
+        (replacement && !replacement.disabled?replacement:fallback)
+          .focus({preventScroll:true});
+      }
+      return;
+    }
     case 'try-challenge': return playSampleChallenge();
     case 'retry-shared-challenge':
       if(challengeRecovery?.waiting && !challengeRecovery.loading)
@@ -2216,6 +2284,11 @@ $('#sound-toggle').addEventListener('click', () => { state = toggleMuteSetting(s
 // `input` fires continuously while the user drags, without re-rendering the
 // card (which would interrupt the pointer gesture or playback).
 main.addEventListener('input', (event) => {
+  if(event.target.id==='challenge-track-search' && view==='challenges') {
+    challengeFilterQuery=event.target.value.slice(0,90);
+    render(); // Preserve input and cursor across filtered-list redraws.
+    return;
+  }
   if (!event.target.matches('[data-volume-slider]')) return;
   state = updateVolumeSetting(state, event.target.value);
   persist();
