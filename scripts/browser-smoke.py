@@ -3355,7 +3355,7 @@ def check_shared_challenge_outage_recovery(browser, base):
         finish=page.locator(".discovery-empty-state")
         finish.wait_for(state="visible",timeout=TIMEOUT)
         require("Challenge Complete" in finish.inner_text() and
-                "1 shared songs were unavailable" in finish.inner_text(),
+                "1 shared song was unavailable" in finish.inner_text(),
                 "Completed challenge did not disclose omitted shared songs")
         require(not errors,"Shared outage browser exceptions: "+"; ".join(errors))
         print(f"PASS {browser.browser_type.name}: shared retry, all-missing exit, partial explicit playback")
