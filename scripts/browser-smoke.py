@@ -2915,6 +2915,110 @@ def check_play_cancels_pending_preview(browser, base):
         context.close()
 
 
+def check_media_error_refresh_cancellation(browser, base):
+    """A recoverable media error must expose Cancel and abort an obsolete retry."""
+    import io
+    import wave
+    sample=io.BytesIO()
+    with wave.open(sample,"wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(1)
+        writer.setframerate(8000)
+        writer.writeframes(bytes([128])*8000*30)
+    silence=sample.getvalue()
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    context.route("https://cdn-preview.dzcdn.net/**",lambda route:
+        route.fulfill(status=200,content_type="audio/wav",body=silence,
+                      headers={"access-control-allow-origin":"*"}))
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        before=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        page.locator("#stage-play").click()
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        # Only the recovery request is held. The initial Play used a playable
+        # 30-second original silence fixture, no third-party audio.
+        page.evaluate("""() => {
+            const append=document.head.append.bind(document.head);
+            window.__mediaErrorFlights=[];
+            document.head.append=(...nodes)=>{
+                for(const node of nodes){
+                    const url=node?.src ? new URL(node.src,location.href) : null;
+                    if(url?.hostname==='api.deezer.com' &&
+                       url.pathname.startsWith('/track/')){
+                        const flight={
+                            callback:url.searchParams.get('callback'),
+                            removed:false
+                        };
+                        const remove=node.remove.bind(node);
+                        node.remove=()=>{flight.removed=true;return remove();};
+                        window.__mediaErrorFlights.push(flight);
+                    } else append(node);
+                }
+            };
+            document.querySelector('#player').dispatchEvent(new Event('error'));
+        }""")
+        page.wait_for_function("() => window.__mediaErrorFlights.length===1",
+                               timeout=TIMEOUT)
+        require(page.locator("#stage-play").get_attribute("aria-label")==
+                "Cancel loading preview",
+                "Media-error recovery was left looking idle instead of cancelable")
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__mediaErrorFlights[0].removed",
+                               timeout=TIMEOUT)
+        require(page.locator("#stage-play").get_attribute("aria-label")=="Play preview",
+                "Canceling an error recovery did not restore Play")
+        require(page.locator("#stop-session").is_hidden(),
+                "Canceling an error recovery kept continuous playback active")
+        page.evaluate("""() => {
+            const cb=window.__mediaErrorFlights[0].callback;
+            window[cb]?.({id:9100001,
+                preview:'https://fixture.invalid/stale-recovery.mp3'});
+        }""")
+        require(page.locator("#preview-recovery").is_hidden(),
+                "Canceled media error recovery showed a stale failure")
+        require(page.evaluate("""() => {
+            const audio=document.querySelector('#player');
+            return audio.paused && !audio.getAttribute('src');
+        }"""),"An obsolete error recovery retained or restarted audio")
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__mediaErrorFlights.length===2",
+                               timeout=TIMEOUT)
+        require(page.evaluate("""() =>
+            window.__mediaErrorFlights[1].callback !==
+            window.__mediaErrorFlights[0].callback"""),
+            "Fresh Play reused the canceled recovery callback")
+        page.locator("#stage-play").click()
+        page.wait_for_function("() => window.__mediaErrorFlights[1].removed",
+                               timeout=TIMEOUT)
+        after=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+            return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        require(after==before,"Retry/cancel changed Keep/Pass history")
+        require(not errors,"Media error recovery page errors: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: canceled media error refresh cannot restart sound")
+    except Exception:
+        screenshot(page,"FAILED-media-error-refresh-cancel")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -2932,6 +3036,7 @@ def firefox_main():
             check_deezer_preview_on_demand(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
@@ -2974,6 +3079,7 @@ def main():
             check_deezer_preview_on_demand(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
             check_theme_dialog_focus(browser, base)
