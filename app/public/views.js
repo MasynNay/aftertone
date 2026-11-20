@@ -7,7 +7,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeRecovery=null, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   const lookup = (id) => catalog.find((track) => track.id === id) ?? null;
 function waveform(id) {
   let seed = h32(id);
@@ -46,15 +46,19 @@ function renderListeningCard() {
     </section>`;
   }
   if (!current) {
-    const challengeDone = challengeIds.length > 0 && challengeResponses.length >= challengeIds.length;
+    const failedClips=challengeIds.length ? challengeSkippedIds.size : 0;
+    const challengeDone = challengeIds.length > 0 &&
+      challengeResponses.length + failedClips >= challengeIds.length;
     const liked = challengeResponses.filter((item) => item.action === 'like').length;
     const narrowed=state.genre!=='all' || state.language!=='all' || state.era!=='any';
     const otherPath=state.discoveryMix==='familiar' ? 'balanced' : state.discoveryMix==='balanced' ? 'explore' : 'balanced';
     const otherName=otherPath==='explore' ? 'Wild Card' : 'New Territory';
-    const heading=challengeDone ? 'Challenge Complete' : feed.loading ? 'Finding Your Next Song…' :
+    const heading=challengeDone ? (failedClips ? 'Challenge Finished' : 'Challenge Complete') : feed.loading ? 'Finding Your Next Song…' :
       feed.error ? 'Music Is Temporarily Unavailable' :
       searchQuery ? 'No Matching Songs Found' : 'Ready for a Different Direction?';
-    const explanation=challengeDone ? `You kept ${liked} of ${challengeResponses.length} tracks. Your ears have spoken.${challengeRecovery?.skipped ? ' '+challengeRecovery.skipped+' shared '+(challengeRecovery.skipped===1?'song was':'songs were')+' unavailable.' : ''}` :
+    const explanation=challengeDone ? `${challengeResponses.length
+      ? 'You kept '+liked+' of '+challengeResponses.length+' rated songs.'
+      : 'No songs were rated.'}${failedClips ? ' '+failedClips+' '+(failedClips===1?'preview was':'previews were')+' unplayable and not counted as '+(failedClips===1?'a Pass':'Passes')+'.' : ' Your ears have spoken.'}${challengeRecovery?.skipped ? ' '+challengeRecovery.skipped+' shared '+(challengeRecovery.skipped===1?'song was':'songs were')+' unavailable when the challenge started.' : ''}` :
       feed.loading ? 'Searching for real music from your selected provider. Your saved songs stay safe.' :
       feed.error ? html(feed.error) :
       searchQuery ? `No recordings matched “${html(searchQuery)}” with the current filters. Try a broader search or listening path.` :
@@ -70,13 +74,15 @@ function renderListeningCard() {
     return `<div class="empty-state discovery-empty-state" role="status" aria-live="polite"><div class="empty-icon" aria-hidden="true">${challengeDone ? '✦' : feed.loading ? '♫' : '◎'}</div><h2>${heading}</h2><p>${explanation}</p>${actions}</div>`;
   }
   // Keep retry help truthful for the selected provider (local installs are not Deezer-only).
-  const previewRecoveryHelp = current.source === 'deezer'
+  const previewRecoveryHelp = challengeIds.length
+    ? 'This shared preview could not play. Retry it, or skip this recording without counting a Pass.'
+    : current.source === 'deezer'
     ? 'This Deezer preview is unavailable. Retry a fresh provider link or skip without counting it as a Pass.'
     : current.source === 'jellyfin'
       ? 'Your Jellyfin stream is unavailable. Check your media server, retry, or skip without counting it as a Pass.'
       : 'This preview is unavailable from its music source. Retry the preview or skip without counting it as a Pass.';
   const trackReason = current.seedReason || (state.discoveryMix === 'explore' ? 'A surprise beyond your usual sound' : state.discoveryMix === 'familiar' ? 'Close to your saved favorites' : 'An open-ended discovery');
-  const ordinal = challengeIds.length ? challengeResponses.length + 1 : state.history.length + 1;
+  const ordinal = challengeIds.length ? challengeResponses.length + challengeSkippedIds.size + 1 : state.history.length + 1;
   const deezerId = current.source === 'deezer' && /^deezer:(\d{1,20})$/.exec(current.id)?.[1];
   const art = `<div class="cover-fallback"><span>♫</span><small>NO ARTWORK AVAILABLE</small></div>${current.artwork ? `<img class="current-cover-img" src="${urlSafe(current.artwork)}" loading="eager" alt="Artwork for ${html(current.title)}" />` : ''}`;
   return `${challengeRecovery?.skipped ? `<p class="challenge-short-notice">Playing ${challengeIds.length} available ${challengeIds.length===1?'song':'songs'} · ${challengeRecovery.skipped} unavailable in the original shared link.</p>` : ''}<div id="listening-card" class="listening-card ${isBlind ? 'blind-card' : 'known-card'} ${deezerId ? 'deezer-card' : ''}" role="group" aria-label="${isBlind ? 'Blind listening' : `${html(current.title)} by ${html(current.artist)}`}. Swipe left to pass, right to keep.">
@@ -90,7 +96,8 @@ function renderListeningCard() {
     <div class="preview-volume" role="group" aria-label="Preview volume"><label for="preview-volume"><span aria-hidden="true">♫</span> Volume</label><input id="preview-volume" data-volume-slider type="range" min="0" max="100" step="1" value="${clamp(Number(state.volume ?? 35),0,100)}" aria-label="Adjust music preview volume" /><output for="preview-volume" data-volume-value>${!state.sound ? 'Muted' : `${Math.round(Number(state.volume ?? 35))}%`}</output></div>
     <div class="lyric-panel"><button class="lyric-toggle" data-action="lyrics-toggle" aria-expanded="false" aria-label="Toggle synchronized lyrics">♫ Lyrics <span id="lyric-indicator">Optional</span></button><div id="live-lyrics" class="lyric-display" hidden><div id="lyric-line" role="status" aria-live="off">Loading synchronized lyrics…</div><div class="lyric-align" id="lyric-align" hidden><label for="lyrics-offset">Preview begins at <b id="lyric-offset-value">0:00</b> in the full song</label><input type="range" id="lyrics-offset" min="0" max="300" value="0" step="1" aria-label="Adjust the preview's position within the song" /><small>Adjust to match by ear · excerpt start is not supplied by Deezer</small></div><a href="https://lrclib.net" target="_blank" rel="noopener noreferrer" class="lyric-credit">Lyrics lookup: LRCLIB ↗</a></div></div>
     <div class="decision-row decision-row-in-card" aria-label="Rate this song"><button data-action="pass" title="Pass" aria-label="Pass on this song" class="decision-button decision-pass"><b aria-hidden="true">×</b></button><button data-action="undo" title="Undo last decision" aria-label="Undo last decision" class="decision-button decision-undo" ${state.history.length && !challengeIds.length ? '' : 'disabled'}><b aria-hidden="true">↶</b></button><button data-action="toggle-blind" title="${state.blind ? 'Turn blind mode off' : 'Turn blind mode on'}" aria-label="Blind mode" aria-pressed="${Boolean(state.blind)}" class="decision-button decision-blind ${state.blind?'is-on':''}"><b aria-hidden="true">◉</b><small>Blind</small></button><button data-action="like" title="Keep" aria-label="Keep this song in my favorites" class="decision-button decision-like"><b aria-hidden="true">♥</b></button></div>
-    <div class="player-shortcuts"><span id="continuity-hint">Play to begin continuous listening</span><span>← Pass · → Keep · Space Play · B Blind</span></div>
+    <div class="player-shortcuts"><span id="continuity-hint">${challengeIds.length ? 'Listen before deciding; failed clips can be skipped without a vote' : 'Play to begin continuous listening'}</span><span>← Pass · → Keep · Space Play · B Blind</span></div>
+    ${challengeIds.length ? '<div class="challenge-early-exit"><button type="button" class="secondary-button" data-action="exit-challenge">Leave Challenge</button></div>' : ''}
   </div>`;
 }
 
