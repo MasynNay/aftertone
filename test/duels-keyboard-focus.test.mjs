@@ -11,7 +11,7 @@ const songs=Array.from({length:4},(_,i)=>({
 test('Duels markup has usable matchup controls and a focusable podium destination',()=>{
   let event=createTournament({id:'duel_accessible',name:'Accessible Cup',tracks:songs});
   assert.match(renderDuels({tournaments:[event],selectedId:event.id,catalog:songs}),
-    /id="duel-active-event"[\\s\\S]*data-duel-play/);
+    /id="duel-active-event"[\s\S]*data-duel-play/);
   for(let i=0;i<4;i++) {
     const match=nextDuelMatch(event);
     event=voteDuel(event,match.id,match.a);
@@ -25,15 +25,15 @@ test('Duels markup has usable matchup controls and a focusable podium destinatio
 test('controller restores keyboard focus only after successful bracket transitions',()=>{
   const vote=main.slice(main.indexOf('function voteActiveDuel('),
     main.indexOf('function exportLibrary('));
-  assert.match(vote,/if\\(!writeDuelArchive[\\s\\S]*?return/);
-  assert.match(vote,/stopAudio\\(\\);render\\(\\);focusDuelStage\\(\\)/);
+  assert.match(vote,/if\(!writeDuelArchive[\s\S]*?return/);
+  assert.match(vote,/stopAudio\(\);render\(\);focusDuelStage\(\)/);
   const actions=main.slice(main.indexOf('function handleDuelAction('),
     main.indexOf('function voteActiveDuel('));
-  assert.match(actions,/action==='open'[\\s\\S]*?focusDuelStage\\(\\)/);
-  assert.match(actions,/action==='dismiss'[\\s\\S]*?focusDuelArchive\\(previousId\\)/);
-  assert.match(actions,/action==='delete'[\\s\\S]*?focusDuelArchive\\(id\\)/);
+  assert.match(actions,/action==='open'[\s\S]*?focusDuelStage\(\)/);
+  assert.match(actions,/action==='dismiss'[\s\S]*?focusDuelArchive\(previousId\)/);
+  assert.match(actions,/action==='delete'[\s\S]*?focusDuelArchive\(id\)/);
   assert.match(main,/focusedDuelSeason=view==='duels'/);
-  assert.match(main,/querySelector\\('#duel-season'\\)\\?\\.focus/);
-  assert.match(main,/function focusDuelStage\\(\\)/);
-  assert.match(main,/function focusDuelArchive\\(id\\)/);
+  assert.match(main,/querySelector\('#duel-season'\)\?\.focus/);
+  assert.match(main,/function focusDuelStage\(\)/);
+  assert.match(main,/function focusDuelArchive\(id\)/);
 });
