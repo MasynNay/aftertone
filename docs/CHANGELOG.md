@@ -1,3 +1,10 @@
+## v0.12 development — Progressive Deezer discovery retry cooldown (November 21, 2026)
+
+- Repeated Deezer discovery failures now extend **automatic** retry pauses from 20 seconds to 40, 80, 160, then a maximum of 180 seconds. This avoids repeated rapid requests during sustained provider outages, while keeping the public demo recoverable and leaving already loaded tracks intact.
+- A successful provider response clears the cooldown and failure count. A listener pressing **Retry Discovery** can check again immediately; it is not blocked by automatic backoff. Provider failure history is scoped to each discovery feed, so switching paths does not inherit an unrelated outage counter.
+- Outage help explains the automatic cooldown without promising an exact live countdown; no extra timers run on the page. Existing browser playback, choices, and theme behavior are unchanged.
+- Node policy tests and fictional-provider Chromium/Firefox regression tests check 20-/40-second pauses, automatic recovery and no invented listening votes. Live Deezer uptime, regional quotas, usage rights and physical-device testing remain unverified.
+
 ## v0.12 development — Resume a curated Pass the Aux draft after refresh (November 21, 2026)
 
 - The five-song challenge editor now remembers intentionally edited song IDs and their exact order across refreshes of the **same browser tab** using session storage. A deliberate empty selection stays empty; the Share button does not silently reselect five songs.

@@ -50,8 +50,10 @@ test('actual app uses batch-local failure exclusion rather than poisoning perman
     'Temporary HTTP failures must not permanently exhaust the entire source');
   assert.match(loadMore,/feed\.exhausted\.add\(cursorKey\)/,
     'Successfully confirmed end-of-catalog must still stop pagination');
-  assert.match(loadMore,/feed\.retryAt=Date\.now\(\)\+20000/,
-    'Bounded retry backoff must remain active on upstream failures');
+  assert.match(loadMore,/nextDiscoveryRetry\(feed\.retryFailures,Date\.now\(\)\)/,
+    'Bounded progressive retry backoff must remain active on upstream failures');
+  assert.match(loadMore,/feed\.retryAt=retry\.retryAt/,
+    'The scheduled cooldown must be applied to the current discovery feed');
   assert.match(loadMore,/if \(!showStatus && Date\.now\(\)<feed\.retryAt\) return/,
     'User-initiated retries should still override a background cooldown');
 });

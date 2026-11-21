@@ -20,6 +20,7 @@ import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/gr
 import { createRelatedRequestScope } from '/src/discovery/related-request-scope.mjs';
 import { createPreviewRequestScope } from '/src/discovery/preview-request-scope.mjs';
 import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
+import { nextDiscoveryRetry } from '/src/discovery/retry-policy.mjs';
 import { eligibleProviders } from '/src/discovery/provider-availability.mjs';
 import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore, loadDuelSelection, saveDuelSelection } from '/src/duels.mjs';
 import { renderDuels } from './duels-view.js';
@@ -331,7 +332,7 @@ function getFeed(genre = state.genre) {
   if (!feeds.has(key) && feeds.size >= 48) feeds.delete(feeds.keys().next().value);
   if (!feeds.has(key)) feeds.set(key, {
     cursors: {}, exhausted: new Set(), loading: false, hasMore: true, error: '',
-    provider: state.source, added: 0, requests: 0, ids: new Set(), reasons: new Map(), total: null, emptyRefills:0, retryAt:0, note:'', primed:false,
+    provider: state.source, added: 0, requests: 0, ids: new Set(), reasons: new Map(), total: null, emptyRefills:0, retryAt:0, retryFailures:0, note:'', primed:false,
   });
   return feeds.get(key);
 }
@@ -401,7 +402,9 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     return;
   }
   feed.retryAt=0;
-  if(showStatus) feed.emptyRefills=0;
+  // Manual retries are an explicit override: reset the increasing automatic
+  // cooldown. Never make a listener wait because a background retry failed.
+  if(showStatus) {feed.emptyRefills=0;feed.retryFailures=0;}
   const controller = new AbortController();
   const flight = {feed,controller};
   inFlightDiscovery = flight;
@@ -457,7 +460,11 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
         if (!isCurrent()) break;
         const result = await response.json();
         if (!isCurrent()) break;
-        if (!response.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+        if (!response.ok) {
+          const failure=new Error(result?.error || `HTTP ${response.status}`);
+          failure.status=response.status;
+          throw failure;
+        }
         const before = feed.cursors[cursorKey];
         for (const track of result.tracks || []) {
           // Provenance belongs to the active path feed, not the global catalog:
@@ -484,9 +491,9 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
         if (lane && /HTTP (400|404)\b/.test(String(error.message))) {
           feed.exhausted.add(cursorKey); continue;
         }
-        // 429s, timeouts and provider outages are temporary. Retry later;
-        // never mark an otherwise useful artist lane permanently exhausted.
-        feed.retryAt=Date.now()+20000;
+        // 429s, timeouts and provider outages are temporary. The batch-level
+        // policy below schedules a progressively longer automatic cooldown,
+        // never permanently exhausting a useful lane.
         if (state.source !== 'mix') break;
         // Only skip this source for the current fetch. A temporary outage
         // must never make Retry Discovery permanently lose that provider.
@@ -508,8 +515,18 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
         history:state.history,selectedGenre:genre,exhausted:feed.exhausted,
       })).some(plan=>plan.kind!=='none');
     } else feed.hasMore = sourceOrder().some(source=>!feed.exhausted.has(source));
-    if(feed.error && !successes) feed.retryAt=Date.now()+20000;
-    if (feed.error && successes) feed.error = '';
+    if(feed.error && !successes) {
+      const retry=nextDiscoveryRetry(feed.retryFailures,Date.now());
+      feed.retryFailures=retry.failures;
+      feed.retryAt=retry.retryAt;
+    }
+    if (successes) {
+      // A successful provider page (even if it has no matching songs) proves
+      // the outage is over. Clear the cooldown for the active feed only.
+      feed.retryFailures=0;
+      feed.retryAt=0;
+      feed.error='';
+    }
     if (state.source === 'mix' && state.discovery === 'variety' && !current && !availableCount(genre) && !successes && !catalog.length && !requestSearch) {
       addToCatalog(starterShelf);
       feed.error = 'Live music is temporarily unavailable. Showing the offline starter shelf.';

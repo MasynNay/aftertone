@@ -61,7 +61,7 @@ function renderListeningCard() {
       ? 'You kept '+liked+' of '+challengeResponses.length+' rated songs.'
       : 'No songs were rated.'}${failedClips ? ' '+failedClips+' '+(failedClips===1?'preview was':'previews were')+' unplayable and not counted as '+(failedClips===1?'a Pass':'Passes')+'.' : ' Your ears have spoken.'}${challengeRecovery?.skipped ? ' '+challengeRecovery.skipped+' shared '+(challengeRecovery.skipped===1?'song was':'songs were')+' unavailable when the challenge started.' : ''}` :
       feed.loading ? 'Searching for real music from your selected provider. Your saved songs stay safe.' :
-      feed.error ? html(feed.error) :
+      feed.error ? html(feed.error)+(feed.retryFailures ? ' Automatic discovery retries slow down during repeated outages (up to three minutes). Retry Discovery remains available whenever you want to try again.' : '') :
       searchQuery ? `No recordings matched “${html(searchQuery)}” with the current filters. Try a broader search or listening path.` :
       'This listening path has no new matches right now. Try another path, broaden filters, or search an artist.';
     const actions=challengeDone ? '<button type="button" class="accent-button" data-action="exit-challenge">Back to Discovery →</button>' :
