@@ -1,3 +1,10 @@
+## v0.12 development — Resume a curated Pass the Aux draft after refresh (November 21, 2026)
+
+- The five-song challenge editor now remembers intentionally edited song IDs and their exact order across refreshes of the **same browser tab** using session storage. A deliberate empty selection stays empty; the Share button does not silently reselect five songs.
+- **Use Latest Five** clears the tab draft and restores ordinary one-click sharing. A draft is always rechecked against the currently saved, public Deezer catalog before displaying or sharing, so deleted/unavailable/private source IDs cannot be introduced into a link.
+- The stored draft contains at most five validated public Deezer IDs plus a format version—no track titles, audio previews, listening history, or account information. Other tabs/devices receive nothing. If session storage is blocked, editing still works and the screen correctly warns that the changes were not saved.
+- Added Node tests for persistence, corrupted/future versions, unsupported sources, duplicate IDs, tab reset, and blocked storage; Chromium/Firefox simulated-provider browser coverage tests actual refresh, empty draft restoration, reset, and failure handling. This does not verify live Deezer authorization or physical-device accessibility.
+
 ## v0.12 development — Curate your shared five-song challenge (November 20, 2026)
 
 - **Pass the Aux** now lets listeners choose the exact saved Deezer songs to send, rather than silently always choosing only the five newest. The newest five remain preselected for one-click quick sharing.
