@@ -1125,7 +1125,7 @@ function render() {
        direction:focusedChallengeSearch.selectionDirection} : null;
   syncChallengeDraft();
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengeDraftSaved, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
