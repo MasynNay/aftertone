@@ -3879,16 +3879,18 @@ def check_first_listen_provider_retry(browser, base):
         empty=page.locator(".discovery-empty-state")
         empty.wait_for(state="visible",timeout=TIMEOUT)
         page.wait_for_function("""() =>
-          document.querySelector(".first-listen-actions [data-action='load-more']")
-            ?.textContent?.includes('Retry Finding Music')""",timeout=TIMEOUT)
+          document.querySelector(".first-listen-actions")
+            ?.textContent?.includes('Use Retry Discovery below')""",timeout=TIMEOUT)
         close=page.locator('#modal-root button[data-modal="close"]')
         if close.count():close.first.click(timeout=TIMEOUT)
-        action=page.locator(".first-listen-actions [data-action='load-more']")
-        require(action.is_enabled(),"Outage made the guided Retry button unavailable")
+        action=page.locator(".discovery-empty-state [data-action='load-more']")
+        require(action.is_enabled(),"Outage made the existing Retry Discovery button unavailable")
+        require(page.locator('[data-action="load-more"]').count()==1,
+                "Outage duplicated Retry Discovery actions in the onboarding guide")
         initial=counts["failures"]
         require(initial>0,"First-run provider outage was not simulated")
         action.click()
-        page.wait_for_function("""() => !document.querySelector(".first-listen-actions button")?.disabled""",
+        page.wait_for_function("""() => !document.querySelector(".discovery-empty-state [data-action='load-more']")?.disabled""",
                                timeout=TIMEOUT)
         require(counts["failures"]>initial,
                 "First-run Retry did not explicitly bypass automatic provider cooldown")
