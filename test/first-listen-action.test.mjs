@@ -34,7 +34,8 @@ test('while loading, guide is honest and never issues a second competing request
   const ui=discovery({current:null,feed:{loading:true}});
   assert.match(ui,/Finding Your First Song/);
   assert.equal((ui.match(/data-action="load-more"/g)||[]).length,1);
-  assert.doesNotMatch(ui.match(/<div class="first-listen-actions">[\\s\\S]*?<\\/div>/)?.[0]||'',/data-action="load-more"/);
+  const guideControls=ui.split('<div class="first-listen-actions">')[1]?.split('</div>')[0]||'';
+  assert.doesNotMatch(guideControls,/data-action="load-more"/);
 });
 test('outages offer an immediate manual retry instead of a disabled tutorial CTA',()=>{
   const action=firstListenAction({error:'Provider unavailable'});
