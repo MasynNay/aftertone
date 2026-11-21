@@ -5,7 +5,7 @@ export function firstListenAction({hasTrack=false,loading=false,error=''}={}) {
   if(hasTrack)return {
     action:'first-listen-play',
     label:'Play My First Preview',
-    help:'A recording is ready. Press Play to hear it, then choose Keep or Pass on the card.',
+    help:'A recording is ready. Listen, then Keep or Pass. If the audio fails, Retry Preview or Skip Without Voting.',
     disabled:false
   };
   if(loading)return {
