@@ -61,3 +61,7 @@ On the **Challenges** tab, your five latest eligible Deezer favorites start sele
 ### When Deezer is temporarily unavailable
 
 AFTERTONE does not automatically keep hammering the music provider. After repeated failed discovery requests, background retries pause longer (initially about 20 seconds, up to three minutes) until the provider responds again. You can press **Retry Discovery** at any time to request a new attempt immediately, or switch listening paths. Failed requests do not count as Keeps or Passes, and your saved songs are not erased. A long outage may still require returning later; the app cannot guarantee the external provider will respond or that previews are licensed for game use.
+
+### Start directly from the first-listen guide
+
+On a fresh listening profile, the inline **Your First Listen** guide offers **Play My First Preview** as soon as the first recording is ready. This invokes the same audio player as the Play button on the listening card; keyboard focus moves there so you can pause or retry normally. After listening, choose **Keep** or **Pass** on the card to start shaping your recommendations. The guide disappears after that first choice, not just because you clicked Play. If the catalog is still loading, it will say so; if the provider fails, **Retry Finding Music** lets you retry immediately. A failed request never counts as a vote. This feature never plays sound before a listener presses a button.
