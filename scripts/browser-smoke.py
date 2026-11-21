@@ -3789,6 +3789,123 @@ def check_progressive_discovery_backoff(browser, base):
     finally:
         context.close()
 
+
+
+def check_first_listen_guided_play(browser, base):
+    """The first-listen tutorial should invoke real Play, preserve focus and never vote."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    requests={"preview":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def mock_provider(route):
+        if urlsplit(route.request.url).path.startswith("/track/"):
+            requests["preview"]+=1
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",mock_provider)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"first-listen-guide-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        guide=page.locator(".first-listen-guide")
+        guide.wait_for(state="visible",timeout=TIMEOUT)
+        action=guide.locator('[data-action="first-listen-play"]')
+        require(action.is_visible() and action.is_enabled(),
+                "A first-time listener cannot start a recording from the guide")
+        require(requests["preview"]==0,
+                "The first-listen guide preloaded third-party audio before listener consent")
+        bounds=action.bounding_box()
+        require(bounds is not None and bounds["height"]>=43.5,
+                "First-listen CTA is below the 44px mobile target")
+        action.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("() => document.activeElement?.id==='stage-play'",
+                               timeout=TIMEOUT)
+        page.locator("#preview-recovery").wait_for(state="visible",timeout=TIMEOUT)
+        require(requests["preview"]>=1,
+                "Guide did not call the actual Deezer on-demand preview flow")
+        saved=page.evaluate("""() => {
+          const data=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {history:data.history||[],favorites:data.favorites||[]};
+        }""")
+        require(not saved["history"] and not saved["favorites"],
+                "Opening a first preview accidentally created a rating")
+        require(page.locator(".first-listen-guide").is_visible(),
+                "Guide disappeared before any Keep/Pass choice")
+        page.locator("#listening-card [data-action='pass']").click()
+        page.wait_for_function("""() =>
+          JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}')
+             .history?.length===1""",timeout=TIMEOUT)
+        require(page.locator(".first-listen-guide").count()==0,
+                "First-listen guide was not dismissed after an actual choice")
+        require(not errors,"First-listen browser errors: "+"; ".join(errors))
+        print(f"PASS {label}: direct Play, real on-demand request, keyboard focus, no false rating")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
+def check_first_listen_provider_retry(browser, base):
+    """No first recording: show actionable retry without losing saved choices."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},service_workers="block")
+    counts={"failures":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def offline_provider(route):
+        parsed=urlsplit(route.request.url)
+        callback=parse_qs(parsed.query).get("callback",[""])[0]
+        if not re.fullmatch(r"__aftertoneDeezer_\d+",callback):
+            route.abort()
+            return
+        counts["failures"]+=1
+        body={"error":{"code":429,"message":"Temporary fictional provider outage"}}
+        route.fulfill(status=200,content_type="application/javascript",
+                      body=f"window[{json.dumps(callback)}]({json.dumps(body)});")
+    context.route("https://api.deezer.com/**",offline_provider)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"first-listen-retry-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        empty=page.locator(".discovery-empty-state")
+        empty.wait_for(state="visible",timeout=TIMEOUT)
+        page.wait_for_function("""() =>
+          document.querySelector(".first-listen-actions [data-action='load-more']")
+            ?.textContent?.includes('Retry Finding Music')""",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        action=page.locator(".first-listen-actions [data-action='load-more']")
+        require(action.is_enabled(),"Outage made the guided Retry button unavailable")
+        initial=counts["failures"]
+        require(initial>0,"First-run provider outage was not simulated")
+        action.click()
+        page.wait_for_function("""() => !document.querySelector(".first-listen-actions button")?.disabled""",
+                               timeout=TIMEOUT)
+        require(counts["failures"]>initial,
+                "First-run Retry did not explicitly bypass automatic provider cooldown")
+        saved=page.evaluate("""() => {
+          const data=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {history:data.history||[],favorites:data.favorites||[]};
+        }""")
+        require(not saved["history"] and not saved["favorites"],
+                "Retrying the first song invented preferences or rated songs")
+        require(not errors,"First-listen outage errors: "+"; ".join(errors))
+        print(f"PASS {label}: recoverable empty state and manual retry without phantom votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3805,6 +3922,8 @@ def firefox_main():
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
+            check_first_listen_guided_play(browser, base)
+            check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
             check_media_error_refresh_cancellation(browser, base)
@@ -3856,6 +3975,8 @@ def main():
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
             check_deezer_preview_on_demand(browser, base)
+            check_first_listen_guided_play(browser, base)
+            check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
             check_media_error_refresh_cancellation(browser, base)
