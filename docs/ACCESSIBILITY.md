@@ -179,3 +179,7 @@ If an individual shared preview fails after metadata resolution, **Retry Preview
 ### Curated sharing controls (November 20, 2026)
 
 The Pass the Aux editor uses an ordered list for the selected songs, labelled native up/down/remove buttons, and a search field whose focus and caret are preserved across filtered view updates. Control hit targets are at least 44px high; selection count and result count are described in text. A real-browser (fictional catalog) Chromium and Firefox regression at a narrow phone viewport covers keyboard reordering, song search, exact shared-ID order in a fresh 320px browser profile and no horizontal page overflow. A manual screen-reader, zoom and touch-device review remains outstanding.
+
+### Same-tab challenge draft recovery (November 21, 2026)
+
+Custom Pass the Aux song ordering survives a same-tab reload through a bounded, validated session-storage draft. Reset restores the default five; an intentionally empty draft stays empty. The editor displays a concise polite status explaining whether the customized selection is actually saved or storage is blocked. Node tests cover malformed and private input, and fictional-provider Chromium/Firefox runs exercise reload/reset and storage-denial behavior. Native screen-reader and physical touch testing are still required.

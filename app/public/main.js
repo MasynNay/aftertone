@@ -1,4 +1,5 @@
 import {eligibleChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,toggleChallengeDraft,moveChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
+import {readChallengeDraft,saveChallengeDraft,clearChallengeDraft} from '../src/challenge-draft-store.mjs';
 import {apiFetch} from './api-browser.js';
 import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
@@ -271,11 +272,23 @@ let challengeIds = initialChallenge;
 let challengeResponses = [];
 // A failed audio preview is neither a Keep nor a Pass. Only this tab needs it.
 let challengeSkippedIds = new Set();
-// The five newest favorites are selected by default, preserving quick-sharing.
-// A customized draft is tab-local and never rewrites saved listening choices.
-let challengeDraftIds = [];
-let challengeDraftCustomized = false;
+// A saved draft survives accidental refresh in the same tab only. Read it
+// before initial rendering; saved tracks are hydrated before reconciliation.
+let restoredChallengeDraft=null;
+try {restoredChallengeDraft=readChallengeDraft(sessionStorage);}catch{}
+let challengeDraftIds = restoredChallengeDraft ?? [];
+let challengeDraftCustomized = restoredChallengeDraft !== null;
+let challengeDraftSaved = restoredChallengeDraft !== null;
 let challengeFilterQuery = '';
+function storeChallengeDraft() {
+  try {challengeDraftSaved=saveChallengeDraft(sessionStorage,challengeDraftIds);}
+  catch {challengeDraftSaved=false;}
+}
+function resetChallengeDraft() {
+  challengeDraftCustomized=false;
+  challengeDraftSaved=false;
+  try {clearChallengeDraft(sessionStorage);} catch {}
+}
 function syncChallengeDraft() {
   const eligible=eligibleChallengeTracks(state.favorites,catalog);
   challengeDraftIds=challengeDraftCustomized
@@ -1112,7 +1125,7 @@ function render() {
        direction:focusedChallengeSearch.selectionDirection} : null;
   syncChallengeDraft();
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -2224,7 +2237,7 @@ document.addEventListener('click', async (event) => {
     case 'share-challenge': return shareChallenge();
     case 'reset-challenge-draft': {
       const focused=document.activeElement===action;
-      challengeDraftCustomized=false;
+      resetChallengeDraft();
       syncChallengeDraft();
       render();
       if(focused)main.querySelector('[data-action="reset-challenge-draft"]')?.focus({preventScroll:true});
@@ -2248,6 +2261,7 @@ document.addEventListener('click', async (event) => {
         ? toggleChallengeDraft(challengeDraftIds,id,eligible)
         : moveChallengeDraft(challengeDraftIds,id,
             kind==='move-challenge-up'?-1:1,eligible);
+      storeChallengeDraft(); // Save only after deliberate add/remove/reorder.
       render();
       if(focused) {
         const selector=kind==='remove-challenge-track'
