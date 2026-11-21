@@ -3590,6 +3590,125 @@ def check_curated_shared_challenge(browser, base):
     finally:
         context.close()
 
+
+def check_resumable_shared_challenge_draft(browser, base):
+    """Custom song order survives same-tab reload without leaking personal data."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route: route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    key="aftertone:shared-challenge-draft:v1"
+    def selection():
+        return page.locator(".challenge-draft-item").evaluate_all(
+            "items=>items.map(item=>item.dataset.chosenId)")
+    def navigate_challenges():
+        page.locator('#main-nav button[data-view="challenges"]').click()
+        page.locator("#challenge-builder-heading").wait_for(state="visible",timeout=TIMEOUT)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        card=page.locator("#listening-card")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        for n in range(1,4):
+            card.locator('[data-action="like"]').click(timeout=TIMEOUT)
+            page.wait_for_function("""n=>{
+              const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+              return state.favorites?.length===n && state.savedTracks?.length>=n;
+            }""",arg=n,timeout=TIMEOUT)
+        saved=page.evaluate("""() =>
+          JSON.parse(localStorage.getItem('aftertone:session:v1')).favorites""")
+        navigate_challenges()
+        require(selection()==list(reversed(saved)),
+                "The latest favorites are not selected on first opening")
+        latest=saved[-1]
+        page.locator('[data-action="remove-challenge-track"][data-id="'+latest+'"]').click()
+        remaining=selection()
+        first=remaining[0]
+        page.locator('[data-action="move-challenge-down"][data-id="'+first+'"]').click()
+        expected=selection()
+        require(expected==list(reversed(remaining)),
+                "Could not customize the challenge before saving")
+        stored=page.evaluate("""key=>JSON.parse(sessionStorage.getItem(key))""",key)
+        require(stored=={"version":1,"ids":expected},
+                f"Draft stored unexpected data instead of public ordered IDs: {stored}")
+        require("custom selection is saved for reloads in this tab only" in
+                page.locator(".challenge-builder-privacy").inner_text(),
+                "Draft editor did not report its saved status")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        navigate_challenges()
+        require(selection()==expected,
+                "A page reload lost the chosen songs or order")
+        require(page.locator('[data-action="share-challenge"]').is_enabled(),
+                "A valid restored draft cannot be shared")
+
+        # Empty is an intentional, recoverable selection, not missing storage.
+        for selected_id in list(expected):
+            page.locator('[data-action="remove-challenge-track"][data-id="'+selected_id+'"]').click()
+        require(selection()==[] and
+                not page.locator('[data-action="share-challenge"]').is_enabled(),
+                "An empty edited draft could still be shared")
+        stored_empty=page.evaluate("""key=>JSON.parse(sessionStorage.getItem(key))""",key)
+        require(stored_empty=={"version":1,"ids":[]},
+                "The explicitly empty draft was discarded")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        navigate_challenges()
+        require(selection()==[] and
+                not page.locator('[data-action="share-challenge"]').is_enabled(),
+                "Refreshing reselected songs over an intentionally empty draft")
+
+        # Reset releases the draft and correctly restores latest-five behavior.
+        page.locator('[data-action="reset-challenge-draft"]').click()
+        require(selection()==list(reversed(saved)),
+                "Use Latest Five did not restore default saved favorites")
+        require(page.evaluate("""key=>sessionStorage.getItem(key)===null""",key),
+                "Reset left stale personalized draft IDs in sessionStorage")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        navigate_challenges()
+        require(selection()==list(reversed(saved)),
+                "Defaults were not restored after a reset and reload")
+
+        # The user can have corrupt/private source data in old session state:
+        # invalid saved drafts must be ignored, never turned into public links.
+        page.evaluate("""key=>sessionStorage.setItem(key,
+          JSON.stringify({version:1,ids:['jellyfin:secret']}))""",key)
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        navigate_challenges()
+        require(selection()==list(reversed(saved)),
+                "A private-source ID poisoned the restored challenge")
+
+        # A browser that blocks writing drafts must keep editing functional
+        # but show an honest status instead of claiming persistence.
+        page.evaluate("""() => {
+          const original=Storage.prototype.setItem;
+          Storage.prototype.setItem=function(key,value){
+            if(key==='aftertone:shared-challenge-draft:v1')
+              throw new DOMException('Blocked by test','SecurityError');
+            return original.call(this,key,value);
+          };
+        }""")
+        page.locator('[data-action="remove-challenge-track"][data-id="'+latest+'"]').click()
+        require(len(selection())==2,
+                "Blocked sessionStorage also prevented local challenge editing")
+        require("did not save it" in page.locator(".challenge-builder-privacy").inner_text(),
+                "Blocked storage claimed that the draft was saved")
+        require(not errors,"Draft reload browser errors: "+"; ".join(errors))
+        print(f"PASS {browser.browser_type.name}: curated draft refresh, empty, reset, private-ID and blocked-storage recovery")
+    except Exception:
+        screenshot(page,"FAILED-resumable-challenge-draft")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3614,6 +3733,7 @@ def firefox_main():
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
+            check_resumable_shared_challenge_draft(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
             check_shared_preview_failure_skip(browser, base)
             check_theme_dialog_focus(browser, base)
@@ -3663,6 +3783,7 @@ def main():
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
+            check_resumable_shared_challenge_draft(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
             check_shared_preview_failure_skip(browser, base)
             check_theme_dialog_focus(browser, base)
