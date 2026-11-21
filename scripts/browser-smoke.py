@@ -3709,6 +3709,86 @@ def check_resumable_shared_challenge_draft(browser, base):
     finally:
         context.close()
 
+
+def check_progressive_discovery_backoff(browser, base):
+    """Repeated fictional 429s must not trigger a tight polling loop."""
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    state={"online":False,"failures":0,"successes":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def provider(route):
+        if state["online"]:
+            state["successes"]+=1
+            return mock_deezer(route)
+        parsed=urlsplit(route.request.url)
+        callback=parse_qs(parsed.query).get("callback",[""])[0]
+        if not re.fullmatch(r"__aftertoneDeezer_\d+",callback):
+            route.abort()
+            return
+        state["failures"]+=1
+        body={"error":{"code":429,"message":"Requests are temporarily limited. Wait a moment, then retry."}}
+        route.fulfill(status=200,content_type="application/javascript",
+                      body=f"window[{json.dumps(callback)}]({json.dumps(body)});")
+    context.route("https://api.deezer.com/**",provider)
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"progressive-backoff-{browser.browser_type.name}"
+    try:
+        # Accelerate only the 3-second automatic refill CHECK, not provider
+        # network calls. Advance an isolated clock without waiting real minutes.
+        page.add_init_script("""(() => {
+          const originalNow=Date.now.bind(Date);
+          window.__aftertoneClockOffset=0;
+          Date.now=()=>originalNow()+window.__aftertoneClockOffset;
+          const originalInterval=window.setInterval.bind(window);
+          window.setInterval=(fn,delay,...args)=>
+            originalInterval(fn,delay===3000?125:delay,...args);
+        })();""")
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        empty=page.locator(".discovery-empty-state")
+        empty.wait_for(state="visible",timeout=TIMEOUT)
+        require("Music Is Temporarily Unavailable" in empty.inner_text(),
+                "Expected a real recoverable outage state")
+        require("Automatic discovery retries slow down" in empty.inner_text(),
+                "Repeated provider failures should be explained in the UI")
+        require(page.get_by_role("button",name="Retry Discovery",exact=True).is_enabled(),
+                "Progressive backoff must never disable manual retry")
+        initial=state["failures"]
+        require(initial>=1,"First simulated provider failure not reached")
+        page.wait_for_timeout(400)
+        require(state["failures"]==initial,
+                "Automatic retry fired during the initial 20-second cooldown")
+        page.evaluate("window.__aftertoneClockOffset=22000")
+        page.wait_for_timeout(600)
+        after_second=state["failures"]
+        require(after_second>initial,"The first automatic retry never fired")
+        page.evaluate("window.__aftertoneClockOffset=45000")
+        page.wait_for_timeout(400)
+        require(state["failures"]==after_second,
+                "A repeated failure retried after only ~20 seconds instead of 40")
+        state["online"]=True
+        page.evaluate("window.__aftertoneClockOffset=66000")
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        require(state["successes"]>0,"No automatic recovery after the 40-second cooldown")
+        before=page.evaluate("""() => {
+          const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {history:state.history||[],favorites:state.favorites||[]};
+        }""")
+        require(not before["history"] and not before["favorites"],
+                "Provider cooldown incorrectly counted a listening decision")
+        require(not errors,"Browser exceptions during provider cooldown: "+"; ".join(errors))
+        print(f"PASS {label}: 20s then 40s cooldown, automatic recovery, no votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3717,6 +3797,7 @@ def firefox_main():
             firefox_case(browser, base, 390, 844)
             firefox_case(browser, base, 320, 740)
             check_catalog_outage_recovery(browser, base)
+            check_progressive_discovery_backoff(browser, base)
             check_backup_restore_cross_browser(browser, base)
             check_backup_transfer_new_profile(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
@@ -3767,6 +3848,7 @@ def main():
             browser_case(browser, base, 320, 740)
             check_product_deep_links(browser, base)
             check_catalog_outage_recovery(browser, base)
+            check_progressive_discovery_backoff(browser, base)
             check_backup_restore_cross_browser(browser, base)
             check_backup_transfer_new_profile(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
