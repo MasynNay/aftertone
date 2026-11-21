@@ -1,3 +1,10 @@
+## v0.12 development — Start the first preview directly from onboarding (November 21, 2026)
+
+- The inline **Your First Listen** guide now has a prominent **Play My First Preview** button when a track is ready. It uses the existing player and normal user-initiated Play action, moves keyboard focus to the real player, and never records a Keep/Pass on its own.
+- The guide responds to discovery availability: a disabled **Finding Your First Song…** indicator while music loads, **Retry Finding Music** when the provider returns an error, and **Find My First Song** for an otherwise empty queue. This helps new listeners recover without reading external instructions.
+- The guide still disappears after the first genuine Keep or Pass and is never shown during shared blind challenges. Autoplay, source selection, saved settings, and the application's visual direction remain unchanged.
+- Added Node state and wiring tests, plus fictional-provider Chromium/Firefox browser journeys at a 390px viewport for keyboard-triggered Play, on-demand Deezer preview metadata, safe failure, first rating, and a first-run 429 retry. These checks do not establish live media licensing or playback reliability.
+
 ## v0.12 development — Progressive Deezer discovery retry cooldown (November 21, 2026)
 
 - Repeated Deezer discovery failures now extend **automatic** retry pauses from 20 seconds to 40, 80, 160, then a maximum of 180 seconds. This avoids repeated rapid requests during sustained provider outages, while keeping the public demo recoverable and leaving already loaded tracks intact.
