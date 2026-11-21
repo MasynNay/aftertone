@@ -9,21 +9,21 @@ export function firstListenAction({hasTrack=false,loading=false,error=''}={}) {
     disabled:false
   };
   if(loading)return {
-    action:'load-more',
+    action:null,
     label:'Finding Your First Song…',
     help:'Checking the music provider for a playable recording. No choices have been recorded.',
     disabled:true
   };
   if(error)return {
-    action:'load-more',
-    label:'Retry Finding Music',
-    help:'The music provider could not load a recording. Try again or pick a different listening path. Your choices stay safe.',
+    action:null,
+    label:'Music Is Unavailable',
+    help:'The provider could not find a song. Use Retry Discovery below or change your listening path. No choices were lost.',
     disabled:false
   };
   return {
-    action:'load-more',
-    label:'Find My First Song',
-    help:'Search for a playable recording. Nothing is added to your listening history until you choose Keep or Pass.',
+    action:null,
+    label:'Ready to Find Your First Song',
+    help:'Use Find More Songs below, or choose another listening path. Nothing is rated until you choose Keep or Pass.',
     disabled:false
   };
 }
