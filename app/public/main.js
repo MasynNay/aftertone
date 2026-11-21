@@ -2132,6 +2132,14 @@ document.addEventListener('click', async (event) => {
   if (!action) return;
   const id = action.dataset.id;
   switch (action.dataset.action) {
+    case 'first-listen-play': {
+      // A first-listen guide is only a shortcut to the same native Play action.
+      // Never fabricate a vote or bypass consent for audible media. Keep
+      // keyboard focus on the real player, including while metadata loads.
+      if(view!=='discover' || modal || challengeIds.length || state.history.length || !current)return;
+      $('#stage-play')?.focus({preventScroll:true});
+      return togglePlayback(current,false);
+    }
     case 'play-current': return togglePlayback(current);
     case 'retry-preview': return retryFailedPreview();
     case 'skip-unavailable': return skipUnavailablePreview();

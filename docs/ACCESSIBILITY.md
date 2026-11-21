@@ -187,3 +187,7 @@ Custom Pass the Aux song ordering survives a same-tab reload through a bounded, 
 ### Progressive provider cooldown and manual recovery (November 21, 2026)
 
 During a prolonged music-provider outage, automatic refills use a bounded, increasing retry delay rather than rapidly repeating the same request. The existing native **Retry Discovery** button stays enabled, and the empty-state guidance explains why background retries have slowed. Chromium and Firefox exercise simulated 429 responses, accelerated 20/40-second timer checks, automatic recovery and unchanged Keep/Pass history. Manual assistive-technology announcements and real provider behavior remain to be verified.
+
+### First-preview guided control (November 21, 2026)
+
+The existing first-listen guide now includes a native button with a 44px minimum touch target. When an actual discovery track is ready, keyboard activation calls the existing Play action and focuses the persistent player button rather than leaving focus on a disposable guide control. Loading is explained in the guide without a competing button; provider errors point to the existing enabled Retry Discovery control without duplicating either the action or the error announcement. Choices are only recorded by the separate Keep/Pass controls. Chromium and Firefox synthetic-provider browser journeys verify the narrow viewport, Enter activation, on-demand metadata, error recovery, and no false votes. This is not a replacement for manual screen-reader and device testing.

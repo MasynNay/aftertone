@@ -2913,3 +2913,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .challenge-draft-controls button:last-child { margin-left:auto; }
   .challenge-library-item { flex-wrap:wrap; }
 }
+
+/* Inline first-listen shortcut: native action, never an extra player. */
+.first-listen-actions {display:flex;align-items:center;flex-wrap:wrap;gap:10px 15px;margin-top:14px;}
+.first-listen-actions .accent-button {min-height:44px;max-width:100%;white-space:normal;text-align:center;}
+.first-listen-actions .accent-button:disabled {opacity:.58;cursor:wait;}
+.first-listen-actions .first-listen-action-help {flex:1 1 210px;min-width:0;margin:0;font-size:12px;line-height:1.6;color:var(--muted);}
+@media (max-width:480px) {
+  .first-listen-actions {align-items:stretch;flex-direction:column;gap:8px;}
+  .first-listen-actions .accent-button {width:100%;}
+}
