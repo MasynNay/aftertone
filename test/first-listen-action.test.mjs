@@ -29,25 +29,28 @@ test('ready first listen delegates to the actual audio player, never a new pseud
 });
 test('while loading, guide is honest and never issues a second competing request',()=>{
   const action=firstListenAction({loading:true});
-  assert.equal(action.action,'load-more');
+  assert.equal(action.action,null);
   assert.equal(action.disabled,true);
-  assert.match(discovery({current:null,feed:{loading:true}}),
-    /data-action="load-more" disabled>Finding Your First Song/);
+  const ui=discovery({current:null,feed:{loading:true}});
+  assert.match(ui,/Finding Your First Song/);
+  assert.equal((ui.match(/data-action="load-more"/g)||[]).length,1);
+  assert.doesNotMatch(ui,/first-listen-actions[^]*?data-action="load-more"/);
 });
 test('outages offer an immediate manual retry instead of a disabled tutorial CTA',()=>{
   const action=firstListenAction({error:'Provider unavailable'});
-  assert.equal(action.action,'load-more');
+  assert.equal(action.action,null);
   assert.equal(action.disabled,false);
   const ui=discovery({current:null,feed:{error:'Provider unavailable'}});
-  assert.match(ui,/data-action="load-more" >Retry Finding Music/);
-  assert.match(ui,/Try again or pick a different listening path/);
+  assert.match(ui,/Use Retry Discovery below/);
+  assert.equal((ui.match(/data-action="load-more"/g)||[]).length,1);
+  assert.match(ui,/Retry Discovery/);
   assert.match(ui,/Music Is Temporarily Unavailable/);
 });
 test('an empty but healthy queue offers Find My First Song without creating decisions',()=>{
   const action=firstListenAction();
-  assert.equal(action.action,'load-more');
+  assert.equal(action.action,null);
   assert.equal(action.disabled,false);
-  assert.match(discovery({current:null,feed:{hasMore:true}}),/Find My First Song/);
+  assert.match(discovery({current:null,feed:{hasMore:true}}),/Ready to Find Your First Song/);
 });
 test('no onboarding takeover after one decision or in shared blind challenges',()=>{
   assert.doesNotMatch(discovery({history:[{id:track.id,action:'pass',artist:track.artist}]}),
