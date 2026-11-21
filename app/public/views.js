@@ -1,6 +1,7 @@
 import { computeTaste } from '../src/taste.mjs';
 import {eligibleChallengeTracks,matchingChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
+import { firstListenAction } from '../src/discovery/first-listen.mjs';
 import { PATH_DESCRIPTIONS } from '../src/discovery/mode-engine.mjs';
 import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
 
@@ -107,6 +108,7 @@ function renderDiscovery() {
   const passport = getPassportProgress(state.history, quizStats);
   const top = taste.genres.filter(([, score]) => score > 0).slice(0, 3);
   const isBlind = Boolean(state.blind || challengeIds.length > 0);
+  const firstAction=firstListenAction({hasTrack:Boolean(current),loading:Boolean(feed.loading),error:feed.error});
   const countCopy = feed.total && state.source === 'jellyfin' ? `${Number(feed.total).toLocaleString()} tracks in your library` : `${catalog.length.toLocaleString()} loaded this session`;
   return `<section><div class="eyebrow">THE LISTENING ROOM ${challengeIds.length ? ' / SHARED CHALLENGE' : '/ DISCOVER'}</div>
     <div class="heading-row streamlined-head"><div><h1>${challengeIds.length ? 'Your Shared Challenge.' : isBlind ? 'Blind Discovery.' : 'Find Your Next Favorite.'}</h1><p class="lead">${challengeIds.length ? 'Hear the shared recordings in order. No spoilers, no account required.' : 'Listen. Swipe. Save. Explore deeper in Tune Lab when you want.'}</p>${challengeIds.length ? '' : '<div class="discovery-invitation"><span>♡ The more different artists you <strong>Keep</strong>, the better AFTERTONE can find your sound.</span><button type="button" data-action="focus-music-search">Search for an Artist ↗</button></div>'}</div></div>
@@ -114,6 +116,7 @@ function renderDiscovery() {
       <div class="first-listen-intro"><span class="eyebrow">YOUR FIRST LISTEN</span><strong>Three steps to find your sound.</strong></div>
       <ol><li><b>Choose a Path</b><span>Comfort Zone, New Territory, or Wild Card.</span></li><li><b>Press Play</b><span>Start a short music preview.</span></li><li><b>Keep or Pass</b><span>Guide the next discoveries. You can undo a choice.</span></li></ol>
       <p>Continuous listening begins after your first Play. You control the volume and can stop at any time.</p>
+      <div class="first-listen-actions"><button type="button" class="accent-button" data-action="${firstAction.action}" ${firstAction.disabled?'disabled':''}>${html(firstAction.label)} →</button><p class="first-listen-action-help">${html(firstAction.help)}</p></div>
     </section>` : ''}
     ${seedInfo.active ? `<div class="discovery-mode-note">♫ ${seedInfo.kind==='artists'?'Your '+seedInfo.artists+' starting artists':'Your '+seedInfo.count+' imported songs'} · ${seedInfo.related ? seedInfo.related+' related artists found' : seedInfo.lookupStatus==='searching' ? 'Finding related artists…' : 'Mixing in chart discoveries'} <button data-action="fresh-discovery" class="secondary-button">Back to fresh</button></div>` : ''}
     ${(feed.error && current) ? `<div class="discovery-mode-note" role="status">${html(feed.error)} <button type="button" class="secondary-button" data-action="load-more" ${feed.loading ? 'disabled' : ''}>${feed.loading ? 'Retrying…' : 'Retry Discovery'}</button></div>` : ''}
