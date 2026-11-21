@@ -38,7 +38,7 @@ test('invalid/legacy failure counts never produce NaN, negative or unbounded del
 test('browser controller keeps retries scoped per feed and resets on successful page or manual retry',()=>{
   const src=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(src,/emptyRefills:0, retryAt:0, retryFailures:0/);
-  assert.match(src,/if\(!showStatus && Date\.now\(\)<feed\.retryAt\) return/);
+  assert.match(src,/if \(!showStatus && Date\.now\(\)<feed\.retryAt\) return/);
   assert.match(src,/if\(showStatus\) \{feed\.emptyRefills=0;feed\.retryFailures=0;\}/);
   assert.match(src,/nextDiscoveryRetry\(feed\.retryFailures,Date\.now\(\)\)/);
   assert.match(src,/feed\.retryFailures=retry\.failures/);
