@@ -183,3 +183,7 @@ The Pass the Aux editor uses an ordered list for the selected songs, labelled na
 ### Same-tab challenge draft recovery (November 21, 2026)
 
 Custom Pass the Aux song ordering survives a same-tab reload through a bounded, validated session-storage draft. Reset restores the default five; an intentionally empty draft stays empty. The editor displays a concise polite status explaining whether the customized selection is actually saved or storage is blocked. Node tests cover malformed and private input, and fictional-provider Chromium/Firefox runs exercise reload/reset and storage-denial behavior. Native screen-reader and physical touch testing are still required.
+
+### Progressive provider cooldown and manual recovery (November 21, 2026)
+
+During a prolonged music-provider outage, automatic refills use a bounded, increasing retry delay rather than rapidly repeating the same request. The existing native **Retry Discovery** button stays enabled, and the empty-state guidance explains why background retries have slowed. Chromium and Firefox exercise simulated 429 responses, accelerated 20/40-second timer checks, automatic recovery and unchanged Keep/Pass history. Manual assistive-technology announcements and real provider behavior remain to be verified.
