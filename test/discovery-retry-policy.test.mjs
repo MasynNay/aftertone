@@ -44,7 +44,7 @@ test('browser controller keeps retries scoped per feed and resets on successful 
   assert.match(src,/feed\.retryFailures=retry\.failures/);
   assert.match(src,/feed\.retryAt=retry\.retryAt/);
   assert.match(src,/if \(successes\) \{[\s\S]{0,300}feed\.retryFailures=0;[\s\S]{0,90}feed\.retryAt=0/);
-  assert.match(src,/if\(!getFeed\(\)\.hasMore\) \{ getFeed\(\)\.exhausted\.clear\(\); getFeed\(\)\.hasMore = true; \}/);
+  assert.match(src,/if \(!getFeed\(\)\.hasMore\) \{ getFeed\(\)\.exhausted\.clear\(\); getFeed\(\)\.hasMore = true; \}/);
   assert.doesNotMatch(src,/feed\.retryAt=Date\.now\(\)\+20000/);
 });
 test('error state explains slower automatic retries while keeping explicit Retry button active',()=>{
