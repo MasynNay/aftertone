@@ -1,3 +1,7 @@
+## Recovering from a terminal preview error via main Play (v0.12 development)
+
+A 390px Chromium/Firefox regression plays synthetic, locally generated silent WAV bytes in the real audio element, triggers one recoverable media error followed by a terminal error, and then presses the main Play button with Enter. It checks that the explicit replay resolves *new* Deezer metadata instead of reusing the failed cached source, keeps the same song and keyboard focus, clears the failure UI, and creates no Keep/Pass or favorite changes. The test mocks provider metadata and does not validate live Deezer availability or music rights.
+
 ## Pass the Aux editor focus continuity (v0.12 development)
 
 Chromium and Firefox now rerender the real 320px Pass the Aux screen while Add, Move Earlier, Share or Use Latest Five owns focus. The tests verify that the equivalent button remains focused after a content update, and that a filtered-out Add control returns focus to the labeled search field, with no unintended favorites/history writes. The test simulates an unrelated redraw using the existing search event handler; it does not substitute for a manual assistive-technology review.
