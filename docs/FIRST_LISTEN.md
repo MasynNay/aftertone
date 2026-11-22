@@ -69,3 +69,7 @@ On a fresh listening profile, the inline **Your First Listen** guide offers **Pl
 ### Browse more saved songs for Pass the Aux
 
 When creating a five-song shared challenge, the **Find a saved song** section shows up to 40 *unselected* eligible Deezer favorites at a time. Use **Next** and **Previous** to browse older songs without remembering their titles, or type a title or artist to filter results; typing restarts the list at page one. The displayed range reports how many saved songs remain available to add. Removing a chosen song makes it available to select again. A challenge still contains at most five track IDs, and the link does not include your saved collection, artwork or private listening history.
+
+### Blind Mode in regular listening and shared challenges
+
+During normal discovery, choose **Blind** or press **B** outside another control to hide or reveal song details. The Blind button stays keyboard-focused when you switch it, so you can press Enter again. A **Pass the Aux** shared challenge always hides song identities until you make your choices: its Blind indicator reads **Locked**, and pressing B cannot change your personal Blind setting. Leave the challenge to return to regular discovery with your previous preference intact.
