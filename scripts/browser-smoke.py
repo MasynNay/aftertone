@@ -4084,7 +4084,7 @@ def check_large_saved_challenge_paging(browser, base):
             page.wait_for_function("""n=>document.querySelector(
               '.challenge-library-pages span')?.textContent==='Page '+n+' of 3'""",
               arg=target,timeout=TIMEOUT)
-            require(page.evaluate("document.activeElement?.id")==="challenge-match-count",
+            require(page.evaluate("document.activeElement?.id")=="challenge-match-count",
                     "Keyboard paging did not focus the updated results announcement")
             require(page.locator(".challenge-library-item").count()<=40,
                     "Paging rendered more than forty saved-song results")
