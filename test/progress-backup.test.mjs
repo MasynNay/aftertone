@@ -1,5 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createInitialState} from '../app/src/taste.mjs';
 import {STORAGE_KEY,loadState,saveState} from '../app/src/persistence.mjs';
 import {createTournament,DUEL_STORAGE_KEY,loadDuelStore,saveDuelStore} from '../app/src/duels.mjs';
@@ -248,4 +249,91 @@ test('fresh sessions and legacy v1 sessions without savedTracks remain exportabl
   assert.equal(exported.tournaments.length,1);
   assert.deepEqual(legacy.entries(),previous,
     'Export must not rewrite or migrate live saved records in place');
+});
+
+
+test('authentic older v1 backup without savedTracks restores favorite IDs without invented track details',()=>{
+  const source=populated();
+  const original=JSON.parse(createProgressBackup(source));
+  const legacy={
+    ...original,version:1,
+    session:{...original.session},
+  };
+  delete legacy.session.savedTracks; // Genuine early app records lacked this key.
+  delete legacy.playlist;
+  delete legacy.lyricOffsets;
+  const payload=JSON.stringify(legacy);
+  const inspected=inspectProgressBackup(payload);
+  assert.equal(inspected.summary.version,1);
+  assert.equal(inspected.summary.missingFavoriteMetadata,1);
+  assert.equal(inspected.summary.favorites,1);
+  assert.equal(inspected.summary.decisions,1);
+  assert.equal(inspected.writes.length,4);
+  const target=populated();
+  target.setItem('aftertone:optional-playlist:v1',
+    JSON.stringify({tracks:[{artist:'Unrelated Existing',title:'Do Not Lose Me'}]}));
+  target.setItem('aftertone:lyric-offsets:v1',JSON.stringify({'deezer:888':33}));
+  const optionalBefore=[
+    target.getItem('aftertone:optional-playlist:v1'),
+    target.getItem('aftertone:lyric-offsets:v1'),
+  ];
+  const summary=restoreProgressBackup(target,payload);
+  assert.equal(summary.missingFavoriteMetadata,1);
+  assert.deepEqual(loadState(target).favorites,original.session.favorites);
+  assert.deepEqual(loadState(target).history,original.session.history);
+  assert.deepEqual(loadState(target).savedTracks,[],
+    'Never invent song names or artwork for legacy favorite IDs');
+  assert.deepEqual([
+    target.getItem('aftertone:optional-playlist:v1'),
+    target.getItem('aftertone:lyric-offsets:v1'),
+  ],optionalBefore,'Old backups must preserve optional data absent from their schema');
+});
+
+test('v2 must still reject missing savedTracks and v1 must reject explicit bad savedTracks',()=>{
+  const source=populated();
+  const candidate=JSON.parse(createProgressBackup(source));
+  const target=populated();
+  const prior=target.entries();
+  const invalid=[
+    {...candidate,session:{...candidate.session,savedTracks:undefined}},
+    {...candidate,session:{...candidate.session,savedTracks:null}},
+    {...candidate,session:{...candidate.session,savedTracks:'not a collection'}},
+    {...candidate,version:1,session:{...candidate.session,savedTracks:null}},
+    {...candidate,version:1,session:{...candidate.session,savedTracks:{}}},
+  ];
+  for(const data of invalid){
+    assert.throws(()=>restoreProgressBackup(target,JSON.stringify(data)),
+      /unsupported or malformed listening session/);
+    assert.deepEqual(target.entries(),prior,
+      'Invalid current/legacy backups must not change local progress');
+  }
+});
+
+test('v2 export from a genuine older local session warns when favorites lack metadata',()=>{
+  const local=populated();
+  const old=JSON.parse(local.getItem(STORAGE_KEY));
+  delete old.savedTracks; // Legitimate old state is exportable to v2.
+  local.setItem(STORAGE_KEY,JSON.stringify(old));
+  const before=local.entries();
+  const exported=createProgressBackup(local);
+  const input=JSON.parse(exported);
+  assert.equal(input.version,2);
+  assert.deepEqual(input.session.favorites,[songs[0].id]);
+  assert.deepEqual(input.session.savedTracks,[]);
+  const preview=inspectProgressBackup(exported).summary;
+  assert.equal(preview.missingFavoriteMetadata,1);
+  assert.equal(preview.favorites,1);
+  assert.deepEqual(local.entries(),before,
+    'Checking metadata must never mutate the original browser');
+});
+
+test('normal backed-up favorites with metadata never trigger a missing-song warning',()=>{
+  const backup=createProgressBackup(populated());
+  const info=inspectProgressBackup(backup).summary;
+  assert.equal(info.missingFavoriteMetadata,undefined);
+  const code=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  assert.match(code,/const missing=preview\.missingFavoriteMetadata \|\| 0/);
+  assert.match(code,/no song title or artist metadata in this file/);
+  assert.match(code,/favorite IDs and listening decisions can be restored/);
+  assert.match(code,/const \{summary\}=inspectProgressBackup\(payload\)/);
 });
