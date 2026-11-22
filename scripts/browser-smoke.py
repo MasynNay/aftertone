@@ -2918,6 +2918,114 @@ def check_play_cancels_pending_preview(browser, base):
         context.close()
 
 
+def check_autoplay_permission_block_keeps_song(browser, base):
+    """Mobile autoplay refusal must pause on the unheard song without a vote."""
+    import io
+    import wave
+    sample=io.BytesIO()
+    with wave.open(sample,"wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(1)
+        writer.setframerate(8000)
+        writer.writeframes(bytes([128])*8000*30)
+    silence=sample.getvalue()
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    context.route("https://cdn-preview.dzcdn.net/**",lambda route:
+        route.fulfill(status=200,content_type="audio/wav",body=silence,
+                      headers={"access-control-allow-origin":"*"}))
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"autoplay-policy-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        before=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        page.locator("#stage-play").click()
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+          ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        first_song=page.locator("#listening-card").get_attribute("aria-label")
+        # The first clip finishes normally. Reject ONLY the following
+        # automatic play() call with the browser's real NotAllowedError name.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          const native=player.play.bind(player);
+          window.__autoPolicyCalls=0;
+          window.__blockAutomaticOnce=true;
+          player.play=function() {
+            if(window.__blockAutomaticOnce) {
+              window.__blockAutomaticOnce=false;
+              window.__autoPolicyCalls++;
+              return Promise.reject(new DOMException(
+                'Playback requires user activation','NotAllowedError'));
+            }
+            return native();
+          };
+          player.currentTime=22;
+          player.dispatchEvent(new Event('timeupdate'));
+        }""")
+        page.wait_for_function("""() =>
+          window.__autoPolicyCalls===1 &&
+          document.querySelector('#audio-status')?.textContent
+            ?.includes('Autoplay blocked')""",timeout=TIMEOUT)
+        blocked_song=page.locator("#listening-card").get_attribute("aria-label")
+        require(blocked_song!=first_song,
+                "Natural preview advancement did not reach the next song")
+        require(page.locator("#stage-play").get_attribute("aria-label")==
+                "Play preview","Blocked autoplay did not restore manual Play")
+        require("Press Play" in page.locator("#continuity-hint").inner_text(),
+                "Autoplay denial has no persistent manual-play instruction")
+        require(page.locator("#stop-session").is_hidden(),
+                "Autoplay denial did not stop continuous listening")
+        require(page.locator("#preview-recovery").is_hidden(),
+                "Autoplay policy was incorrectly reported as a broken preview")
+        require(page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          return player.paused && !player.getAttribute('src');
+        }"""),"Automatic-play denial left media active in the background")
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Denied automatic playback skipped over the unheard recording")
+        mid=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        require(mid==before,"Autoplay policy denial created a Keep/Pass vote")
+        # The user must still be able to start this SAME song manually.
+        play=page.locator("#stage-play")
+        play.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+          ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Manual recovery changed the song before it was heard")
+        require("Autoplay blocked" not in page.locator("#audio-status").inner_text(),
+                "Manual Play left the stale permission warning on screen")
+        require(page.evaluate("document.activeElement?.id==='stage-play'"),
+                "Keyboard manual recovery did not retain Play focus")
+        after=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {history:s.history||[],favorites:s.favorites||[]};
+        }""")
+        require(after==before,"Resuming after blocked autoplay created a fake decision")
+        require(not errors,"Autoplay denial browser exceptions: "+"; ".join(errors))
+        print(f"PASS {label}: blocked autoplay holds current song, no vote, manual Play resumes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_main_play_retries_terminal_media_error(browser, base):
     """The primary Play button must not reuse a failed cached preview URL."""
     import io
@@ -4540,6 +4648,7 @@ def firefox_main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_autoplay_permission_block_keeps_song(browser, base)
             check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
@@ -4599,6 +4708,7 @@ def main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_autoplay_permission_block_keeps_song(browser, base)
             check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
