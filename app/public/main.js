@@ -962,7 +962,12 @@ function updatePlaybackView() {
 audio.addEventListener('timeupdate', () => {
   if (lyricsEnabled) updateLyricView();
   if (audio.currentTime >= previewLength) {
-    if (continuousListening && view === 'discover' && current?.id === activeAudioId && !modal) { advancePreview(); return; }
+    // During a Firefox source handoff, a stale timeupdate can still carry
+    // the OLD clip's 22-second position. Never advance the NEW song until
+    // its own play() has completed and it is actively playing.
+    if (isLoadingAudio) return;
+    if (continuousListening && !audio.paused && view === 'discover' &&
+        current?.id === activeAudioId && !modal) { advancePreview(); return; }
     audio.pause();
     try { audio.currentTime = previewLength; } catch { /* media unloaded */ }
   }
