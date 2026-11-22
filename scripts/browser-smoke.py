@@ -4132,6 +4132,104 @@ def check_large_saved_challenge_paging(browser, base):
     finally:
         context.close()
 
+
+
+def check_blind_mode_focus_and_shared_lock(browser, base):
+    """Ordinary blind toggling keeps keyboard focus; shared challenges lock it."""
+    context=browser.new_context(viewport={"width":320,"height":740},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"blind-focus-lock-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        original=page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return {history:s.history,favorites:s.favorites,blind:s.blind};
+        }""")
+        require(original["blind"] is False,"Fresh visitor unexpectedly starts blind")
+        def press_toggle(expected):
+            toggle=page.locator('#listening-card [data-action="toggle-blind"]')
+            toggle.focus()
+            page.keyboard.press("Enter")
+            page.wait_for_function("""expected =>
+              document.querySelector('#listening-card [data-action="toggle-blind"]')
+                ?.getAttribute('aria-pressed')===String(expected).toLowerCase()""",
+              arg=expected,timeout=TIMEOUT)
+            require(page.evaluate("""() => document.activeElement?.matches(
+              '#listening-card [data-action="toggle-blind"]')"""),
+              "Blind toggle rerender stranded keyboard focus")
+            require(page.evaluate("""() => JSON.parse(
+              localStorage.getItem('aftertone:session:v1')).blind""")==expected,
+              "Blind toggle changed UI but not the saved listening preference")
+        press_toggle(True)
+        press_toggle(False)
+        # B remains an intentional shortcut while not focused inside a button.
+        page.locator("#main-content").focus()
+        page.keyboard.press("b")
+        require(page.evaluate("""() => JSON.parse(
+          localStorage.getItem('aftertone:session:v1')).blind""") is True,
+          "Ordinary B shortcut stopped working")
+
+        # An ID-only link must stay blind regardless of the personal setting.
+        page.goto(base+"/demo/?challenge=v1.deezer:9100001",
+                  wait_until="load",timeout=TIMEOUT)
+        card=page.locator("#listening-card")
+        card.wait_for(state="visible",timeout=TIMEOUT)
+        require("BLIND CHALLENGE" in card.inner_text(),
+                "Shared challenge did not force blind listening")
+        require(card.locator('[data-action="toggle-blind"]').count()==0,
+                "Shared challenge exposes a misleading editable blind preference")
+        lock=card.locator(".decision-blind.is-locked")
+        require(lock.is_visible() and lock.get_attribute("role")=="note",
+                "Blind lock is not a discoverable noninteractive status")
+        require("Blind mode is locked" in lock.get_attribute("aria-label"),
+                "Shared lock is not explained to assistive technology")
+        require(lock.bounding_box()["height"]>=43.5,
+                "Locked state broke the primary phone-width decision layout")
+        snapshot=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {blind:s.blind,history:s.history,favorites:s.favorites};
+        }""")
+        page.locator("#main-content").focus()
+        page.keyboard.press("b")
+        after=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {blind:s.blind,history:s.history,favorites:s.favorites};
+        }""")
+        require(after==snapshot and after["blind"] is True,
+                "B in a shared challenge silently edited the listener's stored preference")
+        require(card.locator(".decision-blind.is-locked").is_visible(),
+                "Blind challenge lock disappeared after keyboard B")
+        card.locator('[data-action="exit-challenge"]').click()
+        toggle=page.locator('#listening-card [data-action="toggle-blind"]')
+        toggle.wait_for(state="visible",timeout=TIMEOUT)
+        require(toggle.get_attribute("aria-pressed")=="true",
+                "Leaving a shared challenge lost the listener's original blind preference")
+        final=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {blind:s.blind,history:s.history,favorites:s.favorites};
+        }""")
+        require(final["history"]==original["history"] and
+                final["favorites"]==original["favorites"],
+                "Blind toggle or challenge lock unexpectedly counted a listening vote")
+        require(not errors,"Blind mode browser exceptions: "+"; ".join(errors))
+        print(f"PASS {label}: focus-safe ordinary toggle, locked shared blindness, unchanged choices")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -4169,6 +4267,7 @@ def firefox_main():
             check_listening_control_focus_on_rerender(browser, base)
             check_discovery_path_keyboard_continuity(browser, base)
             check_safe_music_shortcuts(browser, base)
+            check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
             check_collection_csv_formula_safety(browser, base)
@@ -4224,6 +4323,7 @@ def main():
             check_listening_control_focus_on_rerender(browser, base)
             check_discovery_path_keyboard_continuity(browser, base)
             check_safe_music_shortcuts(browser, base)
+            check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
             check_collection_csv_formula_safety(browser, base)

@@ -1,3 +1,10 @@
+## v0.12 development — Predictable Blind Mode controls (November 22, 2026)
+
+- **Blind Mode** toggling during ordinary discovery now preserves keyboard focus on the rebuilt Blind button. Enter can turn it on or off repeatedly without stranding focus on a removed listening card.
+- **Shared blind challenges** always hide song identities. The old switch looked editable despite having no way to reveal a challenge song, and pressing it (or the B shortcut) silently changed the visitor's personal blind preference. The challenge now shows a noninteractive **Locked** status with an accessible explanation and ignores B until the visitor exits.
+- Returning to regular discovery restores the listener's original blind preference, not a side effect of the challenge. No Keep/Pass votes, favorites, preview playback, or track IDs are changed by this fix.
+- Added Node view/controller assertions and Chromium/Firefox browser journeys at 320px testing two successive Enter toggles, focused controls, saved preferences, challenge lock, ignored B, and exit behavior. Manual assistive-technology and physical-device checks remain open.
+
 ## v0.12 development — Browse the entire saved-song challenge library (November 21, 2026)
 
 - The five-song **Pass the Aux** challenge editor now pages through **every eligible unselected saved Deezer recording**, 40 results at a time. Previously only the first 40 matches were shown; songs farther down required a specific search and could not be browsed.
