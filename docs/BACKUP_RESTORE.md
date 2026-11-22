@@ -27,7 +27,9 @@ The backup includes saved favorites and track metadata, Keep/Pass listening hist
 ## Privacy and compatibility
 
 - JSON backup files are **not encrypted**. They can reveal your listening preferences and saved artists. Don't post them publicly.
+- A backup exported from an older local session may contain favorite IDs but no matching saved titles/artists. **Backup Progress** warns about this after download; **Restore Backup** warns before asking permission to replace your current data. You should keep any older complete backup files instead of assuming missing track details can be recovered.
 - New files use `aftertone-progress` format **version 2**; existing **version 1** backups also import. Both must be smaller than 4 MB.
+- Early version 1 backups **without a `savedTracks` field** can still restore their saved favorite IDs, listening decisions, duels, Tune Lab scores, and artist choices. These backups contain no title/artist metadata for some favorite IDs, so those favorites may not display in Collection until their track details are found again. AFTERTONE does **not** invent metadata or audio. The restore confirmation explains this limitation. An explicitly invalid `savedTracks` value is rejected, and version 2 backups still require that field.
 - Importing a version 1 backup restores its original saved session, duels, score, and artist settings **without deleting any separately saved imported playlist or lyric offsets already in the destination browser**. Version 2 backups explicitly replace those optional settings (including clearing a playlist not present in the backup).
 - The old **Export Library** and CSV options are track-list exports, not full restorable progress backups; keep them for spreadsheets or playlists.
 - The feature works locally through the browser without a login or cloud account.
