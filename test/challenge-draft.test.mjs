@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {createViews} from '../app/public/views.js';
 import {createInitialState} from '../app/src/taste.mjs';
 import {encodeChallenge,decodeChallenge} from '../app/src/challenge.mjs';
 import {
   eligibleChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,
-  toggleChallengeDraft,moveChallengeDraft,matchingChallengeTracks,
+  toggleChallengeDraft,moveChallengeDraft,matchingChallengeTracks,challengeLibraryPage,
   MAX_CHALLENGE_TRACKS,CHALLENGE_SEARCH_PAGE_SIZE
 } from '../app/src/challenge-draft.mjs';
 
@@ -15,10 +16,10 @@ tracks.push(track('jellyfin:secret','Private Audio','jellyfin'));
 const favorites=tracks.map(t=>t.id);
 const eligible=eligibleChallengeTracks(favorites,tracks);
 
-function render(state,selection=undefined,query=''){
+function render(state,selection=undefined,query='',page=1){
   const args={state,catalog:tracks,current:null,allGenres:['all'],
     challengeIds:[],challengeResponses:[],catalogWarning:'',catalogLive:true,
-    collectionQuery:'',collectionSort:'recent',challengeFilterQuery:query};
+    collectionQuery:'',collectionSort:'recent',challengeFilterQuery:query,challengePage:page};
   if(selection!==undefined)args.challengeDraft=selection;
   return createViews(args).renderChallenges();
 }
@@ -105,4 +106,83 @@ test('untrusted song titles are escaped before entering attributes and card HTML
   assert.doesNotMatch(html,/<script>/);
   assert.match(html,/&lt;script&gt;/);
   assert.match(html,/data-action="remove-challenge-track"/);
+});
+
+test('unselected saved tracks can be reached across every fixed-size result page',()=>{
+  const large=Array.from({length:95},(_,i)=>track('deezer:'+(9300000+i),'Long Song '+i));
+  const saved=large.map(t=>t.id);
+  const all=eligibleChallengeTracks(saved,large);
+  const chosen=defaultChallengeDraft(all);
+  const a=challengeLibraryPage(all,chosen);
+  assert.equal(a.total,90);
+  assert.equal(a.pageCount,3);
+  assert.equal(a.page,1);
+  assert.equal(a.start,1);
+  assert.equal(a.end,40);
+  assert.equal(a.tracks.length,40);
+  assert.ok(a.tracks.every(track=>!chosen.includes(track.id)));
+  const b=challengeLibraryPage(all,chosen,'',2);
+  assert.deepEqual([b.page,b.start,b.end,b.tracks.length],[2,41,80,40]);
+  const c=challengeLibraryPage(all,chosen,'',3);
+  assert.deepEqual([c.page,c.start,c.end,c.tracks.length],[3,81,90,10]);
+  assert.equal(c.tracks.at(-1).id,all.at(-1).id);
+  assert.equal(new Set([...a.tracks,...b.tracks,...c.tracks].map(t=>t.id)).size,90,
+    'Every unselected song should be reachable exactly once');
+});
+
+test('search applies before slicing, resets to first page and excludes selected favorites',()=>{
+  const many=Array.from({length:125},(_,i)=>track('deezer:'+(9400000+i),'Shared Artist Song '+i));
+  const chosen=many.slice(0,5).map(t=>t.id);
+  const searchable=challengeLibraryPage(many,chosen,'shared artist',1);
+  assert.equal(searchable.total,120);
+  assert.equal(searchable.tracks.length,40);
+  assert.deepEqual(searchable.tracks[0],many[5]);
+  assert.equal(challengeLibraryPage(many,chosen,'song 124',1).tracks[0].id,many[124].id);
+  assert.equal(challengeLibraryPage(many,chosen,'song 0',1).total,0);
+  const last=challengeLibraryPage(many,chosen,'',999999);
+  assert.equal(last.page,3);
+  assert.equal(last.tracks.length,40);
+  const invalid=challengeLibraryPage(many,chosen,'',Infinity);
+  assert.equal(invalid.page,1);
+  assert.equal(challengeLibraryPage(many,chosen,'',0).page,1);
+  const full=challengeLibraryPage(many,many.map(t=>t.id));
+  assert.deepEqual(full.tracks,[]);
+  assert.equal(full.total,0);
+  assert.equal(full.pageCount,1);
+});
+
+test('challenge page controls expose honest range, accessible navigation and bounded rows',()=>{
+  const large=Array.from({length:94},(_,i)=>track('deezer:'+(9500000+i),'Archive '+i));
+  const state={...createInitialState(),favorites:large.map(t=>t.id)};
+  const selected=large.slice(-5).map(t=>t.id);
+  const args={state,catalog:large,current:null,allGenres:['all'],
+    challengeIds:[],challengeResponses:[],challengeDraft:selected,
+    catalogWarning:'',catalogLive:true,collectionQuery:'',collectionSort:'recent'};
+  const show=(page)=>createViews({...args,challengePage:page}).renderChallenges();
+  const first=show(1);
+  assert.match(first,/89 unselected songs found · Showing 1–40 of 89/);
+  assert.match(first,/Page 1 of 3/);
+  assert.match(first,/data-action="challenge-previous-page"[^>]+disabled/);
+  assert.match(first,/data-action="challenge-next-page"/);
+  assert.match(first,/aria-label="Saved song search pages"/);
+  assert.match(first,/id="challenge-match-count"[^>]+role="status"[^>]+aria-live="polite"/);
+  assert.equal((first.match(/class="challenge-library-item"/g)||[]).length,40);
+  const last=show(3);
+  assert.match(last,/89 unselected songs found · Showing 81–89 of 89/);
+  assert.match(last,/Page 3 of 3/);
+  assert.match(last,/data-action="challenge-next-page"[^>]+disabled/);
+  assert.equal((last.match(/class="challenge-library-item"/g)||[]).length,9);
+  assert.doesNotMatch(last,/No unselected saved recordings match/);
+});
+
+test('controller resets paging on typing and announces pages without changing challenge drafts',()=>{
+  const src=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  assert.match(src,/let challengePage = 1/);
+  assert.match(src,/challengePage=1; \/\/ Search changes/);
+  assert.match(src,/case 'challenge-next-page':/);
+  assert.match(src,/case 'challenge-previous-page':/);
+  assert.match(src,/challengePage=next;\s+render\(\)/);
+  assert.match(src,/querySelector\('#challenge-match-count'\)\?\.focus\(\)/);
+  const part=src.slice(src.indexOf("case 'challenge-next-page':"),src.indexOf("case 'add-challenge-track':"));
+  assert.doesNotMatch(part,/recordDecision\(|storeChallengeDraft\(|persist\(|sessionStorage/);
 });
