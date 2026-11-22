@@ -2927,7 +2927,7 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         writer.setnchannels(1)
         writer.setsampwidth(1)
         writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*30)
+        writer.writeframes(bytes([128])*8000*4)
     silence=sample.getvalue()
     origin=urlsplit(base).netloc
     context=browser.new_context(viewport={"width":390,"height":844},
@@ -2957,8 +2957,10 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         first_song=page.locator("#listening-card").get_attribute("aria-label")
         require(page.locator("#stop-session").is_visible(),
                 "Manual Play did not start continuous listening")
-        # Reach the 22-second boundary without waiting for real elapsed time.
-        # Reject ONLY the following automatic play() with NotAllowedError.
+        # Use a real four-second recording to exercise the genuine ended
+        # event, not a synthetic 22-second seek that can leave Firefox media
+        # events pending against a different song. Reject ONLY the following
+        # automatic play() with NotAllowedError.
         page.evaluate("""() => {
           const player=document.querySelector('#player');
           const native=player.play.bind(player);
@@ -2973,18 +2975,8 @@ def check_autoplay_permission_block_keeps_song(browser, base):
             }
             return native();
           };
-          // Simulate a single 22-second timeupdate synchronously. A real media
-          // seek would asynchronously deliver extra seeked/timeupdate events,
-          // making a test of the NEXT song race its own input fixture.
-          const descriptor=Object.getOwnPropertyDescriptor(
-            HTMLMediaElement.prototype,'currentTime');
-          Object.defineProperty(player,'currentTime',{
-            configurable:true,
-            get:()=>22,
-            set:value=>descriptor.set.call(player,value)
-          });
-          try {player.dispatchEvent(new Event('timeupdate'));}
-          finally {delete player.currentTime;}
+          // The real WAV ends shortly; the app's native ended listener
+          // advances to the next song and calls this one-shot permission mock.
         }""")
         page.wait_for_function("""() =>
           window.__autoPolicyCalls===1 &&
@@ -3018,6 +3010,8 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         page.keyboard.press("Enter")
         page.wait_for_function("""() => document.querySelector('#stage-play')
           ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        require(page.locator("#stop-session").is_hidden(),
+                "A denied automatic session must not restart on manual replay")
         require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
                 "Manual recovery changed the song before it was heard")
         # An old source's delayed ended event must not advance the new
