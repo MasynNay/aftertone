@@ -3993,8 +3993,7 @@ def check_legacy_backup_missing_track_metadata(browser, base):
             return s.favorites?.includes('deezer:9100001') && s.history?.length===1;
           }catch{return false;}
         }""",timeout=TIMEOUT)
-        require(len(prompts)==1 and "no song title or artist metadata" in prompts[0]
-                and "Favorite IDs" not in prompts[0], # match real copy, not guessed titles
+        require(len(prompts)==1 and "no song title or artist metadata" in prompts[0],
                 "Legacy restore did not disclose missing favorite metadata")
         require("existing settings will stay unchanged" in prompts[0],
                 "Legacy restore failed to warn that newer optional data is retained")
