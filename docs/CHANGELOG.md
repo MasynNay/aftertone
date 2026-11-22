@@ -1,3 +1,9 @@
+## v0.12 development — Autoplay permission denial does not skip songs (November 22, 2026)
+
+- A browser `NotAllowedError` during **automatic** continuous listening now stops the automatic session without blacklisting or silently skipping the next unheard track. The current song stays on screen and the player gives a persistent **Press Play** instruction to resume by user gesture.
+- The permission refusal is not mislabeled as a broken Deezer stream, does not mark a Keep/Pass or change favorites, and cannot accidentally trigger the previous three-track automatic error-skip chain. Explicit manual Play clears the guidance. For Audius, a gesture-denied play no longer wastes a fallback stream request that cannot bypass browser permission.
+- 390px Chromium and Firefox end-to-end tests simulate real audio plus a `NotAllowedError` on the *next* automatic play; they verify no votes, a stopped session, the same next track available and successful keyboard-started replay. These synthetic fixtures do not establish live provider availability or rights.
+
 ## v0.12 development — Main Play retries a failed preview (November 22, 2026)
 
 - Once a preview reaches a terminal media error, clicking the **main Play** control explicitly discards that track's cached preview URL and requests fresh metadata. Listeners no longer need to discover the separate Retry Preview button to recover from a stale link.
