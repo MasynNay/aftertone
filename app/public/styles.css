@@ -2486,6 +2486,13 @@ h1 em {
 .decision-row-in-card .decision-blind b {font-size:19px;line-height:1;}
 .decision-row-in-card .decision-blind small {font-size:9px;font-weight:800;line-height:1;}
 .decision-row-in-card .decision-blind.is-on {background:var(--accent);border-color:var(--accent);color:var(--accentInk);}
+/* Shared links require blindness; present status, not a control that silently
+   changes the visitor's saved preference without revealing the recording. */
+.decision-row-in-card .decision-blind.is-locked {
+  cursor:default;user-select:none;transform:none;
+}
+.decision-row-in-card .decision-blind.is-locked:active {transform:none;}
+
 .decision-row-in-card .decision-blind:focus-visible {outline:3px solid white;outline-offset:3px;}
 
 /* The Passport gives listening a set of optional goals. Values are derived
