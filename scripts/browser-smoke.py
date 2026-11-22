@@ -2955,6 +2955,8 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         page.wait_for_function("""() => document.querySelector('#stage-play')
           ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
         first_song=page.locator("#listening-card").get_attribute("aria-label")
+        require(page.locator("#stop-session").is_visible(),
+                "Manual Play did not start continuous listening")
         # The first clip finishes normally. Reject ONLY the following
         # automatic play() call with the browser's real NotAllowedError name.
         page.evaluate("""() => {
@@ -2971,8 +2973,9 @@ def check_autoplay_permission_block_keeps_song(browser, base):
             }
             return native();
           };
-          player.currentTime=22;
-          player.dispatchEvent(new Event('timeupdate'));
+          // An ended event follows the same neutral advance path as the
+          // 22-second timeupdate, without relying on asynchronous media seeks.
+          player.dispatchEvent(new Event('ended'));
         }""")
         page.wait_for_function("""() =>
           window.__autoPolicyCalls===1 &&
@@ -3020,6 +3023,21 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         require(not errors,"Autoplay denial browser exceptions: "+"; ".join(errors))
         print(f"PASS {label}: blocked autoplay holds current song, no vote, manual Play resumes")
     except Exception:
+        try:
+            diagnostics=page.evaluate("""() => ({
+              attempts:window.__autoPolicyCalls,
+              active:document.activeElement?.id,
+              status:document.querySelector('#audio-status')?.textContent,
+              hint:document.querySelector('#continuity-hint')?.textContent,
+              play:document.querySelector('#stage-play')?.getAttribute('aria-label'),
+              song:document.querySelector('#listening-card')?.getAttribute('aria-label'),
+              stopped:document.querySelector('#stop-session')?.hidden,
+              source:document.querySelector('#player')?.getAttribute('src'),
+              history:JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history?.length
+            })""")
+            print(f"DEBUG {label}: "+json.dumps(diagnostics),flush=True)
+        except Exception:
+            pass
         screenshot(page,f"FAILED-{label}")
         raise
     finally:
