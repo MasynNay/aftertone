@@ -187,7 +187,17 @@ export function inspectProgressBackup(text) {
     throw new Error('This is not a supported AFTERTONE progress backup.');
   if(typeof input.exportedAt!=='string' || !Number.isFinite(Date.parse(input.exportedAt)))
     throw new Error('Backup creation date is invalid.');
-  const session=safeSession(input.session);
+  // Early v1 backup sessions legitimately predate savedTracks. Migrate only
+  // an ABSENT field in an authenticated v1 format, never a null, wrong-type,
+  // malformed, or missing field in a current v2 backup. We cannot invent
+  // lost song names or previews; original favorite IDs are retained.
+  const legacyNoTrackMetadata=input.version===1 && input.session &&
+    typeof input.session==='object' && !Array.isArray(input.session) &&
+    !Object.hasOwn(input.session,'savedTracks');
+  const session=safeSession(legacyNoTrackMetadata
+    ? {...input.session,savedTracks:[]} : input.session);
+  const metadataIds=new Set(session.savedTracks.map(track=>track.id));
+  const missingFavoriteMetadata=session.favorites.filter(id=>!metadataIds.has(id)).length;
   const tournaments=safeDuels(input.tournaments);
   const quiz=safeQuiz(input.quiz);
   const artists=safeArtists(input.artists);
@@ -220,6 +230,9 @@ export function inspectProgressBackup(text) {
       playlistTracks:isV2?(playlist?.tracks.length??0):null,
       lyricOffsets:isV2?Object.keys(lyricOffsets).length:null,
       version:input.version,
+      // Legacy files may preserve favorite identities without track titles;
+      // communicate this rather than promising visible restored song cards.
+      ...(missingFavoriteMetadata ? {missingFavoriteMetadata} : {}),
     },
   };
 }
