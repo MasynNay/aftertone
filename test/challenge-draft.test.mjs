@@ -186,3 +186,18 @@ test('controller resets paging on typing and announces pages without changing ch
   const part=src.slice(src.indexOf("case 'challenge-next-page':"),src.indexOf("case 'add-challenge-track':"));
   assert.doesNotMatch(part,/recordDecision\(|storeChallengeDraft\(|persist\(|sessionStorage/);
 });
+
+test('challenge buttons keep stable focus through unrelated redraws without changing draft state',()=>{
+  const src=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const render=src.slice(src.indexOf('function render()'),src.indexOf('function renderModal()'));
+  assert.match(render,/focusedChallengeAction=view==='challenges'/);
+  assert.match(render,/focusedOldControl\?\.matches\?\.\('\.challenge-hero \[data-action\], \.challenge-builder \[data-action\]'\)/);
+  assert.match(render,/button\.dataset\.action===focusedChallengeAction\.action/);
+  assert.match(render,/button\.dataset\.id===focusedChallengeAction\.id/);
+  assert.match(render,/main\.querySelector\('#challenge-track-search'\) \|\| main/);
+  assert.match(render,/\(same \|\| sameTrack \|\| fallback\)\.focus\(\{preventScroll:true\}\)/);
+  const focusLogic=render.slice(render.indexOf('if(focusedChallengeAction &&'),
+    render.indexOf('applySavedVolume();',render.indexOf('if(focusedChallengeAction &&')));
+  assert.doesNotMatch(focusLogic,/persist\(|recordDecision\(|storeChallengeDraft\(|sessionStorage|history\./,
+    'Restoring keyboard focus must not write progress, record votes or change saved drafts');
+});

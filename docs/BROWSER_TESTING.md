@@ -1,3 +1,7 @@
+## Pass the Aux editor focus continuity (v0.12 development)
+
+Chromium and Firefox now rerender the real 320px Pass the Aux screen while Add, Move Earlier, Share or Use Latest Five owns focus. The tests verify that the equivalent button remains focused after a content update, and that a filtered-out Add control returns focus to the labeled search field, with no unintended favorites/history writes. The test simulates an unrelated redraw using the existing search event handler; it does not substitute for a manual assistive-technology review.
+
 ## Clipboard-denied Pass the Aux sharing (v0.12 development)
 
 A 320px Chromium/Firefox built-site test denies the modern clipboard API and then makes the legacy copy command return false or throw. Pass the Aux still displays the exact ID-only link in a focusable read-only input, selects it for Ctrl+C/Command+C, cleans up temporary nodes, and returns focus to Share after dismissal. No favorites or listening votes are changed. This verifies fallback UI under synthetic permissions, not platform-specific clipboard behavior on real phones.

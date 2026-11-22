@@ -1,3 +1,7 @@
+## Pass the Aux editor focus after background redraws (v0.12 development)
+
+When asynchronous updates rebuild the challenge editor, the focused Add/Remove/Move button is matched by action and track ID; Share and Use Latest Five are also preserved. If a search hides the previously focused song, focus moves to the saved-song search input rather than silently focusing a different track. At 320px, simulated Chromium/Firefox keyboard checks cover retained and missing buttons, unchanged song order and no accidental listening votes. Native device and screen-reader testing is still required.
+
 ## Pass the Aux manual sharing without clipboard permission (v0.12 development)
 
 If automatic challenge-link copying is denied by the browser, a modal displays the exact shareable link in a labeled, read-only input. Focus and selection move to the full URL so Ctrl+C or Command+C can copy it manually. Escape/Done return focus to Share; the dialog uses theme colors and a 48px-tall input at phone width. Simulated Chromium and Firefox checks at 320px cover blocked and throwing copy APIs, keyboard selection, focus return and no phantom Keep/Pass. Real clipboard accessibility on physical devices remains to be checked.

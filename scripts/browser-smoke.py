@@ -4106,6 +4106,111 @@ def check_legacy_backup_missing_track_metadata(browser, base):
 
 
 
+def check_challenge_editor_focus_on_rerender(browser, base):
+    """Background-style redraws must not lose focused editor actions."""
+    context=browser.new_context(viewport={"width":320,"height":740},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"challenge-editor-focus-{browser.browser_type.name}"
+    def update_search_without_focusing(value):
+        # A delayed update can trigger render() while an editor button owns
+        # keyboard focus. Send an input event without moving focus ourselves.
+        page.evaluate("""value => {
+          const input=document.querySelector('#challenge-track-search');
+          input.value=value;
+          input.dispatchEvent(new Event('input',{bubbles:true}));
+        }""",value)
+    def focused_action(action, track_id=None):
+        return page.evaluate("""expected => {
+          const el=document.activeElement;
+          return el?.dataset?.action===expected.action &&
+            (el.dataset.id||null)===expected.trackId;
+        }""",{"action":action,"trackId":track_id})
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const state=JSON.parse(localStorage.getItem(key));
+          const tracks=Array.from({length:9},(_,i)=>({
+            id:'deezer:'+(9600000+i),source:'deezer',
+            title:'Focus Song '+i,artist:'Focus Artist',
+            genre:'unknown',mood:'Fresh'
+          }));
+          state.savedTracks=tracks;
+          state.favorites=tracks.map(t=>t.id);
+          state.history=[];
+          localStorage.setItem(key,JSON.stringify(state));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="challenges"]').click()
+        require(page.locator('.challenge-draft-item').count()==5,
+                "Saved challenge fixtures failed to load")
+        before=page.evaluate("""() => ({
+          history:JSON.parse(localStorage.getItem('aftertone:session:v1')).history,
+          favorites:JSON.parse(localStorage.getItem('aftertone:session:v1')).favorites
+        })""")
+        chosen=page.locator('.challenge-draft-item').nth(1)
+        chosen_id=chosen.get_attribute("data-chosen-id")
+        move=page.locator('[data-action="move-challenge-up"][data-id="'+chosen_id+'"]')
+        move.focus()
+        update_search_without_focusing("Focus")
+        require(focused_action("move-challenge-up",chosen_id),
+                "A redraw discarded the selected song's reorder button focus")
+        require(page.locator('.challenge-draft-item').nth(1)
+                .get_attribute('data-chosen-id')==chosen_id,
+                "A noninteractive redraw changed the chosen order")
+
+        # Clear a slot, then verify focus on the saved-library Add button.
+        page.locator('.challenge-draft-item').last.locator(
+            '[data-action="remove-challenge-track"]').click()
+        add_id="deezer:9600000"
+        add=page.locator('[data-action="add-challenge-track"][data-id="'+add_id+'"]')
+        require(add.is_enabled(),"Expected an available challenge slot")
+        add.focus()
+        update_search_without_focusing("Focus Artist")
+        require(focused_action("add-challenge-track",add_id),
+                "Rebuilding the library stranded focused Add on a removed node")
+        update_search_without_focusing("No such artist")
+        require(page.evaluate("document.activeElement?.id==='challenge-track-search'"),
+                "A filtered-out Add button did not fall back to search")
+
+        # The hero Share and builder reset controls also survive redraws.
+        page.locator('#challenge-track-search').fill('')
+        share=page.locator('[data-action="share-challenge"]')
+        share.focus()
+        update_search_without_focusing("Focus")
+        require(focused_action("share-challenge"),
+                "A challenge redraw removed focus from Share")
+        reset=page.locator('[data-action="reset-challenge-draft"]')
+        reset.focus()
+        update_search_without_focusing("Focus Artist")
+        require(focused_action("reset-challenge-draft"),
+                "A challenge redraw removed focus from Use Latest Five")
+        after=page.evaluate("""() => ({
+          history:JSON.parse(localStorage.getItem('aftertone:session:v1')).history,
+          favorites:JSON.parse(localStorage.getItem('aftertone:session:v1')).favorites
+        })""")
+        require(after==before,"Focus restoration changed saved music or votes")
+        require(not errors,"Challenge editor focus errors: "+"; ".join(errors))
+        print(f"PASS {label}: reorder/add/share/reset focus, filtered fallback, no votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_large_saved_challenge_paging(browser, base):
     """Browse past forty saved songs on phone, keeping keyboard focus and choices."""
     origin=urlsplit(base).netloc
@@ -4344,6 +4449,7 @@ def firefox_main():
             check_challenge_manual_copy_fallback(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
+            check_challenge_editor_focus_on_rerender(browser, base)
             check_large_saved_challenge_paging(browser, base)
             check_resumable_shared_challenge_draft(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
@@ -4401,6 +4507,7 @@ def main():
             check_challenge_manual_copy_fallback(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
+            check_challenge_editor_focus_on_rerender(browser, base)
             check_large_saved_challenge_paging(browser, base)
             check_resumable_shared_challenge_draft(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
