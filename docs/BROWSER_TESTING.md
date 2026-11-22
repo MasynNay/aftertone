@@ -1,3 +1,7 @@
+## Clipboard-denied Pass the Aux sharing (v0.12 development)
+
+A 320px Chromium/Firefox built-site test denies the modern clipboard API and then makes the legacy copy command return false or throw. Pass the Aux still displays the exact ID-only link in a focusable read-only input, selects it for Ctrl+C/Command+C, cleans up temporary nodes, and returns focus to Share after dismissal. No favorites or listening votes are changed. This verifies fallback UI under synthetic permissions, not platform-specific clipboard behavior on real phones.
+
 ## Media-error refresh cancellation (v0.12 development)
 
 - New Chromium and Firefox phone-width checks simulate a media-element error after an explicit fixture preview has started, hold the replacement Deezer metadata request, cancel it through the player control and verify that the late callback cannot restart playback or change listening votes. An explicit subsequent Play starts a fresh metadata request.

@@ -1,3 +1,9 @@
+## v0.12 development — Share challenges when clipboard access is blocked (November 22, 2026)
+
+- **Pass the Aux** now keeps a challenge shareable when a browser blocks clipboard access. If both the modern Clipboard API and the legacy copy command fail, Aftertone opens a clearly named dialog with the exact selected Deezer-ID challenge link, ready for manual Ctrl+C / Command+C and easy dismissal.
+- Keyboard focus moves to the read-only, preselected link. Escape and Done restore focus to Share. The dialog is touch-friendly at 320px, uses the current theme, and does not store or transmit personal favorites, history, titles or preview URLs.
+- The temporary copy element is removed even when the browser throws. Late clipboard failures do not reopen a share dialog after navigation. Chromium and Firefox simulate a blocked API and a throwing legacy command; real device/clipboard policy verification remains open.
+
 ## v0.12 development — Predictable Blind Mode controls (November 22, 2026)
 
 - **Blind Mode** toggling during ordinary discovery now preserves keyboard focus on the rebuilt Blind button. Enter can turn it on or off repeatedly without stranding focus on a removed listening card.

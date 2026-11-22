@@ -1593,6 +1593,22 @@ h1 em {
   margin: 0 0 23px;
 }
 
+
+/* Manual sharing must remain readable and touch-friendly when copy permission
+   is denied; use the active theme instead of a fixed light/dark input. */
+.share-link-input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  margin: 10px 0 14px;
+  padding: 12px 14px;
+  color: var(--text);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: 600 13px 'Avenir Next',system-ui,sans-serif;
+}
+
 .modal-options {
   display: grid;
   gap: 10px;

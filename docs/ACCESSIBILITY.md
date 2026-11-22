@@ -1,3 +1,7 @@
+## Pass the Aux manual sharing without clipboard permission (v0.12 development)
+
+If automatic challenge-link copying is denied by the browser, a modal displays the exact shareable link in a labeled, read-only input. Focus and selection move to the full URL so Ctrl+C or Command+C can copy it manually. Escape/Done return focus to Share; the dialog uses theme colors and a 48px-tall input at phone width. Simulated Chromium and Firefox checks at 320px cover blocked and throwing copy APIs, keyboard selection, focus return and no phantom Keep/Pass. Real clipboard accessibility on physical devices remains to be checked.
+
 ## Blind Mode focus and shared challenge lock (v0.12 development)
 
 In normal discovery, activating the Blind button by keyboard or pointer retains focus on the new button as the listening card rebuilds, and its `aria-pressed` state matches the saved preference. In a shared challenge, blind listening is mandatory: a noninteractive **Locked** indicator with an accessible name replaces the toggle, and the B keyboard shortcut cannot change the user's personal blind setting. Exiting the challenge restores the same preference. Automated Chromium and Firefox checks cover a 320px viewport, Enter activation, focus continuity, persistence, challenge lock, and unchanged listening choices. Manual screen-reader speech and real-device tests are still required.

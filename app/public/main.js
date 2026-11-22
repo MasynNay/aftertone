@@ -1269,6 +1269,13 @@ function renderModal() {
     body = `<div class="eyebrow">A QUICK INTRO</div><h2>Discover on your terms.</h2><p class="modal-copy">See the title, artist and cover before pressing Play to hear a 22-second preview. Swipe left (or press ←) to pass, or right (→) to keep it. Keeping a song saves it immediately and moves on. Play recognition games whenever you feel like it in Tune Lab.</p><div class="insight-list"><div class="insight"><strong>Blind mode is optional</strong><p>Use the switch in the left sidebar to hide the card title and artwork. The listening card hides the details until you choose.</p></div><div class="insight"><strong>Recognition is optional</strong><p>Tune Lab has optional recognition questions and mood ratings from songs you saved. Swipe decisions never require a quiz.</p></div><div class="insight"><strong>Start fresh or import a playlist</strong><p>Fresh discovery is always the default. Choose five artists, import a public Deezer playlist link, or bring a CSV/JSON export to add optional clues. Your initial artists do not dominate Balanced mode. Searching for a specific song is temporary; only your actual choices help shape the long-term taste profile.</p></div><div class="insight"><strong>Big catalogs, loaded in pages</strong><p>Deezer is the single visible discovery source. Its short-lived public preview links play directly in AFTERTONE. Press Play once to enable continuous discovery and Stop to end. Public game usage still requires permission from Deezer.</p></div></div><div class="sidebar-label" style="margin:22px 0 13px">PERSONALIZE YOUR ROOM</div><button class="secondary-button" data-modal="themes">Explore all 20 color themes →</button><div class="modal-actions"><button class="accent-button" data-modal="close">Let's listen →</button></div>`;
   } else if (modal.kind === 'themes') {
     body = `<div class="eyebrow">MAKE IT YOURS / 20 PALETTES</div><h2>Find your frequency.</h2><p class="modal-copy">Pick a look that feels right. Your choice saves automatically in this browser.</p><div class="theme-gallery" role="group" aria-label="Choose a color theme">${THEMES.map((t) => themeSwatch(t, true)).join('')}</div><div class="modal-actions"><button class="accent-button" data-modal="close">Done →</button></div>`;
+  } else if (modal.kind === 'share-link') {
+    body = `<div class="eyebrow">PASS THE AUX / SHARING</div><h2>Copy your challenge link.</h2>
+      <p class="modal-copy">This browser blocked automatic clipboard access. You can still share the exact challenge you built: select and copy the link below.</p>
+      <label for="share-link-value">Your shareable challenge link</label>
+      <input id="share-link-value" class="share-link-input" type="text" inputmode="url" readonly value="${html(modal.link)}" aria-describedby="share-link-help" />
+      <p id="share-link-help" class="modal-copy">The entire link is selected. Press Ctrl+C (or Command+C on Mac), then paste it into a message. Only the ordered public Deezer song IDs are in the link.</p>
+      <div class="modal-actions"><button type="button" class="accent-button" data-modal="close">Done</button></div>`;
   } else if (modal.kind === 'choice' && track) {
     if (modal.phase === 'familiarity') {
       body = `<div class="eyebrow">GOOD CALL. YOU KEPT IT.</div><h2>Was that a familiar sound?</h2><p class="modal-copy">Your reaction earns the track a place in your collection. The next question helps separate songs you already know from exciting new discoveries.</p><div class="modal-options"><button class="modal-option" data-modal="familiar"><span class="option-letter">↗</span><span>${state.blind || challengeIds.length ? 'I know this one. Quiz me!' : 'Yes, I already knew this song'}</span></button><button class="modal-option" data-modal="new"><span class="option-letter">✳</span><span>Never heard it. I'm into it, though.</span></button></div>`;
@@ -1282,11 +1289,15 @@ function renderModal() {
       body = `<div class="eyebrow">THE BIG REVEAL</div><div class="reveal-art">${track.artwork ? `<img src="${urlSafe(track.artwork)}" alt="" />` : '♪'}</div><div class="reveal-result"><h2>${html(track.title)}</h2><span class="result-chip">${scoreText}</span></div><p class="reveal-artist">${html(track.artist)}</p><div class="tag-row">${tag(track.genre)}${tag(modal.mood || track.mood)}</div><div class="modal-actions"><button class="accent-button" data-modal="next">Save & next sound →</button>${track.link ? `<a class="secondary-button" href="${urlSafe(track.link)}" target="_blank" rel="noopener noreferrer">↗ Original source</a>` : ''}</div><div class="attribution">Music by ${html(track.artist)}. ${html(preview?.license || track.license)}. Listen from the original host. Check the linked file page for the complete license terms and credit requirements.</div>`;
     }
   }
-  modalRoot.innerHTML = `<div class="modal ${modal.kind === 'themes' ? 'modal-themes' : modal.kind === 'youtube' ? 'modal-youtube' : modal.kind === 'onboarding' ? 'modal-onboarding' : ''}" role="dialog" aria-modal="true" aria-label="${modal.kind === 'help' ? 'How to play' : modal.kind === 'themes' ? 'Appearance themes' : modal.kind === 'onboarding' ? 'Set up your music taste' : modal.kind === 'playlist' ? 'Import a playlist' : modal.kind === 'youtube' ? 'YouTube music preview' : 'Music recognition challenge'}"><button class="modal-close" data-modal="close" aria-label="Close dialog">×</button>${body}</div>`;
+  modalRoot.innerHTML = `<div class="modal ${modal.kind === 'themes' ? 'modal-themes' : modal.kind === 'youtube' ? 'modal-youtube' : modal.kind === 'onboarding' ? 'modal-onboarding' : ''}" role="dialog" aria-modal="true" aria-label="${modal.kind === 'help' ? 'How to play' : modal.kind === 'themes' ? 'Appearance themes' : modal.kind === 'onboarding' ? 'Set up your music taste' : modal.kind === 'playlist' ? 'Import a playlist' : modal.kind === 'youtube' ? 'YouTube music preview' : modal.kind === 'share-link' ? 'Copy challenge link' : 'Music recognition challenge'}"><button class="modal-close" data-modal="close" aria-label="Close dialog">×</button>${body}</div>`;
   const restoreTheme=previousTheme
     ? [...modalRoot.querySelectorAll('[data-set-theme]')].find(button=>button.dataset.setTheme===previousTheme)
     : null;
-  (restoreTheme || modalRoot.querySelector('button[data-modal],button[data-answer],button[data-mood]'))?.focus();
+  if (modal.kind === 'share-link') {
+    const field=modalRoot.querySelector('#share-link-value');
+    field?.focus({preventScroll:true});
+    field?.select(); // Native keyboard copy, even when browser clipboard APIs are denied.
+  } else (restoreTheme || modalRoot.querySelector('button[data-modal],button[data-answer],button[data-mood]'))?.focus();
 }
 /** Keep Tab inside the active dialog; focus returns to its opener on close. */
 function trapModalTab(event) {
@@ -1766,14 +1777,24 @@ async function copy(value, message) {
     await navigator.clipboard.writeText(value);
     toast(message);
   } catch {
-    // Browser clipboard permissions vary, particularly on non-HTTPS hosting.
+    // A denied clipboard API is common on mobile/restricted browsers. The
+    // legacy copy command may fail or throw, so always clean up the temporary
+    // element and give the listener a selectable link as a last resort.
     const input = document.createElement('textarea');
     input.value = value;
     input.style.position = 'fixed'; input.style.opacity = '0';
     document.body.append(input); input.select();
-    const copied = document.execCommand('copy');
-    input.remove();
-    toast(copied ? message : 'Could not copy automatically. Check your browser clipboard permissions.');
+    let copied = false;
+    try { copied = Boolean(document.execCommand('copy')); }
+    catch { /* Clipboard denied; offer a manual route. */ }
+    finally { input.remove(); }
+    if (copied) return toast(message);
+    // The asynchronous clipboard request might finish after navigation. Never
+    // interrupt a different view or an existing dialog with an old share link.
+    if (view !== 'challenges' || modal) return;
+    const opener=main.querySelector('[data-action="share-challenge"]');
+    opener?.focus({preventScroll:true});
+    openModal('share-link',{link:value});
   }
 }
 
