@@ -3908,6 +3908,118 @@ def check_first_listen_provider_retry(browser, base):
     finally:
         context.close()
 
+
+
+def check_legacy_backup_missing_track_metadata(browser, base):
+    """Import an authentic v1-shaped backup whose savedTracks field never existed.
+
+    Verify the native confirmation explains incomplete favorite metadata and the
+    destination's later playlist/lyric settings survive unchanged.
+    """
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                accept_downloads=True,service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"legacy-backup-migration-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const s=JSON.parse(localStorage.getItem(key));
+          const id='deezer:9100001';
+          s.favorites=[id];
+          s.savedTracks=[{
+            id,source:'deezer',title:'Fixture Melody 01',
+            artist:'Fixture Artist 01',genre:'unknown',mood:'Fresh'
+          }];
+          s.history=[{id,action:'like',artist:'Fixture Artist 01',
+            genre:'unknown',context:'discovery',route:'balanced',
+            recognized:false,correct:null,mood:'Fresh',at:1730000000000}];
+          localStorage.setItem(key,JSON.stringify(s));
+          localStorage.setItem('aftertone:optional-playlist:v1',
+            JSON.stringify({tracks:[{artist:'Old Artist',title:'Old Song'}]}));
+          localStorage.setItem('aftertone:lyric-offsets:v1',
+            JSON.stringify({'deezer:9100001':15}));
+        }""")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        with page.expect_download(timeout=TIMEOUT) as exported:
+            page.locator('[data-action="backup-progress"]').click()
+        original=json.loads(Path(exported.value.path()).read_text(encoding="utf-8"))
+        require(original["version"]==2 and len(original["session"]["savedTracks"])==1,
+                "Browser failed to construct a real export for legacy migration test")
+        legacy=json.loads(json.dumps(original))
+        legacy["version"]=1
+        del legacy["session"]["savedTracks"]
+        del legacy["playlist"]
+        del legacy["lyricOffsets"]
+
+        # The target currently contains different optional v2-era data.
+        # Restoring an older v1 backup must not silently destroy it.
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const s=JSON.parse(localStorage.getItem(key));
+          s.favorites=[];s.savedTracks=[];s.history=[];
+          localStorage.setItem(key,JSON.stringify(s));
+          localStorage.setItem('aftertone:optional-playlist:v1',
+            JSON.stringify({tracks:[{artist:'Retained Artist',title:'Retained Song'}]}));
+          localStorage.setItem('aftertone:lyric-offsets:v1',
+            JSON.stringify({'deezer:9100001':51}));
+        }""")
+        optional_before=page.evaluate("""() => [
+          localStorage.getItem('aftertone:optional-playlist:v1'),
+          localStorage.getItem('aftertone:lyric-offsets:v1')
+        ]""")
+        prompts=[]
+        def accept(dialog):
+            prompts.append(dialog.message)
+            dialog.accept()
+        page.once("dialog",accept)
+        page.locator("#progress-backup-file").set_input_files({
+          "name":"legacy-aftertone-progress-v1.json",
+          "mimeType":"application/json",
+          "buffer":json.dumps(legacy).encode("utf-8")
+        })
+        page.wait_for_function("""() => {
+          try {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return s.favorites?.includes('deezer:9100001') && s.history?.length===1;
+          }catch{return false;}
+        }""",timeout=TIMEOUT)
+        require(len(prompts)==1 and "no song title or artist metadata" in prompts[0]
+                and "Favorite IDs" not in prompts[0], # match real copy, not guessed titles
+                "Legacy restore did not disclose missing favorite metadata")
+        require("existing settings will stay unchanged" in prompts[0],
+                "Legacy restore failed to warn that newer optional data is retained")
+        restored=page.evaluate("""() => ({
+          session:JSON.parse(localStorage.getItem('aftertone:session:v1')),
+          optional:[
+            localStorage.getItem('aftertone:optional-playlist:v1'),
+            localStorage.getItem('aftertone:lyric-offsets:v1')
+          ]
+        })""")
+        require(restored["session"]["favorites"]==["deezer:9100001"] and
+                len(restored["session"]["history"])==1,
+                "Old backup lost a recorded favorite or listening decision")
+        require(restored["session"]["savedTracks"]==[],
+                "Restore falsely manufactured full titles for ID-only legacy favorites")
+        require(restored["optional"]==optional_before,
+                "Restoring legacy v1 deleted newer playlist or lyric settings")
+        require(not errors,"Legacy backup browser errors: "+"; ".join(errors))
+        print(f"PASS {label}: authentic old v1 favorite IDs, metadata warning, optional settings retained")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -3918,6 +4030,7 @@ def firefox_main():
             check_catalog_outage_recovery(browser, base)
             check_progressive_discovery_backoff(browser, base)
             check_backup_restore_cross_browser(browser, base)
+            check_legacy_backup_missing_track_metadata(browser, base)
             check_backup_transfer_new_profile(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
@@ -3971,6 +4084,7 @@ def main():
             check_catalog_outage_recovery(browser, base)
             check_progressive_discovery_backoff(browser, base)
             check_backup_restore_cross_browser(browser, base)
+            check_legacy_backup_missing_track_metadata(browser, base)
             check_backup_transfer_new_profile(browser, base)
             check_reflow_reduced_motion(browser, base, 720, 900)
             check_reflow_reduced_motion(browser, base, 360, 740)
