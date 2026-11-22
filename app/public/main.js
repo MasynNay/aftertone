@@ -803,9 +803,13 @@ async function togglePlayback(track, automatic = false) {
     updatePlaybackView();
     return;
   }
-  if (!automatic && view === 'discover' && current?.id === track.id)
-    continuousListening = !challengeIds.length; // Blind challenge clips wait for an explicit Keep/Pass.
-  else if (!automatic) continuousListening = false; // Collection playback is manual.
+  if (!automatic && view === 'discover' && current?.id === track.id) {
+    // A listener's first manual retry after the browser denied autoplay
+    // previews just THIS song. Do not immediately restart a continuous session
+    // that the browser refused: otherwise a delayed old media event can skip
+    // another unheard track before the user has a chance to listen.
+    continuousListening = !challengeIds.length && autoplayBlockedTrackId !== track.id;
+  } else if (!automatic) continuousListening = false; // Collection playback is manual.
   const sameTrack = activeAudioId === track.id;
   if (!sameTrack) stopAudio();
   const generation = audioGeneration;
