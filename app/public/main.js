@@ -1142,6 +1142,13 @@ function render() {
   const challengeSearchSelection=focusedChallengeSearch
     ? {start:focusedChallengeSearch.selectionStart,end:focusedChallengeSearch.selectionEnd,
        direction:focusedChallengeSearch.selectionDirection} : null;
+  // The whole editor is rebuilt on a provider or state refresh, not only
+  // when a listener clicks a button. Remember their exact chosen-song action
+  // so a background rerender cannot strand keyboard focus on document.body.
+  const focusedChallengeAction=view==='challenges' &&
+    focusedOldControl?.matches?.('.challenge-hero [data-action], .challenge-builder [data-action]')
+    ? {action:focusedOldControl.dataset.action, id:focusedOldControl.dataset.id || null}
+    : null;
   const eligibleForChallenge=syncChallengeDraft();
   // Favorites can change while browsing. Clamp the current results page so
   // removing/adding a track never leaves the visitor on an empty phantom page.
@@ -1178,6 +1185,22 @@ function render() {
       replacement.setSelectionRange(challengeSearchSelection.start,
         challengeSearchSelection.end,challengeSearchSelection.direction);
     }
+  }
+  if(focusedChallengeAction && view==='challenges') {
+    // Never substitute a different song merely because search/pagination
+    // changed; prefer that song's remaining control, then the named search.
+    const buttons=[...main.querySelectorAll(
+      '.challenge-hero [data-action], .challenge-builder [data-action]')];
+    const usable=button=>Boolean(button && !button.disabled &&
+      button.getClientRects().length && !button.closest('[hidden], [inert]'));
+    const same=buttons.find(button=>
+      button.dataset.action===focusedChallengeAction.action &&
+      (button.dataset.id || null)===focusedChallengeAction.id && usable(button));
+    const sameTrack=focusedChallengeAction.id
+      ? buttons.find(button=>button.dataset.id===focusedChallengeAction.id && usable(button))
+      : null;
+    const fallback=main.querySelector('#challenge-track-search') || main;
+    (same || sameTrack || fallback).focus({preventScroll:true});
   }
   applySavedVolume();
   updatePlaybackView();
