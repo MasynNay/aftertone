@@ -3173,6 +3173,91 @@ def check_duels_keyboard_continuity(browser, base):
         context.close()
 
 
+def check_challenge_manual_copy_fallback(browser, base):
+    """Blocked clipboard paths still let a keyboard user copy the exact ID-only link."""
+    context=browser.new_context(viewport={"width":320,"height":740},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"challenge-manual-copy-{browser.browser_type.name}"
+    try:
+        page.add_init_script("""(() => {
+          Object.defineProperty(navigator,'clipboard',{configurable:true,
+            value:{writeText:async () => {throw new Error('Clipboard denied');}}});
+          document.execCommand=()=>false;
+        })();""")
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        # Seed one fictional locally saved Deezer track, not private data or audio.
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const state=JSON.parse(localStorage.getItem(key));
+          state.favorites=['deezer:9100001'];
+          state.savedTracks=[{id:'deezer:9100001',source:'deezer',
+            title:'Fixture Melody 01',artist:'Fixture Artist 01',
+            genre:'unknown',mood:'Fresh'}];
+          localStorage.setItem(key,JSON.stringify(state));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="challenges"]').click()
+        share=page.locator('[data-action="share-challenge"]')
+        require(share.is_enabled(),"Saved fixture recording cannot be shared")
+        share.focus()
+        page.keyboard.press("Enter")
+        field=page.locator('#share-link-value')
+        field.wait_for(state="visible",timeout=TIMEOUT)
+        link=field.input_value()
+        require(parse_qs(urlsplit(link).query).get('challenge')==['v1.deezer:9100001'],
+                "Manual share field did not expose the exact public track ID")
+        require('session' not in link and 'Fixture' not in link and 'favorite' not in link,
+                "Manual sharing exposed personal state or metadata")
+        require(page.locator('#modal-root [role="dialog"]').get_attribute('aria-label')
+                == 'Copy challenge link',"Manual link dialog is not named")
+        require(page.evaluate("""() => {
+          const input=document.querySelector('#share-link-value');
+          return document.activeElement===input && input.readOnly
+            && input.selectionStart===0
+            && input.selectionEnd===input.value.length;
+        }"""),"Manual link is not selected and ready for keyboard copy")
+        page.keyboard.press("Escape")
+        require(page.locator('#share-link-value').count()==0,
+                "Escape failed to close the manual-copy dialog")
+        require(page.evaluate("""() => document.activeElement?.dataset?.action
+          ==='share-challenge'"""),"Escape did not return focus to Share")
+
+        # A throwing legacy clipboard method must also clean up and offer the link.
+        page.evaluate("""() => {document.execCommand=()=>{throw new Error('Denied');};}""")
+        share.focus()
+        page.keyboard.press("Enter")
+        field.wait_for(state="visible",timeout=TIMEOUT)
+        require(field.input_value()==link,"Thrown clipboard error changed the link")
+        require(page.locator('body > textarea').count()==0,
+                "Temporary clipboard textarea was not removed after an exception")
+        page.locator('#modal-root [data-modal="close"]').first.click()
+        saved=page.evaluate("""() => {
+          const state=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {favorites:state.favorites,history:state.history};
+        }""")
+        require(saved['favorites']==['deezer:9100001'] and not saved['history'],
+                "Sharing through clipboard fallback mutated listening decisions")
+        require(not errors,"Manual sharing browser errors: "+"; ".join(errors))
+        print(f"PASS {label}: selectable link, Escape focus, thrown-copy cleanup")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_shared_deezer_challenge(browser, base):
     """An actual shared link resolves the same song in a fresh browser profile."""
     context=browser.new_context(viewport={"width":390,"height":844},
@@ -4256,6 +4341,7 @@ def firefox_main():
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
+            check_challenge_manual_copy_fallback(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
             check_large_saved_challenge_paging(browser, base)
@@ -4312,6 +4398,7 @@ def main():
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
+            check_challenge_manual_copy_fallback(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
             check_large_saved_challenge_paging(browser, base)
