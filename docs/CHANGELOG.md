@@ -1,3 +1,9 @@
+## v0.12 development — Main Play retries a failed preview (November 22, 2026)
+
+- Once a preview reaches a terminal media error, clicking the **main Play** control explicitly discards that track's cached preview URL and requests fresh metadata. Listeners no longer need to discover the separate Retry Preview button to recover from a stale link.
+- Terminal media failures now pause the audio element before showing recovery controls. Existing Retry Preview and Skip Without Voting paths remain available; no failed attempt is counted as a Keep or Pass.
+- Synthetic 30-second silent WAV media tests cover initial playback, automatic Deezer URL refresh, terminal failure and keyboard-triggered main Play retry in Chromium and Firefox. Live licensed playback, provider rights and physical-device verification remain separate tasks.
+
 ## v0.12 development — Keep focus in Pass the Aux through redraws (November 22, 2026)
 
 - Pass the Aux now retains keyboard focus on a specific song's **Add**, **Remove**, or **Move Earlier/Later** action when a background refresh rebuilds the editor. The **Share** and **Use Latest Five** controls also retain focus instead of dropping to the page body.

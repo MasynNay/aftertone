@@ -786,6 +786,15 @@ async function togglePlayback(track, automatic = false) {
     continuousListening = false;
     return openModal('youtube', { id: track.id, from: view });
   }
+  if (!automatic && failedAudioId === track.id) {
+    // A failed media element may still retain its last src and a resolved
+    // preview URL. The primary Play control must be as useful as Retry:
+    // discard the broken link and resolve a fresh one on deliberate replay.
+    resolved.delete(track.id);
+    failedSources.delete(track.id);
+    deezerRefreshedOnce.delete(track.id);
+    stopAudio();
+  }
   if (activeAudioId === track.id && !audio.paused) {
     if (!automatic) continuousListening = false; // Explicit pause ends the autoplay session.
     audio.pause();
@@ -989,6 +998,9 @@ audio.addEventListener('error', async () => {
   if (isCurrent() && !isLoadingAudio) {
     if(failedAudioId===activeId) return; // A failed media element can emit more than one error.
     failedAudioId = activeId;
+    // A terminal error should never leave a previous source playing while
+    // announcing that the same recording is unavailable.
+    audio.pause();
     failedSources.add(activeId);
     toast(`${SOURCE_LABEL[track?.source] || 'Music provider'} could not deliver this audio.`);
     if (continuousListening && current?.id === activeId) {

@@ -2918,6 +2918,105 @@ def check_play_cancels_pending_preview(browser, base):
         context.close()
 
 
+def check_main_play_retries_terminal_media_error(browser, base):
+    """The primary Play button must not reuse a failed cached preview URL."""
+    import io
+    import wave
+    sample=io.BytesIO()
+    with wave.open(sample,"wb") as writer:
+        writer.setnchannels(1)
+        writer.setsampwidth(1)
+        writer.setframerate(8000)
+        writer.writeframes(bytes([128])*8000*30)
+    silence=sample.getvalue()
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    origin=urlsplit(base).netloc
+    requests={"metadata":0}
+    errors=[]
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    def counted_deezer(route):
+        if urlsplit(route.request.url).path.startswith("/track/"):
+            requests["metadata"]+=1
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",counted_deezer)
+    context.route("https://cdn-preview.dzcdn.net/**",lambda route:
+        route.fulfill(status=200,content_type="audio/wav",body=silence,
+                      headers={"access-control-allow-origin":"*"}))
+    label=f"main-play-terminal-retry-{browser.browser_type.name}"
+    page=context.new_page()
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        before=page.evaluate("""() => {
+          const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {favorites:state.favorites||[],history:state.history||[]};
+        }""")
+        play=page.locator("#stage-play")
+        play.click()
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        require(requests["metadata"]>=1,"First Play did not request preview metadata")
+
+        # A mid-stream media error gets a single transparent URL refresh.
+        # After recovery succeeds, a second error is terminal for that attempt.
+        page.evaluate("""() =>
+          document.querySelector('#player').dispatchEvent(new Event('error'))""")
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        require(requests["metadata"]>=2,
+                "A media error did not request its allowed fresh URL")
+        # Firefox may rerender the listening card while provider results
+        # arrive; activate the current live Pause control synchronously instead
+        # of using a pointer click on an element repeatedly detached mid-scroll.
+        page.evaluate("""() => {
+          const button=document.querySelector('#stage-play');
+          if(button?.getAttribute('aria-label')!=='Pause preview')
+            throw new Error('Recovered preview is not ready to pause');
+          button.click();
+        }""")
+        require(page.evaluate("document.querySelector('#player').paused"),
+                "Pausing preview did not end playback")
+        page.evaluate("""() =>
+          document.querySelector('#player').dispatchEvent(new Event('error'))""")
+        recovery=page.locator("#preview-recovery")
+        recovery.wait_for(state="visible",timeout=TIMEOUT)
+        require(play.get_attribute("aria-label")=="Play preview",
+                "Terminal failure did not restore main Play")
+        # Compare against the song actually in failure state. Discovery can
+        # legitimately refresh its opening card before manual playback settles.
+        song=page.locator("#listening-card").get_attribute("aria-label")
+        failed_count=requests["metadata"]
+        play.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        require(requests["metadata"]>failed_count,
+                "Main Play reused the cached failed URL instead of refreshing Deezer metadata")
+        require(recovery.is_hidden(),
+                "Successful Play did not clear the previous preview failure")
+        require(page.evaluate("document.activeElement?.id==='stage-play'"),
+                "Retrying via main Play lost keyboard focus")
+        require(page.locator("#listening-card").get_attribute("aria-label")==song,
+                "Replay changed the current song unexpectedly")
+        after=page.evaluate("""() => {
+          const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return {favorites:state.favorites||[],history:state.history||[]};
+        }""")
+        require(after==before,"Main Play recovery created a phantom Keep or Pass")
+        require(not errors,"Terminal retry browser errors: "+"; ".join(errors))
+        print(f"PASS {label}: terminal failure, fresh Play metadata, same song, no votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_media_error_refresh_cancellation(browser, base):
     """A recoverable media error must expose Cancel and abort an obsolete retry."""
     import io
@@ -4441,6 +4540,7 @@ def firefox_main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
@@ -4499,6 +4599,7 @@ def main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
             check_choice_keyboard_focus(browser, base)
