@@ -3020,6 +3020,12 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
         require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
                 "Manual recovery changed the song before it was heard")
+        # An old source's delayed ended event must not advance the new
+        # recording, especially on Firefox during quick media handoffs.
+        page.evaluate("""() => document.querySelector('#player')
+          .dispatchEvent(new Event('ended'))""")
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Stale ended event skipped the recovered song")
         require("Autoplay blocked" not in page.locator("#audio-status").inner_text(),
                 "Manual Play left the stale permission warning on screen")
         require(page.evaluate("document.activeElement?.id==='stage-play'"),
