@@ -1,3 +1,9 @@
+## v0.12 development — Keep focus in Pass the Aux through redraws (November 22, 2026)
+
+- Pass the Aux now retains keyboard focus on a specific song's **Add**, **Remove**, or **Move Earlier/Later** action when a background refresh rebuilds the editor. The **Share** and **Use Latest Five** controls also retain focus instead of dropping to the page body.
+- If a changing search removes a focused song from the results, focus moves to the labeled saved-song search input instead of selecting a different song. No songs are added, removed, reordered, rated or shared by focus restoration itself.
+- Added a 320px Chromium/Firefox fixture-based browser regression and a Node controller guard for focus, filtered-result fallback, and unchanged listening data. Physical-device and screen-reader verification remain open under #7.
+
 ## v0.12 development — Share challenges when clipboard access is blocked (November 22, 2026)
 
 - **Pass the Aux** now keeps a challenge shareable when a browser blocks clipboard access. If both the modern Clipboard API and the legacy copy command fail, Aftertone opens a clearly named dialog with the exact selected Deezer-ID challenge link, ready for manual Ctrl+C / Command+C and easy dismissal.
