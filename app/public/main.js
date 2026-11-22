@@ -2015,7 +2015,7 @@ async function importProgressBackupFile(file) {
         preview.lyricOffsets+' lyric timing adjustments.';
     const missing=preview.missingFavoriteMetadata || 0;
     const metadataNotice=missing
-      ? '\\n\\nImportant: '+missing+' saved favorite '+(missing===1?'ID has':'IDs have')+
+      ? '\n\nImportant: '+missing+' saved favorite '+(missing===1?'ID has':'IDs have')+
         ' no song title or artist metadata in this file. The favorite IDs and listening decisions can be restored, but those songs may not appear in Collection until their details are found again. No titles will be invented.'
       : '';
     const message='Restore '+preview.favorites+' saved favorites, '+preview.decisions+
