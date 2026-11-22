@@ -1,3 +1,7 @@
+## Continuous listening when autoplay requires a gesture (v0.12 development)
+
+When the browser rejects a new *automatic* audio play with `NotAllowedError`, the app stops continuous listening but leaves the unheard song and a visible text instruction to **Press Play** manually. Keyboard users can focus the original Play control and press Enter to resume that song. No automatic Keep, Pass, unavailable-song mark or further background skipping occurs. Synthetic 390px Chromium/Firefox checks cover that state and keyboard recovery; real mobile/screen-reader checks remain open.
+
 ## Pass the Aux editor focus after background redraws (v0.12 development)
 
 When asynchronous updates rebuild the challenge editor, the focused Add/Remove/Move button is matched by action and track ID; Share and Use Latest Five are also preserved. If a search hides the previously focused song, focus moves to the saved-song search input rather than silently focusing a different track. At 320px, simulated Chromium/Firefox keyboard checks cover retained and missing buttons, unchanged song order and no accidental listening votes. Native device and screen-reader testing is still required.
