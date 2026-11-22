@@ -1,3 +1,7 @@
+## Legacy backup migration feedback (v0.12 development)
+
+Older progress backups that contain favorite IDs but not saved title/artist metadata now present a clear warning in the native restore confirmation before replacing local data. The export warning is also reported through the existing persistent Collection status region. Existing keyboard focus restoration, cancel behavior, and the original confirmation dialog remain unchanged; browser tests verify migrated content and preserved optional settings. Manual screen-reader speech and cross-device checks are still needed.
+
 ## Music Duels keyboard focus continuity (v0.12 development)
 
 - Starting a bracket and reopening a saved one move keyboard focus into the available contender preview, or to the final podium heading if the event is already finished. A vote advances focus to the new matchup; finishing the final announces the focusable podium heading without automatically playing audio.
