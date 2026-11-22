@@ -2952,7 +2952,6 @@ def check_main_play_retries_terminal_media_error(browser, base):
         page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
         close=page.locator('#modal-root button[data-modal="close"]')
         if close.count():close.first.click(timeout=TIMEOUT)
-        song=page.locator("#listening-card").get_attribute("aria-label")
         before=page.evaluate("""() => {
           const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
           return {favorites:state.favorites||[],history:state.history||[]};
@@ -2988,6 +2987,9 @@ def check_main_play_retries_terminal_media_error(browser, base):
         recovery.wait_for(state="visible",timeout=TIMEOUT)
         require(play.get_attribute("aria-label")=="Play preview",
                 "Terminal failure did not restore main Play")
+        # Compare against the song actually in failure state. Discovery can
+        # legitimately refresh its opening card before manual playback settles.
+        song=page.locator("#listening-card").get_attribute("aria-label")
         failed_count=requests["metadata"]
         play.focus()
         page.keyboard.press("Enter")
