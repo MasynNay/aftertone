@@ -1,3 +1,7 @@
+## Autoplay permission recovery (v0.12 development)
+
+At 390px, Chromium and Firefox play an original generated silent WAV for the first track, then simulate the browser's `NotAllowedError` when the next track is started automatically. The test requires a persistent manual Play instruction, no automatic advance past the unheard next recording, no added listening history/favorites, no false broken-CDN recovery controls and successful same-track replay using Enter. It uses fictional Deezer metadata, not third-party music; real mobile autoplay policies and provider availability need separate manual checks.
+
 ## Recovering from a terminal preview error via main Play (v0.12 development)
 
 A 390px Chromium/Firefox regression plays synthetic, locally generated silent WAV bytes in the real audio element, triggers one recoverable media error followed by a terminal error, and then presses the main Play button with Enter. It checks that the explicit replay resolves *new* Deezer metadata instead of reusing the failed cached source, keeps the same song and keyboard focus, clears the failure UI, and creates no Keep/Pass or favorite changes. The test mocks provider metadata and does not validate live Deezer availability or music rights.
