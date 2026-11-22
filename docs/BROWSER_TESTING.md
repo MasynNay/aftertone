@@ -2,7 +2,7 @@
 
 The regression also dispatches a late synthetic `ended` event after manual replay to ensure a canceled earlier media source cannot skip the recovered song.
 
-At 390px, Chromium and Firefox play an original generated silent WAV for the first track, then simulate the browser's `NotAllowedError` when the next track is started automatically. The test requires a persistent manual Play instruction, no automatic advance past the unheard next recording, no added listening history/favorites, no false broken-CDN recovery controls and successful same-track replay using Enter. It uses fictional Deezer metadata, not third-party music; real mobile autoplay policies and provider availability need separate manual checks.
+At 390px, Chromium and Firefox play a naturally ending four-second original generated silent WAV for the first track (avoiding artificial media seeks), then simulate the browser's `NotAllowedError` when the next track is started automatically. The test requires a persistent manual Play instruction, no automatic advance past the unheard next recording, no added listening history/favorites, no false broken-CDN recovery controls and successful same-track replay using Enter. It uses fictional Deezer metadata, not third-party music; real mobile autoplay policies and provider availability need separate manual checks.
 
 ## Recovering from a terminal preview error via main Play (v0.12 development)
 
