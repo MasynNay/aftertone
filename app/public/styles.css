@@ -2903,6 +2903,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 }
 .challenge-library>label { font-size:13px;font-weight:700; }
 .challenge-library .search-input { width:100%;max-width:620px;min-width:0; }
+.challenge-library-pages {
+  display:flex;align-items:center;justify-content:flex-start;
+  gap:10px;flex-wrap:wrap;margin:5px 0 2px;
+}
+.challenge-library-pages button { min-height:44px;min-width:100px; }
+.challenge-library-pages span { color:var(--muted);font-size:12px; }
+.challenge-match-count:focus { outline:2px solid var(--accent);outline-offset:4px; }
 .challenge-builder-privacy { margin-top:17px; }
 @media (max-width:650px) {
   .challenge-builder { padding:15px; }

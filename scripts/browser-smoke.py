@@ -4019,6 +4019,119 @@ def check_legacy_backup_missing_track_metadata(browser, base):
     finally:
         context.close()
 
+
+
+def check_large_saved_challenge_paging(browser, base):
+    """Browse past forty saved songs on phone, keeping keyboard focus and choices."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":320,"height":740},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"large-challenge-paging-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        # A genuine larger locally saved library must rehydrate on app reload.
+        # These are fictional Deezer identities; no preview or licensed media.
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const s=JSON.parse(localStorage.getItem(key));
+          const songs=Array.from({length:94},(_,i)=>{
+            const id='deezer:'+(9500000+i);
+            return {id,source:'deezer',title:'Archive '+i,
+              artist:'Fixture Archive Artist',genre:'unknown',mood:'Fresh'};
+          });
+          s.savedTracks=songs;
+          s.favorites=songs.map(song=>song.id);
+          s.history=[];
+          localStorage.setItem(key,JSON.stringify(s));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="challenges"]').click()
+        count=page.locator('#challenge-match-count')
+        count.wait_for(state="visible",timeout=TIMEOUT)
+        require("89 unselected songs found" in count.inner_text(),
+                "Selected defaults were counted as unselected songs")
+        require("Showing 1–40 of 89" in count.inner_text(),
+                "The first challenge song page has an incorrect range")
+        require(page.locator(".challenge-library-item").count()==40,
+                "Only forty result rows should render at a time")
+        chosen=page.locator(".challenge-draft-item")
+        require(chosen.count()==5,"Challenge default selection was lost")
+        saved=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {ids:s.favorites,history:s.history};
+        }""")
+        require(len(saved["ids"])==94 and not saved["history"],
+                "Challenge paging test did not populate the saved library")
+        # Free one spot; don't mutate favorites or listening votes.
+        chosen.first.locator('[data-action="remove-challenge-track"]').click()
+        require(page.locator(".challenge-draft-item").count()==4,
+                "Removing one selected song did not open a challenge slot")
+        require("90 unselected songs found" in count.inner_text(),
+                "Removing a selection did not make it available to browse")
+        for target in (2,3):
+            button=page.locator('[data-action="challenge-next-page"]')
+            button.focus()
+            page.keyboard.press("Enter")
+            page.wait_for_function("""n=>document.querySelector(
+              '.challenge-library-pages span')?.textContent==='Page '+n+' of 3'""",
+              arg=target,timeout=TIMEOUT)
+            require(page.evaluate("document.activeElement?.id")=="challenge-match-count",
+                    "Keyboard paging did not focus the updated results announcement")
+            require(page.locator(".challenge-library-item").count()<=40,
+                    "Paging rendered more than forty saved-song results")
+            if target==2:
+                require("Showing 41–80 of 90" in count.inner_text(),
+                        "Second page skipped or duplicated saved-song results")
+                page.keyboard.press("Tab")
+                require(page.evaluate("""() =>
+                  document.activeElement?.dataset?.action==='add-challenge-track'"""),
+                  "Tab from result announcement does not enter the new song list")
+        require("Showing 81–90 of 90" in count.inner_text(),
+                "Third page did not include older saved favorites")
+        oldest="deezer:9500000"
+        add=page.locator('[data-action="add-challenge-track"][data-id="'+oldest+'"]')
+        require(add.is_visible() and add.is_enabled(),
+                "The oldest saved recording is not reachable as a challenge candidate")
+        add.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""id=>Array.from(document.querySelectorAll(
+          '.challenge-draft-item')).some(el=>el.dataset.chosenId===id)""",
+          arg=oldest,timeout=TIMEOUT)
+        require(page.evaluate("""id=>Array.from(document.querySelectorAll(
+          '.challenge-draft-item')).some(el=>el.dataset.chosenId===id)""",
+          oldest),"Adding an older favorite to challenge failed")
+        require(page.locator(".challenge-draft-item").count()==5,
+                "Challenge accepted more than five recordings")
+        search=page.locator("#challenge-track-search")
+        search.fill("Archive 30")
+        require(page.evaluate("document.activeElement?.id")=="challenge-track-search",
+                "Changing search lost keyboard focus")
+        require("Page 1 of 3" not in page.locator(".challenge-library-pages").all_inner_texts(),
+                "Search did not reset its result page")
+        require("Showing 1–1 of 1" in count.inner_text(),
+                "Search did not reset paging to a single matching song")
+        after=page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {ids:s.favorites,history:s.history};
+        }""")
+        require(after==saved,"Paging or selecting a challenge track modified saved listening data")
+        require(not errors,"Challenge paging browser errors: "+"; ".join(errors))
+        print(f"PASS {label}: 94 saved songs, keyboard pages 1–3, oldest selection, search reset")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -4047,6 +4160,7 @@ def firefox_main():
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
+            check_large_saved_challenge_paging(browser, base)
             check_resumable_shared_challenge_draft(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
             check_shared_preview_failure_skip(browser, base)
@@ -4101,6 +4215,7 @@ def main():
             check_duels_keyboard_continuity(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
+            check_large_saved_challenge_paging(browser, base)
             check_resumable_shared_challenge_draft(browser, base)
             check_shared_challenge_outage_recovery(browser, base)
             check_shared_preview_failure_skip(browser, base)

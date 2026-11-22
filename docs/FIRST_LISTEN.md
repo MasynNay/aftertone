@@ -65,3 +65,7 @@ AFTERTONE does not automatically keep hammering the music provider. After repeat
 ### Start directly from the first-listen guide
 
 On a fresh listening profile, the inline **Your First Listen** guide offers **Play My First Preview** as soon as the first recording is ready. This invokes the same audio player as the Play button on the listening card; keyboard focus moves there so you can pause or retry normally. After listening, choose **Keep** or **Pass** on the card to start shaping your recommendations. The guide disappears after that first choice, not just because you clicked Play. If the catalog is still loading, the guide will say so; if the provider fails, it points to **Retry Discovery** on the listening card so there is one clear recovery action. A failed request never counts as a vote. This feature never plays sound before a listener presses a button.
+
+### Browse more saved songs for Pass the Aux
+
+When creating a five-song shared challenge, the **Find a saved song** section shows up to 40 *unselected* eligible Deezer favorites at a time. Use **Next** and **Previous** to browse older songs without remembering their titles, or type a title or artist to filter results; typing restarts the list at page one. The displayed range reports how many saved songs remain available to add. Removing a chosen song makes it available to select again. A challenge still contains at most five track IDs, and the link does not include your saved collection, artwork or private listening history.

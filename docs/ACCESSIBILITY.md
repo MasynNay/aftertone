@@ -1,3 +1,7 @@
+## Large challenge-library keyboard browsing (v0.12 development)
+
+Pass the Aux now presents Previous/Next navigation and a visible results range for large saved Deezer libraries. Only 40 unselected matches appear per page; changing a search query resets to the first page. After pressing a paging button from the keyboard, focus moves to the updated, focusable `role="status"` result range immediately before the new list so Tab enters the newly shown candidate buttons. Page controls use native buttons with at least 44px targets and wrap on narrow screens. Simulated Chromium and Firefox journeys use 94 fictional saved tracks at a 320px phone width; automated checks are not a substitute for NVDA/VoiceOver/TalkBack or real-device testing.
+
 ## Legacy backup migration feedback (v0.12 development)
 
 Older progress backups that contain favorite IDs but not saved title/artist metadata now present a clear warning in the native restore confirmation before replacing local data. The export warning is also reported through the existing persistent Collection status region. Existing keyboard focus restoration, cancel behavior, and the original confirmation dialog remain unchanged; browser tests verify migrated content and preserved optional settings. Manual screen-reader speech and cross-device checks are still needed.

@@ -1,4 +1,4 @@
-import {eligibleChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,toggleChallengeDraft,moveChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
+import {eligibleChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,toggleChallengeDraft,moveChallengeDraft,challengeLibraryPage,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import {readChallengeDraft,saveChallengeDraft,clearChallengeDraft} from '../src/challenge-draft-store.mjs';
 import {apiFetch} from './api-browser.js';
 import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
@@ -281,6 +281,7 @@ let challengeDraftIds = restoredChallengeDraft ?? [];
 let challengeDraftCustomized = restoredChallengeDraft !== null;
 let challengeDraftSaved = restoredChallengeDraft !== null;
 let challengeFilterQuery = '';
+let challengePage = 1; // Transient paging only; never shared or stored with the ID-only draft.
 function storeChallengeDraft() {
   try {challengeDraftSaved=saveChallengeDraft(sessionStorage,challengeDraftIds);}
   catch {challengeDraftSaved=false;}
@@ -1140,9 +1141,12 @@ function render() {
   const challengeSearchSelection=focusedChallengeSearch
     ? {start:focusedChallengeSearch.selectionStart,end:focusedChallengeSearch.selectionEnd,
        direction:focusedChallengeSearch.selectionDirection} : null;
-  syncChallengeDraft();
+  const eligibleForChallenge=syncChallengeDraft();
+  // Favorites can change while browsing. Clamp the current results page so
+  // removing/adding a track never leaves the visitor on an empty phantom page.
+  challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -2277,6 +2281,23 @@ document.addEventListener('click', async (event) => {
       if(focused)main.querySelector('[data-action="reset-challenge-draft"]')?.focus({preventScroll:true});
       return;
     }
+    case 'challenge-next-page':
+    case 'challenge-previous-page': {
+      if(view!=='challenges')return;
+      const wasFocused=document.activeElement===action;
+      const selected=syncChallengeDraft();
+      const paging=challengeLibraryPage(selected,challengeDraftIds,challengeFilterQuery,challengePage);
+      const delta=action.dataset.action==='challenge-next-page'?1:-1;
+      const next=Math.min(paging.pageCount,Math.max(1,paging.page+delta));
+      if(next===paging.page)return;
+      challengePage=next;
+      render();
+      // The original page button might become disabled. Announce the new
+      // range from a focusable status before the first new track, rather than
+      // dropping keyboard users at the top of the whole document.
+      if(wasFocused)main.querySelector('#challenge-match-count')?.focus();
+      return;
+    }
     case 'add-challenge-track':
     case 'remove-challenge-track':
     case 'move-challenge-up':
@@ -2334,6 +2355,7 @@ $('#sound-toggle').addEventListener('click', () => { state = toggleMuteSetting(s
 main.addEventListener('input', (event) => {
   if(event.target.id==='challenge-track-search' && view==='challenges') {
     challengeFilterQuery=event.target.value.slice(0,90);
+    challengePage=1; // Search changes always start with the first matching page.
     render(); // Preserve input and cursor across filtered-list redraws.
     return;
   }

@@ -1,3 +1,11 @@
+## v0.12 development — Browse the entire saved-song challenge library (November 21, 2026)
+
+- The five-song **Pass the Aux** challenge editor now pages through **every eligible unselected saved Deezer recording**, 40 results at a time. Previously only the first 40 matches were shown; songs farther down required a specific search and could not be browsed.
+- Search matches and selected-track exclusion happen before pagination, keeping the result count accurate. Previous/Next page controls, visible range and page count make the remaining saved songs discoverable without rendering hundreds of mobile rows. A new query returns to page one, and changing the selection clamps stale pages.
+- The result range is an accessible live status. After keyboard paging it receives focus, and Tab continues into the new result list. Buttons maintain 44px touch targets on a 320px phone viewport.
+- Added data-model, view and controller regression tests; Chromium and Firefox simulate a 94-song saved catalog, keyboard paging to the oldest eligible recording, adding it to a five-song challenge, preserving favorites/Keep–Pass history, and resetting pagination on search. No third-party audio requests or personal challenge data are needed.
+- Third-party preview availability, permissions and manual assistive-technology testing remain open.
+
 ## v0.12 development — Restore earliest favorite-only backup sessions safely (November 21, 2026)
 
 - Genuine version 1 progress backups whose old listening session omitted the `savedTracks` field can now be inspected and restored. Migration is limited to **absent metadata in format v1**; newer format v2 files and malformed/explicitly invalid fields remain rejected before any browser data changes.
