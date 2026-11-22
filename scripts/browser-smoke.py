@@ -2957,8 +2957,8 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         first_song=page.locator("#listening-card").get_attribute("aria-label")
         require(page.locator("#stop-session").is_visible(),
                 "Manual Play did not start continuous listening")
-        # The first clip finishes normally. Reject ONLY the following
-        # automatic play() call with the browser's real NotAllowedError name.
+        # Reach the 22-second boundary without waiting for real elapsed time.
+        # Reject ONLY the following automatic play() with NotAllowedError.
         page.evaluate("""() => {
           const player=document.querySelector('#player');
           const native=player.play.bind(player);
@@ -2973,9 +2973,18 @@ def check_autoplay_permission_block_keeps_song(browser, base):
             }
             return native();
           };
-          // An ended event follows the same neutral advance path as the
-          // 22-second timeupdate, without relying on asynchronous media seeks.
-          player.dispatchEvent(new Event('ended'));
+          // Simulate a single 22-second timeupdate synchronously. A real media
+          // seek would asynchronously deliver extra seeked/timeupdate events,
+          // making a test of the NEXT song race its own input fixture.
+          const descriptor=Object.getOwnPropertyDescriptor(
+            HTMLMediaElement.prototype,'currentTime');
+          Object.defineProperty(player,'currentTime',{
+            configurable:true,
+            get:()=>22,
+            set:value=>descriptor.set.call(player,value)
+          });
+          try {player.dispatchEvent(new Event('timeupdate'));}
+          finally {delete player.currentTime;}
         }""")
         page.wait_for_function("""() =>
           window.__autoPolicyCalls===1 &&
