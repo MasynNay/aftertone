@@ -1977,6 +1977,7 @@ function announceProgressBackup(message) {
 function downloadProgressBackup() {
   try {
     const payload=createProgressBackup(localStorage);
+    const {summary}=inspectProgressBackup(payload);
     const blob=new Blob([payload],{type:'application/json'});
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement('a');
@@ -1984,7 +1985,10 @@ function downloadProgressBackup() {
     anchor.download='aftertone-progress-'+new Date().toISOString().slice(0,10)+'.json';
     document.body.append(anchor);anchor.click();anchor.remove();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
-    const message='Progress backup downloaded. Keep the file somewhere safe.';
+    const missing=summary.missingFavoriteMetadata || 0;
+    const message='Progress backup downloaded. Keep the file somewhere safe.'+
+      (missing ? ' Note: '+missing+' favorite '+(missing===1?'ID lacks':'IDs lack')+
+        ' saved song names. These favorites are included as IDs but may not appear in Collection until their track details are found again.' : '');
     announceProgressBackup(message);
     toast(message);
   } catch(error) {
@@ -2009,10 +2013,15 @@ async function importProgressBackupFile(file) {
       ? 'This older backup does not contain imported playlists or lyric timing adjustments. Those existing settings will stay unchanged.'
       : 'Also restore '+preview.playlistTracks+' imported playlist tracks and '+
         preview.lyricOffsets+' lyric timing adjustments.';
-    const message='Restore '+preview.favorites+' saved tracks, '+preview.decisions+
+    const missing=preview.missingFavoriteMetadata || 0;
+    const metadataNotice=missing
+      ? '\\n\\nImportant: '+missing+' saved favorite '+(missing===1?'ID has':'IDs have')+
+        ' no song title or artist metadata in this file. The favorite IDs and listening decisions can be restored, but those songs may not appear in Collection until their details are found again. No titles will be invented.'
+      : '';
+    const message='Restore '+preview.favorites+' saved favorites, '+preview.decisions+
       ' listening choices, '+preview.tournaments+' tournaments, '+
       preview.artists+' favorite artist'+(preview.artists===1?'':'s')+' and Tune Lab '+preview.quizCorrect+
-      '/'+preview.quizAnswered+' correct?\n\n'+optional+'\n\n'+
+      '/'+preview.quizAnswered+' correct?\n\n'+optional+metadataNotice+'\n\n'+
       'This replaces your current AFTERTONE progress. Export a backup of your current progress first.';
     if(!window.confirm(message)) {
       announceProgressBackup('Restore canceled. Your existing progress was not changed.');
