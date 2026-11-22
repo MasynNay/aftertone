@@ -1113,8 +1113,9 @@ function render() {
     Boolean(previousCard) && renderedListeningTrackId===String(current.id);
   const focusedListeningControl=sameListeningTrack && (
     ['stage-play','preview-volume','lyrics-offset'].includes(focusedOldControl.id) ||
-    focusedOldControl.matches?.('[data-action="lyrics-toggle"]')
-  ) ? (focusedOldControl.id || 'lyrics-toggle') : null;
+    focusedOldControl.matches?.('[data-action="lyrics-toggle"],[data-action="toggle-blind"]')
+  ) ? (focusedOldControl.matches?.('[data-action="toggle-blind"]')
+    ? 'blind-toggle' : (focusedOldControl.id || 'lyrics-toggle')) : null;
   // Choosing a path rebuilds its own buttons. Keep keyboard context on
   // that option instead of moving focus to Play or to the document body.
   const focusedPath=view==='discover' &&
@@ -1204,7 +1205,9 @@ function render() {
   if(focusedListeningControl && view==='discover' && renderedListeningTrackId) {
     const replacement=focusedListeningControl==='lyrics-toggle'
       ? $('#listening-card [data-action="lyrics-toggle"]')
-      : $('#'+focusedListeningControl);
+      : focusedListeningControl==='blind-toggle'
+        ? $('#listening-card [data-action="toggle-blind"]')
+        : $('#'+focusedListeningControl);
     if(replacement && !replacement.disabled &&
        !replacement.closest('[hidden], [inert]') && replacement.getClientRects().length)
       replacement.focus({preventScroll:true});
@@ -2192,7 +2195,14 @@ document.addEventListener('click', async (event) => {
       if (!getFeed().hasMore) { getFeed().exhausted.clear(); getFeed().hasMore = true; }
       return loadMore(state.genre,true,false,restoreKeyboardFocus);
     }
-    case 'toggle-blind': state.blind = !state.blind; persist(); return render();
+    case 'toggle-blind': {
+      // In shared challenges, identities stay hidden by design. Ignore stale
+      // event targets instead of silently editing the user's blind preference.
+      if(view!=='discover' || !current || challengeIds.length) return;
+      state.blind = !state.blind;
+      persist();
+      return render(); // Same-track focus continuity handles the toggle.
+    }
     case 'passport-route': {
       const route = action.dataset.route;
       if (route === 'quiz') return goTo('quiz');
@@ -2486,7 +2496,12 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if(view !== 'discover') return;
-  if (event.key.toLowerCase() === 'b') { event.preventDefault(); state.blind = !state.blind; persist(); render(); return; }
+  if (event.key.toLowerCase() === 'b') {
+    if(challengeIds.length || !current) return; // Shared challenges lock blindness.
+    event.preventDefault();
+    state.blind = !state.blind;
+    persist(); render(); return;
+  }
   if (event.key === 'ArrowLeft') { event.preventDefault(); acceptChoice('pass'); }
   if (event.key === 'ArrowRight') { event.preventDefault(); acceptChoice('like'); }
   if (event.code === 'Space') { event.preventDefault(); togglePlayback(current); }
