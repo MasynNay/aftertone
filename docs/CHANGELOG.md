@@ -1,3 +1,10 @@
+## v0.12 development — Restore earliest favorite-only backup sessions safely (November 21, 2026)
+
+- Genuine version 1 progress backups whose old listening session omitted the `savedTracks` field can now be inspected and restored. Migration is limited to **absent metadata in format v1**; newer format v2 files and malformed/explicitly invalid fields remain rejected before any browser data changes.
+- Existing favorite IDs and Keep/Pass decisions are preserved without inventing song titles, artwork or playable previews. If any backed-up favorites lack full track metadata (including v2 backups exported from an older local session), the export notice and restore confirmation clearly warn that those songs might not appear in Collection until their details are found again.
+- Version 1 imports continue to **retain** the target browser's separately saved imported playlist and lyric timing settings. Version 2 behavior is unchanged. A rejected file never rewrites local data.
+- Extended Node tests for missing vs malformed metadata, cross-version rejection, no invented titles, existing optional-data retention, and honest warning counts; added real-file Chromium/Firefox browser restore journeys with fictional source metadata. Physical browser/device transfers and live music permissions remain separate checks.
+
 ## v0.12 development — Start the first preview directly from onboarding (November 21, 2026)
 
 - The inline **Your First Listen** guide now has a prominent **Play My First Preview** button when a track is ready. It uses the existing player and normal user-initiated Play action, moves keyboard focus to the real player, and never records a Keep/Pass on its own.
