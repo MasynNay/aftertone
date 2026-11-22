@@ -1,3 +1,7 @@
+## Blind Mode focus and shared challenge lock (v0.12 development)
+
+In normal discovery, activating the Blind button by keyboard or pointer retains focus on the new button as the listening card rebuilds, and its `aria-pressed` state matches the saved preference. In a shared challenge, blind listening is mandatory: a noninteractive **Locked** indicator with an accessible name replaces the toggle, and the B keyboard shortcut cannot change the user's personal blind setting. Exiting the challenge restores the same preference. Automated Chromium and Firefox checks cover a 320px viewport, Enter activation, focus continuity, persistence, challenge lock, and unchanged listening choices. Manual screen-reader speech and real-device tests are still required.
+
 ## Large challenge-library keyboard browsing (v0.12 development)
 
 Pass the Aux now presents Previous/Next navigation and a visible results range for large saved Deezer libraries. Only 40 unselected matches appear per page; changing a search query resets to the first page. After pressing a paging button from the keyboard, focus moves to the updated, focusable `role="status"` result range immediately before the new list so Tab enters the newly shown candidate buttons. Page controls use native buttons with at least 44px targets and wrap on narrow screens. Simulated Chromium and Firefox journeys use 94 fictional saved tracks at a 320px phone width; automated checks are not a substitute for NVDA/VoiceOver/TalkBack or real-device testing.
