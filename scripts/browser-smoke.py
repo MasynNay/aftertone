@@ -2971,7 +2971,15 @@ def check_main_play_retries_terminal_media_error(browser, base):
             ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
         require(requests["metadata"]>=2,
                 "A media error did not request its allowed fresh URL")
-        play.click()  # Pause and end continuous listening without changing songs.
+        # Firefox may rerender the listening card while provider results
+        # arrive; activate the current live Pause control synchronously instead
+        # of using a pointer click on an element repeatedly detached mid-scroll.
+        page.evaluate("""() => {
+          const button=document.querySelector('#stage-play');
+          if(button?.getAttribute('aria-label')!=='Pause preview')
+            throw new Error('Recovered preview is not ready to pause');
+          button.click();
+        }""")
         require(page.evaluate("document.querySelector('#player').paused"),
                 "Pausing preview did not end playback")
         page.evaluate("""() =>
