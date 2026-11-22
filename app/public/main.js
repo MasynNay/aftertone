@@ -968,7 +968,14 @@ audio.addEventListener('timeupdate', () => {
   }
   updatePlaybackView();
 });
-audio.addEventListener('ended', () => { if (continuousListening) advancePreview(); });
+audio.addEventListener('ended', () => {
+  // A canceled/old media source may deliver a delayed ended event after
+  // the next track has started. Never skip that unheard recording. Genuine
+  // short clips (under 22 seconds) still advance when the current audio ends.
+  if (continuousListening && !isLoadingAudio && audio.ended &&
+      view === 'discover' && !modal && current?.id === activeAudioId)
+    advancePreview();
+});
 audio.addEventListener('play', updatePlaybackView);
 audio.addEventListener('pause', updatePlaybackView);
 audio.addEventListener('error', async () => {
