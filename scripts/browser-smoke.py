@@ -2919,7 +2919,7 @@ def check_play_cancels_pending_preview(browser, base):
 
 
 def check_autoplay_permission_block_keeps_song(browser, base):
-    """Mobile autoplay refusal must pause on the unheard song without a vote."""
+    """A normal Pass must not make an autoplay refusal skip another song."""
     import io
     import wave
     sample=io.BytesIO()
@@ -2927,7 +2927,7 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         writer.setnchannels(1)
         writer.setsampwidth(1)
         writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*4)
+        writer.writeframes(bytes([128])*8000*30)
     silence=sample.getvalue()
     origin=urlsplit(base).netloc
     context=browser.new_context(viewport={"width":390,"height":844},
@@ -2957,10 +2957,10 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         first_song=page.locator("#listening-card").get_attribute("aria-label")
         require(page.locator("#stop-session").is_visible(),
                 "Manual Play did not start continuous listening")
-        # Use a real four-second recording to exercise the genuine ended
-        # event, not a synthetic 22-second seek that can leave Firefox media
-        # events pending against a different song. Reject ONLY the following
-        # automatic play() with NotAllowedError.
+        # An explicit Pass is a normal way to advance an active continuous
+        # listening session. Use that instead of injecting elapsed-time or
+        # ended media events that can race Firefox's audio pipeline.
+        # Reject ONLY the next automatic play() with NotAllowedError.
         page.evaluate("""() => {
           const player=document.querySelector('#player');
           const native=player.play.bind(player);
@@ -2975,9 +2975,12 @@ def check_autoplay_permission_block_keeps_song(browser, base):
             }
             return native();
           };
-          // The real WAV ends shortly; the app's native ended listener
-          // advances to the next song and calls this one-shot permission mock.
         }""")
+        # Deliberate Pass is the sole listening decision in this scenario.
+        # This rebuilds the card and legitimately attempts the next preview.
+        pass_button=page.locator('#listening-card [data-action="pass"]')
+        pass_button.focus()
+        page.keyboard.press("Enter")
         page.wait_for_function("""() =>
           window.__autoPolicyCalls===1 &&
           document.querySelector('#audio-status')?.textContent
@@ -3003,7 +3006,10 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
           return {history:s.history||[],favorites:s.favorites||[]};
         }""")
-        require(mid==before,"Autoplay policy denial created a Keep/Pass vote")
+        require(len(mid["history"])==len(before["history"])+1 and
+                mid["history"][-1]["action"]=="pass" and
+                mid["favorites"]==before["favorites"],
+                "Autoplay denial added votes beyond the listener's deliberate Pass")
         # The user must still be able to start this SAME song manually.
         play=page.locator("#stage-play")
         play.focus()
@@ -3028,9 +3034,9 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
           return {history:s.history||[],favorites:s.favorites||[]};
         }""")
-        require(after==before,"Resuming after blocked autoplay created a fake decision")
+        require(after==mid,"Resuming after blocked autoplay created a fake decision")
         require(not errors,"Autoplay denial browser exceptions: "+"; ".join(errors))
-        print(f"PASS {label}: blocked autoplay holds current song, no vote, manual Play resumes")
+        print(f"PASS {label}: deliberate Pass, blocked next autoplay, one-song manual recovery")
     except Exception:
         try:
             diagnostics=page.evaluate("""() => ({
