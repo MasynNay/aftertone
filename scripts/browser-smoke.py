@@ -2919,27 +2919,17 @@ def check_play_cancels_pending_preview(browser, base):
 
 
 def check_autoplay_permission_block_keeps_song(browser, base):
-    """A normal Pass must not make an autoplay refusal skip another song."""
-    import io
-    import wave
-    sample=io.BytesIO()
-    with wave.open(sample,"wb") as writer:
-        writer.setnchannels(1)
-        writer.setsampwidth(2)
-        writer.setframerate(44100)
-        # Standard 16-bit signed PCM. The 8-bit/8kHz fixture can return an
-        # early decode error in headless Firefox even after play() resolves.
-        writer.writeframes(bytes(2*44100*12))
-    silence=sample.getvalue()
+    """Autoplay permission denial must hold the next song without creating a vote.
+
+    Use a controlled media element, not a codec/decoder-dependent WAV. Native
+    decoding and HTTP media recovery are exercised by the separate tests.
+    """
     origin=urlsplit(base).netloc
     context=browser.new_context(viewport={"width":390,"height":844},
                                 service_workers="block")
     context.route("**/*",lambda route:route.continue_()
                   if urlsplit(route.request.url).netloc==origin else route.abort())
     context.route("https://api.deezer.com/**",mock_deezer)
-    context.route("https://cdn-preview.dzcdn.net/**",lambda route:
-        route.fulfill(status=200,content_type="audio/wav",body=silence,
-                      headers={"access-control-allow-origin":"*"}))
     page=context.new_page()
     errors=[]
     page.on("pageerror",lambda error:errors.append(str(error)))
@@ -2949,9 +2939,7 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
         close=page.locator('#modal-root button[data-modal="close"]')
         if close.count():close.first.click(timeout=TIMEOUT)
-        # A named Deezer search has a fixed 25-song fixture and deliberately
-        # bypasses rotating discovery-path artist filters. It provides the
-        # required second track even after an intentional Pass.
+        # A named search provides many deterministic fictional recordings.
         page.evaluate("""() => {
           const search=document.querySelector('#music-search');
           search.value='Fixture';
@@ -2963,68 +2951,68 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           Boolean(document.querySelector('#stage-play')) &&
           Number(document.querySelector('#queue-count')?.textContent||0)>=3
         """,timeout=TIMEOUT)
-        before=page.evaluate("""() => {
-          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
-          return {history:s.history||[],favorites:s.favorites||[]};
+        # Isolate browser permission logic from third-party codecs. The mock
+        # implements only the media operations the app actually uses, retaining
+        # native button clicks, async provider lookups and DOM redraws.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          let paused=true,src='',position=0;
+          Object.defineProperty(player,'paused',{configurable:true,get:()=>paused});
+          Object.defineProperty(player,'src',{configurable:true,
+            get:()=>src,set:value=>{src=String(value||'');}});
+          Object.defineProperty(player,'currentTime',{configurable:true,
+            get:()=>position,set:value=>{position=Number(value)||0;}});
+          const remove=player.removeAttribute.bind(player);
+          player.removeAttribute=function(name) {
+            if(name==='src'){src='';return;}
+            return remove(name);
+          };
+          player.load=function(){};
+          player.pause=function(){
+            paused=true;
+            player.dispatchEvent(new Event('pause'));
+          };
+          player.play=function(){
+            paused=false;
+            player.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+          };
+          window.__autoplayPolicyEvents=[];
+          window.__autoPolicyCalls=0;
         }""")
+        def choices():
+            return page.evaluate("""() => {
+              const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+              return {history:s.history||[],favorites:s.favorites||[]};
+            }""")
+        before=choices()
         page.locator("#stage-play").click()
         page.wait_for_function("""() => document.querySelector('#stage-play')
           ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
         first_song=page.locator("#listening-card").get_attribute("aria-label")
         require(page.locator("#stop-session").is_visible(),
                 "Manual Play did not start continuous listening")
-        # An explicit Pass is a normal way to advance an active continuous
-        # listening session. Use that instead of injecting elapsed-time or
-        # ended media events that can race Firefox's audio pipeline.
-        # Reject ONLY the next automatic play() with NotAllowedError.
         page.evaluate("""() => {
           const player=document.querySelector('#player');
-          const native=player.play.bind(player);
-          window.__autoPolicyEvents=[];
-          window.__autoPolicyCalls=0;
-          const recorded=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[];
-          const requiredHistoryLength=recorded.length+1;
-          let previousLabel=document.querySelector('#listening-card')?.getAttribute('aria-label');
-          const record=detail=>{
-            if(window.__autoPolicyEvents.length<120)
-              window.__autoPolicyEvents.push(detail);
-          };
-          const observer=new MutationObserver(()=>{
-            const label=document.querySelector('#listening-card')?.getAttribute('aria-label')||'(empty)';
-            if(label!==previousLabel){previousLabel=label;record('card='+label);}
-          });
-          observer.observe(document.querySelector('#main-content'),{subtree:true,childList:true});
-          ['play','pause','ended','emptied','error','loadstart'].forEach(name=>
-            player.addEventListener(name,()=>record(
-              name+':'+Math.floor(player.currentTime||0)+
-              ',paused='+player.paused+',src='+player.currentSrc.slice(-16)
-            )));
-          player.addEventListener('timeupdate',()=>{
-            if(player.currentTime>=21)record('boundary:'+Math.floor(player.currentTime));
-          });
+          const permittedPlay=player.play.bind(player);
+          const requiredHistoryLength=
+            (JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[]).length+1;
           window.__blockAutomaticOnce=true;
-          player.play=function() {
-            // Background provider updates can try automatic playback even
-            // before the deliberate Pass animation commits. Block only AFTER
-            // the Pass is recorded, never an unrelated earlier resume.
+          player.play=function(){
             const history=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[];
-            if(window.__blockAutomaticOnce && history.length>=requiredHistoryLength) {
+            if(window.__blockAutomaticOnce && history.length>=requiredHistoryLength){
               window.__blockAutomaticOnce=false;
               window.__autoPolicyCalls++;
-              // Keep the refusal ONE SHOT. The original native play method
-              // must receive the later real button/keyboard user gesture.
-              delete player.play;
-              window.__autoPolicyEvents.push('synthetic autoplay denied');
+              window.__autoplayPolicyEvents.push('automatic play denied');
+              player.play=permittedPlay; // Subsequent actual user activation works.
               return Promise.reject(new DOMException(
                 'Playback requires user activation','NotAllowedError'));
             }
-            return native();
+            return permittedPlay();
           };
         }""")
-        # Deliberate Pass is the sole listening decision in this scenario.
-        # This rebuilds the card and legitimately attempts the next preview.
-        pass_button=page.locator('#listening-card [data-action="pass"]')
-        pass_button.click(timeout=TIMEOUT)
+        # Only the intentional Pass may change listening choices.
+        page.locator('#listening-card [data-action="pass"]').click(timeout=TIMEOUT)
         page.wait_for_function("""() =>
           (JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[]).length>=1
         """,timeout=TIMEOUT)
@@ -3033,104 +3021,60 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           document.querySelector('#audio-status')?.textContent
             ?.includes('Autoplay blocked')""",timeout=TIMEOUT)
         blocked_song=page.locator("#listening-card").get_attribute("aria-label")
-        require(blocked_song!=first_song,
-                "Deliberate Pass did not advance to another song")
-        require(page.locator("#stage-play").get_attribute("aria-label")==
-                "Play preview","Blocked autoplay did not restore manual Play")
+        require(blocked_song!=first_song,"Pass did not select another song")
+        require(page.locator("#stage-play").get_attribute("aria-label")=="Play preview",
+                "Blocked autoplay did not restore main Play")
         require("Press Play" in page.locator("#continuity-hint").inner_text(),
-                "Autoplay denial has no persistent manual-play instruction")
+                "Autoplay denial has no persistent manual Play instruction")
         require(page.locator("#stop-session").is_hidden(),
                 "Autoplay denial did not stop continuous listening")
         require(page.locator("#preview-recovery").is_hidden(),
-                "Autoplay policy was incorrectly reported as a broken preview")
+                "Browser permission denial was mislabeled as a broken stream")
         require(page.evaluate("""() => {
           const player=document.querySelector('#player');
           return player.paused && !player.getAttribute('src');
-        }"""),"Automatic-play denial left media active in the background")
-        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
-                "Denied automatic playback skipped over the unheard recording")
-        mid=page.evaluate("""() => {
-          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
-          return {history:s.history||[],favorites:s.favorites||[]};
-        }""")
+        }"""),"Automatic playback denial did not clear active media")
+        mid=choices()
         require(len(mid["history"])==len(before["history"])+1 and
                 mid["history"][-1]["action"]=="pass" and
                 mid["favorites"]==before["favorites"],
-                "Autoplay denial added votes beyond the listener's deliberate Pass")
-        # The user must still be able to start this SAME song manually.
-        # Record the real browser rejection, if any, without changing native
-        # playback behavior, so a failing browser reports an actionable cause.
-        page.evaluate("""() => {
-          const player=document.querySelector('#player');
-          const original=HTMLMediaElement.prototype.play;
-          player.play=function(...args) {
-            window.__autoPolicyEvents.push('manual Play invoked');
-            try {
-              return Promise.resolve(original.apply(this,args)).then(
-                result => {window.__autoPolicyEvents.push('native Play resolved');return result;},
-                error => {
-                  window.__autoPolicyEvents.push('native Play rejected '+
-                    error?.name+': '+error?.message);
-                  throw error;
-                });
-            } catch (error) {
-              window.__autoPolicyEvents.push('native Play threw '+
-                error?.name+': '+error?.message);
-              throw error;
-            }
-          };
-        }""")
+                "Autoplay denial created votes beyond the deliberate Pass")
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Autoplay denial skipped the next unheard recording")
         play=page.locator("#stage-play")
         play.focus()
         page.keyboard.press("Enter")
         page.wait_for_function("""() => document.querySelector('#stage-play')
           ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
         require(page.locator("#stop-session").is_hidden(),
-                "A denied automatic session must not restart on manual replay")
+                "Manual permission recovery restarted the blocked auto session")
         require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
-                "Manual recovery changed the song before it was heard")
-        # An old source's delayed ended event must not advance the new
-        # recording, especially on Firefox during quick media handoffs.
+                "Manual permission recovery changed the unheard recording")
+        # Late ended events must never advance a currently playing different
+        # recording just because an earlier source was disposed.
         page.evaluate("""() => document.querySelector('#player')
           .dispatchEvent(new Event('ended'))""")
         require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
-                "Stale ended event skipped the recovered song")
+                "Stale ended event skipped the resumed recording")
         require("Autoplay blocked" not in page.locator("#audio-status").inner_text(),
-                "Manual Play left the stale permission warning on screen")
+                "Manual Play did not clear the stale permission warning")
         require(page.evaluate("document.activeElement?.id==='stage-play'"),
-                "Keyboard manual recovery did not retain Play focus")
-        after=page.evaluate("""() => {
-          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
-          return {history:s.history||[],favorites:s.favorites||[]};
-        }""")
-        require(after==mid,"Resuming after blocked autoplay created a fake decision")
-        require(not errors,"Autoplay denial browser exceptions: "+"; ".join(errors))
-        print(f"PASS {label}: deliberate Pass, blocked next autoplay, one-song manual recovery")
+                "Manual permission recovery lost keyboard focus")
+        require(choices()==mid,"Manual recovery changed Keep/Pass history")
+        require(not errors,"Autoplay denial page exceptions: "+"; ".join(errors))
+        print(f"PASS {label}: intentional Pass, blocked next autoplay, same-song manual recovery")
     except Exception:
         try:
-            diagnostics=page.evaluate("""() => ({
+            info=page.evaluate("""() => ({
               attempts:window.__autoPolicyCalls,
-              policyEvents:window.__autoPolicyEvents,
-              mediaError:document.querySelector('#player')?.error?.code,
-              mediaReadyState:document.querySelector('#player')?.readyState,
-              mediaNetworkState:document.querySelector('#player')?.networkState,
-              mediaPaused:document.querySelector('#player')?.paused,
-              url:location.href,
-              tracksDisplayed:document.querySelectorAll('.queue-tile').length,
-              path:document.querySelector('.discovery-paths .selected')?.dataset.path,
-              queue:document.querySelector('#queue-count')?.textContent,
-              search:document.querySelector('#music-search')?.value,
-              content:document.querySelector('#main-content')?.innerText.slice(0,430),
-              active:document.activeElement?.id,
+              events:window.__autoplayPolicyEvents,
               status:document.querySelector('#audio-status')?.textContent,
               hint:document.querySelector('#continuity-hint')?.textContent,
               play:document.querySelector('#stage-play')?.getAttribute('aria-label'),
               song:document.querySelector('#listening-card')?.getAttribute('aria-label'),
-              stopped:document.querySelector('#stop-session')?.hidden,
-              source:document.querySelector('#player')?.getAttribute('src'),
               history:JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history?.length
             })""")
-            print(f"DEBUG {label}: "+json.dumps(diagnostics),flush=True)
+            print(f"DEBUG {label}: "+json.dumps(info),flush=True)
         except Exception:
             pass
         screenshot(page,f"FAILED-{label}")
