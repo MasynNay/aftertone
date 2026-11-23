@@ -77,7 +77,7 @@ function safeDuels(value) {
   if(!Array.isArray(value) || value.length>DUEL_MAX_ARCHIVES)
     throw new Error('Backup contains too many tournaments.');
   if(value.some(t=>!t || typeof t.name!=='string' || t.name.length>80 ||
-      !Array.isArray(t.entries) || t.entries.some(e=>typeof e.title!=='string' ||
+      !Array.isArray(t.entries) || t.entries.some(e=>!e || typeof e.title!=='string' ||
       e.title.length>180 || typeof e.artist!=='string' || e.artist.length>180)))
     throw new Error('Backup contains invalid tournament metadata.');
   const stub={getItem:key=>key===DUEL_STORAGE_KEY?JSON.stringify({version:1,tournaments:value}):null};
@@ -237,19 +237,27 @@ export function inspectProgressBackup(text) {
   };
 }
 
+/** Verify writes: some storage wrappers can silently drop a write rather than
+ * throwing. A restore must never tell the listener it succeeded in that case.
+ */
+function writeAndVerify(storage,key,value) {
+  if(value===null)storage.removeItem(key);
+  else storage.setItem(key,value);
+  if(storage.getItem(key)!==value)
+    throw new Error('Browser storage did not retain the requested value.');
+}
+
 /** All-or-rollback localStorage transaction. Browser reload hydrates new data. */
 export function restoreProgressBackup(storage,text) {
   const {writes,summary}=inspectProgressBackup(text);
+  // Snapshot before any mutation, so a failed storage read cannot replace data.
   const previous=writes.map(([key])=>[key,storage.getItem(key)]);
   try {
-    for(const [key,value] of writes) {
-      if(value===null)storage.removeItem(key);
-      else storage.setItem(key,value);
-    }
+    for(const [key,value] of writes) writeAndVerify(storage,key,value);
   }catch {
     let rolledBack=true;
     for(const [key,value] of previous.reverse()) {
-      try {if(value===null)storage.removeItem(key);else storage.setItem(key,value);}
+      try {writeAndVerify(storage,key,value);}
       catch {rolledBack=false;}
     }
     throw new Error(rolledBack
