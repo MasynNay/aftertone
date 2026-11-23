@@ -2925,9 +2925,11 @@ def check_autoplay_permission_block_keeps_song(browser, base):
     sample=io.BytesIO()
     with wave.open(sample,"wb") as writer:
         writer.setnchannels(1)
-        writer.setsampwidth(1)
-        writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*30)
+        writer.setsampwidth(2)
+        writer.setframerate(44100)
+        # Standard 16-bit signed PCM. The 8-bit/8kHz fixture can return an
+        # early decode error in headless Firefox even after play() resolves.
+        writer.writeframes(bytes(2*44100*12))
     silence=sample.getvalue()
     origin=urlsplit(base).netloc
     context=browser.new_context(viewport={"width":390,"height":844},
