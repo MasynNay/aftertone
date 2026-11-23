@@ -1,6 +1,6 @@
 ## Continuous listening when autoplay requires a gesture (v0.12 development)
 
-When the browser rejects a new *automatic* audio play with `NotAllowedError`, the app stops continuous listening but leaves the unheard song and a visible text instruction to **Press Play** manually. Keyboard users can focus the original Play control and press Enter to resume that song once; continuous listening stays off after a browser permission refusal, rather than immediately restarting unsupported autoplay. No automatic Keep, Pass, unavailable-song mark or further background skipping occurs. Synthetic 390px Chromium/Firefox checks cover that state and keyboard recovery; real mobile/screen-reader checks remain open.
+When the browser rejects a new *automatic* audio play with `NotAllowedError`, the app stops continuous listening but leaves the unheard song and a visible text instruction to **Press Play** manually. Keyboard users can focus the original Play control and press Enter to resume that song once; continuous listening stays off after a browser permission refusal, rather than immediately restarting unsupported autoplay. No extra automatic Keep, Pass, unavailable-song mark or background skipping occurs; an explicitly pressed Pass still counts as the user's decision. Synthetic 390px Chromium/Firefox checks cover that state and keyboard recovery; real mobile/screen-reader checks remain open.
 
 ## Pass the Aux editor focus after background redraws (v0.12 development)
 
