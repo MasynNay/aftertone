@@ -1,3 +1,7 @@
+## Mobile Filters overlay keyboard behavior (v0.12 development)
+
+At 320px and 390px, Chromium and Firefox test the fixed Filters panel's open-only `role=dialog` and `aria-modal=true`, Tab wrapping from the final visible control back to Done, Shift+Tab wrapping back, restoration from a background focus attempt, suppression of Arrow-key Keep/Pass shortcuts behind the panel, and retained Done focus when the sidebar redraws. The suite also checks the existing Escape, Done, filter-change and search-submit flows, plus desktop-breakpoint cleanup of the dialog role and expanded state. This is synthetic keyboard/browser coverage; real touch and screen-reader verification remain separate.
+
 ## Repeated manual browser permission denial (v0.12 development)
 
 At a 390px viewport, the Chromium and Firefox smoke suites use a controlled media element with fictional Deezer metadata to simulate two consecutive `NotAllowedError` rejections from explicit keyboard Play attempts, then a successful third attempt. After **each** denial, the same song must remain available, the browser-permission explanation persists, the failed-provider recovery panel stays hidden, continuous listening is off, the audio element is unloaded and Keep/Pass history/favorites stay unchanged. Successful keyboard replay must clear the warning, keep focus on Play and *not* reenable continuous listening without a separate new session. This is a controlled behavior regression, **not** evidence of native browser permissions, real provider rights or physical-device support.
