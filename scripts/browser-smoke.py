@@ -2978,12 +2978,17 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         page.evaluate("""() => {
           const player=document.querySelector('#player');
           const native=player.play.bind(player);
+          window.__autoPolicyEvents=[];
           window.__autoPolicyCalls=0;
           window.__blockAutomaticOnce=true;
           player.play=function() {
             if(window.__blockAutomaticOnce) {
               window.__blockAutomaticOnce=false;
               window.__autoPolicyCalls++;
+              // Keep the refusal ONE SHOT. The original native play method
+              // must receive the later real button/keyboard user gesture.
+              delete player.play;
+              window.__autoPolicyEvents.push('synthetic autoplay denied');
               return Promise.reject(new DOMException(
                 'Playback requires user activation','NotAllowedError'));
             }
@@ -3025,6 +3030,28 @@ def check_autoplay_permission_block_keeps_song(browser, base):
                 mid["favorites"]==before["favorites"],
                 "Autoplay denial added votes beyond the listener's deliberate Pass")
         # The user must still be able to start this SAME song manually.
+        # Record the real browser rejection, if any, without changing native
+        # playback behavior, so a failing browser reports an actionable cause.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          const original=HTMLMediaElement.prototype.play;
+          player.play=function(...args) {
+            window.__autoPolicyEvents.push('manual Play invoked');
+            try {
+              return Promise.resolve(original.apply(this,args)).then(
+                result => {window.__autoPolicyEvents.push('native Play resolved');return result;},
+                error => {
+                  window.__autoPolicyEvents.push('native Play rejected '+
+                    error?.name+': '+error?.message);
+                  throw error;
+                });
+            } catch (error) {
+              window.__autoPolicyEvents.push('native Play threw '+
+                error?.name+': '+error?.message);
+              throw error;
+            }
+          };
+        }""")
         play=page.locator("#stage-play")
         play.focus()
         page.keyboard.press("Enter")
@@ -3055,6 +3082,11 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         try:
             diagnostics=page.evaluate("""() => ({
               attempts:window.__autoPolicyCalls,
+              policyEvents:window.__autoPolicyEvents,
+              mediaError:document.querySelector('#player')?.error?.code,
+              mediaReadyState:document.querySelector('#player')?.readyState,
+              mediaNetworkState:document.querySelector('#player')?.networkState,
+              mediaPaused:document.querySelector('#player')?.paused,
               url:location.href,
               path:document.querySelector('.discovery-paths .selected')?.dataset.path,
               queue:document.querySelector('#queue-count')?.textContent,
