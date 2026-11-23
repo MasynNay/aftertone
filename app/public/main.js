@@ -844,7 +844,9 @@ async function togglePlayback(track, automatic = false) {
     }
     failedSources.delete(track.id);
     if (deezerRefreshedOnce.size > 300) deezerRefreshedOnce.clear();
-    consecutivePlaybackFailures = 0;
+    // play() can resolve before the browser decodes any audio. Do not reset
+    // the failure streak yet: an immediate media error after a nominally
+    // successful play must still count toward the three-failure safety cap.
   } catch (error) {
     // A denied automatic play is a browser gesture policy, NOT an unavailable
     // song. Do not blacklist, vote on, or advance past an unheard recording.
@@ -965,6 +967,12 @@ function updatePlaybackView() {
 
 audio.addEventListener('timeupdate', () => {
   if (lyricsEnabled) updateLyricView();
+  // A stream is only proven audible after its time position has actually
+  // advanced. A play() promise that resolves then fails at 0 seconds must
+  // not reset consecutivePlaybackFailures and drain the whole discovery queue.
+  if (!isLoadingAudio && !audio.paused && audio.currentTime >= 1 &&
+      activeAudioId && (view !== 'discover' || current?.id === activeAudioId))
+    consecutivePlaybackFailures = 0;
   if (audio.currentTime >= previewLength) {
     // During a Firefox source handoff, a stale timeupdate can still carry
     // the OLD clip's 22-second position. Never advance the NEW song until
