@@ -1,3 +1,9 @@
+## v0.12 development — Verify saved Music Duels brackets (November 23, 2026)
+
+- Loading tournament history now verifies that every matchup uses the entrants or winners of its preceding round, that votes occur in order, and that bronze pairings match the losing semifinalists. A corrupted or forged later round is excluded instead of appearing as a resumable bracket.
+- Completed podiums must agree with the recorded championship and bronze votes. Inconsistent data can no longer award an invented Hall of Fame champion or be accepted through progress backup/restore.
+- Regression tests cover valid 4-, 8-, 16-song and two-champion tournaments at each vote, forged results, missing transitions and rejected backup imports. This is archive-integrity hardening, not a claim of licensed Deezer playback.
+
 ## v0.12 development — Verified local progress restore (November 22, 2026)
 
 - Restore now reads back every browser-storage write and deletion before reporting success. A storage adapter that silently drops a changed value triggers the same rollback as a thrown quota/security error; no false `Progress restored` message is shown.

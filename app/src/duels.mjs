@@ -123,6 +123,57 @@ export function podiumTracks(tournament) {
   });
 }
 
+/** An archive is playable only if every round follows the previous votes.
+ * Checking IDs and winner membership alone lets malformed later rounds and
+ * forged podiums pass into Hall of Fame. This check also protects restore.
+ */
+function consistentBracket(t) {
+  const slots=t.entries.map(entry=>entry.id);
+  const roundsNeeded=Math.log2(slots.length);
+  if(t.rounds.length>roundsNeeded)return false;
+  let expected=slots;
+  let semiLosers=null;
+  for(let r=0;r<t.rounds.length;r++) {
+    const round=t.rounds[r];
+    if(!Array.isArray(round) || round.length!==expected.length/2)return false;
+    let encounteredPending=false;
+    for(let m=0;m<round.length;m++) {
+      const match=round[m];
+      if(!match || match.id!==`r${r}m${m}` ||
+          match.a!==expected[2*m] || match.b!==expected[2*m+1] ||
+          !Object.hasOwn(match,'winner') ||
+          (match.winner!==null && match.winner!==match.a && match.winner!==match.b))
+        return false;
+      // The app only offers the next undecided match, in its original order.
+      if(match.winner===null)encounteredPending=true;
+      else if(encounteredPending)return false;
+    }
+    if(r<t.rounds.length-1 && round.some(match=>match.winner===null))
+      return false; // A later round cannot exist before this round finishes.
+    if(round.length===2 && slots.length>=4 && round.every(match=>match.winner!==null))
+      semiLosers=round.map(losing);
+    expected=round.map(match=>match.winner);
+  }
+  if(slots.length>=4 && semiLosers) {
+    const bronze=t.thirdPlace;
+    if(!bronze || bronze.id!=='bronze' ||
+        bronze.a!==semiLosers[0] || bronze.b!==semiLosers[1] ||
+        !Object.hasOwn(bronze,'winner') ||
+        (bronze.winner!==null && bronze.winner!==bronze.a && bronze.winner!==bronze.b))
+      return false;
+  } else if(t.thirdPlace!=null)return false;
+
+  const final=t.rounds.at(-1)[0];
+  const completed=t.rounds.length===roundsNeeded && t.rounds.at(-1).length===1 &&
+    final.winner!==null;
+  if(t.status==='active')return !completed && t.podium==null;
+  if(!completed || (slots.length>=4 && t.thirdPlace.winner===null) ||
+     !t.podium || typeof t.podium!=='object')return false;
+  return t.podium.first===final.winner &&
+    t.podium.second===losing(final) &&
+    t.podium.third===(slots.length>=4?t.thirdPlace.winner:null);
+}
+
 /** Roundtrip-safe, defensive storage: invalid or outdated brackets are ignored. */
 export function loadDuelStore(storage) {
   try {
@@ -137,7 +188,7 @@ export function loadDuelStore(storage) {
       if (t.rounds.some((round,i)=>!Array.isArray(round) || round.length!==t.entries.length / (2**(i+1)) || round.some(m=>!m || !ids.has(m.a) || !ids.has(m.b) || m.a===m.b || (m.winner && ![m.a,m.b].includes(m.winner))))) return false;
       if (t.thirdPlace && (!ids.has(t.thirdPlace.a) || !ids.has(t.thirdPlace.b) || (t.thirdPlace.winner && ![t.thirdPlace.a,t.thirdPlace.b].includes(t.thirdPlace.winner)))) return false;
       if (t.status==='complete' && (!t.podium || !ids.has(t.podium.first) || !ids.has(t.podium.second) || (t.entries.length>=4 && !ids.has(t.podium.third)))) return false;
-      return true;
+      return consistentBracket(t);
     });
   } catch { return []; }
 }
