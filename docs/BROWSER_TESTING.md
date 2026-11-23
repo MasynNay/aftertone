@@ -1,12 +1,10 @@
-The autoplay test also checks that delayed media errors during a user Pass and the next play request cannot drain the loaded queue or create additional listening decisions.
-
-The autoplay-permission regression intentionally stubs the media element's play/pause/load operations while exercising the real application, provider metadata and DOM. This isolates permission/choice handling from native media codecs; separate playback smoke tests exercise actual media decoding. It validates that a deliberate Pass is the only recorded choice.
-
 ## Autoplay permission recovery (v0.12 development)
 
-The regression also dispatches a late synthetic `ended` event after manual replay to ensure a canceled earlier media source cannot skip the recovered song.
+At a 390px viewport, Chromium and Firefox use fictional Deezer metadata and a controlled media element to exercise the *real application state machine* without depending on codec support. The listener explicitly Plays and Passes one song, then the next automatic `play()` rejects with the browser's `NotAllowedError`. The test requires exactly one deliberate Pass, unchanged favorites, no automatic skipping of the unheard next track, a stopped continuous-listening session and a persistent manual Play instruction instead of a broken-stream warning.
 
-At 390px, Chromium and Firefox begin a controlled preview, deliberately Pass that song, and simulate the browser's `NotAllowedError` when the next track starts automatically. The test expects only the user's one deliberate Pass in saved history and checks that the manually replayed next song is not skipped by a late media-end event. The test requires a persistent manual Play instruction, no automatic advance past the unheard next recording, no added listening history/favorites, no false broken-CDN recovery controls and successful same-track replay using Enter. It uses fictional Deezer metadata, not third-party music; real mobile autoplay policies and provider availability need separate manual checks.
+The user then activates Play with Enter. The same next recording must resume as a single-song preview, preserve keyboard focus and leave history untouched. A deliberately dispatched stale `ended` event must not skip that recording.
+
+This is **not** proof of actual media decoding or permission behavior on iOS and Android. Separate Chromium/Firefox smoke tests load synthetic WAV audio and exercise on-demand preview resolution, native playback, mid-stream recovery and cancellation. Live provider availability, rights and physical mobile/assistive-technology checks remain open.
 
 ## Recovering from a terminal preview error via main Play (v0.12 development)
 
