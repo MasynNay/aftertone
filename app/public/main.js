@@ -1142,11 +1142,52 @@ function setMobileFiltersOpen(open, focusTarget='') {
     matchMedia('(max-width: 900px)').matches && side && !side.hidden);
   document.body.classList.toggle('mobile-filters-open',expanded);
   toggle?.setAttribute('aria-expanded',String(expanded));
+  // The fixed mobile drawer behaves as a dialog only while it covers the
+  // listening room. Desktop discovery settings stay an ordinary region.
+  if (side) {
+    if (expanded) {
+      side.setAttribute('role','dialog');
+      side.setAttribute('aria-modal','true');
+    } else {
+      side.removeAttribute('role');
+      side.removeAttribute('aria-modal');
+    }
+  }
   if (expanded && focusTarget==='close')
     side.querySelector('[data-action="close-mobile-filters"]')?.focus({preventScroll:true});
   if (!expanded && focusTarget==='toggle' && toggle?.getClientRects().length)
     toggle.focus({preventScroll:true});
 }
+
+// Trap keyboard focus inside the fixed Filters drawer on narrow screens.
+// Background navigation and the listening card must not become hidden Tab
+// stops while a dialog covers them. Escape and Done remain easy ways out.
+function trapMobileFiltersTab(event) {
+  const side=$('#sidebar-preferences');
+  if (!side) return;
+  const controls=[...side.querySelectorAll(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+  )].filter(element=>element.getClientRects().length &&
+    !element.closest('[hidden], [inert]') && !element.disabled);
+  if (!controls.length) {
+    event.preventDefault();
+    side.setAttribute('tabindex','-1');
+    side.focus({preventScroll:true});
+    return;
+  }
+  const first=controls[0], last=controls[controls.length-1];
+  if (event.shiftKey && (document.activeElement===first || !side.contains(document.activeElement))) {
+    event.preventDefault();
+    last.focus({preventScroll:true});
+  } else if (!event.shiftKey && (document.activeElement===last || !side.contains(document.activeElement))) {
+    event.preventDefault();
+    first.focus({preventScroll:true});
+  }
+}
+window.addEventListener('resize', () => {
+  if (document.body.classList.contains('mobile-filters-open') &&
+      matchMedia('(min-width: 901px)').matches) setMobileFiltersOpen(false);
+});
 function goTo(nextView) {
   setThemeMenuOpen(false);
   if (!['discover', 'collection', 'taste', 'challenges', 'quiz', 'duels'].includes(nextView)) return;
@@ -1176,6 +1217,13 @@ function render() {
   // Only restore an interactive player's focus if it is still the SAME song.
   // A navigation, deliberate new song or hidden control must not steal focus.
   const focusedOldControl=document.activeElement;
+  // Live provider updates rebuild sidebar HTML even when the mobile Filters
+  // dialog is open. Keep focus on the same Done/expand control after redraw.
+  const focusedMobileFilterAction=view==='discover' &&
+    document.body.classList.contains('mobile-filters-open') &&
+    focusedOldControl?.closest?.('#sidebar-preferences') &&
+    ['close-mobile-filters','toggle-side-filters'].includes(focusedOldControl.dataset.action)
+      ? focusedOldControl.dataset.action : null;
   const previousCard=focusedOldControl?.closest?.('#listening-card');
   const sameListeningTrack=view==='discover' && current &&
     Boolean(previousCard) && renderedListeningTrackId===String(current.id);
@@ -1226,6 +1274,9 @@ function render() {
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
+  if (focusedMobileFilterAction && side && document.body.classList.contains('mobile-filters-open')) {
+    side.querySelector('[data-action="'+focusedMobileFilterAction+'"]')?.focus({preventScroll:true});
+  }
   if (focusedFilterId) {
     // Sidebar preferences are rebuilt when a filter changes. Keep keyboard
     // focus on the new select instead of leaving it on the document body.
@@ -1606,8 +1657,16 @@ async function importPlaylistLinkFromDialog() {
 function openModal(kind, extra = {}) {
   cancelPlaylistLinkFlight();
   setThemeMenuOpen(false);
+  const focusedBefore=document.activeElement;
+  const wasMobileDrawerAction=document.body.classList.contains('mobile-filters-open') &&
+    Boolean(focusedBefore?.closest?.('#sidebar-preferences'));
+  // Avoid two simultaneous aria-modal dialogs if an action opens Help or
+  // another full dialog while the mobile discovery drawer is visible.
+  if (document.body.classList.contains('mobile-filters-open')) setMobileFiltersOpen(false);
   if(!modal) {
-    const opener=document.activeElement;
+    // An opener inside the now-hidden drawer is not a useful focus return
+    // target. Restore to the visible Filters toggle when that modal closes.
+    const opener=wasMobileDrawerAction ? $('#mobile-refine-toggle') : focusedBefore;
     modalReturnFocus=opener instanceof HTMLElement && opener!==document.body &&
       !modalRoot.contains(opener) ? opener : main;
   }
@@ -2589,9 +2648,13 @@ window.addEventListener('keydown', (event) => {
     if(event.key==='Tab')trapModalTab(event);
     return;
   }
-  if(event.key==='Escape' && document.body.classList.contains('mobile-filters-open')) {
-    event.preventDefault();
-    setMobileFiltersOpen(false,'toggle');
+  if (document.body.classList.contains('mobile-filters-open')) {
+    if (event.key==='Escape') {
+      event.preventDefault();
+      setMobileFiltersOpen(false,'toggle');
+    } else if (event.key==='Tab') trapMobileFiltersTab(event);
+    // The drawer is a focused dialog. Background rating shortcuts must not
+    // run, even if pointer input or a redraw briefly moved focus outside it.
     return;
   }
   // Do not hijack browser/assistive-technology shortcuts or let holding

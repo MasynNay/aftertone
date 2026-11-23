@@ -1,3 +1,10 @@
+## v0.12 development — Mobile Filters focus containment (November 22, 2026)
+
+- The fixed small-screen Filters drawer is an accessible dialog while open. Keyboard Tab and Shift+Tab remain inside its visible controls until Done or Escape closes it and returns focus to the opener.
+- Background page shortcuts can no longer accidentally Keep or Pass an unheard song while the Filters drawer covers the player. Asynchronous catalog rerenders preserve keyboard focus on Done or the drawer's collapse control instead of stranding it on the page.
+- Resizing from mobile to desktop clears the temporary dialog semantics, and opening a full Help/other modal closes the Filters drawer first so two competing dialogs do not remain active.
+- Added Chromium and Firefox browser checks at 320px and 390px for focus wrapping, redraw focus restoration, no hidden votes, Escape/Done, resize, and the existing filter/search workflows. Real-device and screen-reader verification remain open.
+
 ## v0.12 development — Manual Play permission denials remain retryable (November 22, 2026)
 
 - An HTML media `NotAllowedError` from a **manual** Play now follows the same neutral browser-permission path as denied automatic playback: no blacklisted Deezer song, no broken-provider warning, no extra Keep/Pass, and no silent advance.

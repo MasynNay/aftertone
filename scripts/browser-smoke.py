@@ -1848,10 +1848,66 @@ def check_mobile_filters_keyboard(browser, base, width):
         rect=close_filters.bounding_box()
         require(rect is not None and rect["width"]>=43.5 and rect["height"]>=43.5,
                 "Phone Filters close control is not a 44px touch target")
+        require(panel.get_attribute("role")=="dialog" and
+                panel.get_attribute("aria-modal")=="true",
+                "Mobile Filters drawer lacks dialog semantics while open")
+
+        # First and last Tab stops wrap within the visible drawer rather than
+        # exposing background listening or navigation while it covers them.
+        page.evaluate("""() => {
+          const side=document.querySelector('#sidebar-preferences');
+          const controls=[...side.querySelectorAll(
+            'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+          )].filter(el=>el.getClientRects().length &&
+            !el.closest('[hidden], [inert]') && !el.disabled);
+          controls.at(-1).focus();
+        }""")
+        page.keyboard.press("Tab")
+        require(page.evaluate("""() =>
+            document.activeElement?.dataset?.action==='close-mobile-filters'"""),
+                "Forward Tab escaped the open mobile Filters dialog")
+        page.keyboard.press("Shift+Tab")
+        require(page.evaluate("""() => {
+          const side=document.querySelector('#sidebar-preferences');
+          const focus=document.activeElement;
+          return side.contains(focus) &&
+            focus?.dataset?.action!=='close-mobile-filters';
+        }"""),"Reverse Tab escaped the open mobile Filters dialog")
+
+        # A provider rerender can replace the sidebar while Done is focused.
+        # It must restore focus to the new Done element, not document.body.
+        page.evaluate("""() => {
+          document.querySelector('[data-action="close-mobile-filters"]').focus();
+          document.querySelector('[data-action="toggle-side-filters"]').click();
+        }""")
+        require(page.evaluate("""() =>
+          document.activeElement?.dataset?.action==='close-mobile-filters'"""),
+          "Sidebar redraw lost focused Done control")
+        page.evaluate("""() =>
+          document.querySelector('[data-action="toggle-side-filters"]').click()""")
+        require(page.evaluate("""() =>
+          document.activeElement?.dataset?.action==='close-mobile-filters'"""),
+          "Expanding the sidebar again lost Done focus")
+
+        # Even a focus script or background pointer change cannot make arrow
+        # shortcuts vote on the hidden listening card behind this drawer.
+        page.locator("#main-content").focus()
+        page.keyboard.press("ArrowRight")
+        require(page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+          return (s.history||[]).length===0 && (s.favorites||[]).length===0;
+        }"""),"Background shortcut rated music while Filters covered the card")
+        page.keyboard.press("Tab")
+        require(page.evaluate("""() =>
+          document.activeElement?.dataset?.action==='close-mobile-filters'"""),
+          "Tab from background did not return to the Filters dialog")
 
         page.keyboard.press("Escape")
         require(not panel.is_visible() and toggle.get_attribute("aria-expanded")=="false",
                 "Escape failed to close mobile Filters or reset aria-expanded")
+        require(panel.get_attribute("role") is None and
+                panel.get_attribute("aria-modal") is None,
+                "Closed mobile Filters panel kept its dialog semantics")
         require(page.evaluate("document.activeElement?.id==='mobile-refine-toggle'"),
                 "Escape failed to restore focus to the Filters opener")
 
@@ -1892,6 +1948,17 @@ def check_mobile_filters_keyboard(browser, base, width):
                 "Search submission lost its committed text")
 
         toggle.click()
+        # A desktop breakpoint must dismiss the fixed mobile dialog so its
+        # role, focus containment and aria-expanded do not remain stale.
+        page.set_viewport_size({"width":1024,"height":740})
+        page.wait_for_function("""() =>
+          document.querySelector('#mobile-refine-toggle')
+            ?.getAttribute('aria-expanded')==='false'""",timeout=TIMEOUT)
+        require(panel.get_attribute("role") is None and
+                panel.get_attribute("aria-modal") is None,
+                "Desktop resize kept modal semantics on normal sidebar")
+        page.set_viewport_size({"width":width,"height":740})
+        toggle.click()
         page.locator('#main-nav button[data-view="collection"]').click()
         require(not panel.is_visible() and toggle.get_attribute("aria-expanded")=="false",
                 "Navigation away left a hidden Filters drawer marked expanded")
@@ -1906,7 +1973,7 @@ def check_mobile_filters_keyboard(browser, base, width):
         require(page.evaluate("document.documentElement.scrollWidth <= innerWidth+2"),
                 "Mobile Filters caused horizontal document overflow")
         require(not errors,"Mobile Filters JavaScript exception: "+"; ".join(errors))
-        print(f"PASS {label}: open, Escape, Done, filter focus, search, navigation")
+        print(f"PASS {label}: dialog Tab loop, focus after redraw, no background votes, Escape, Done, resize, search, navigation")
     except Exception:
         screenshot(page,f"FAILED-{label}")
         raise
