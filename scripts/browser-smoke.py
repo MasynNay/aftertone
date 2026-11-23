@@ -3146,9 +3146,9 @@ def check_main_play_retries_terminal_media_error(browser, base):
     sample=io.BytesIO()
     with wave.open(sample,"wb") as writer:
         writer.setnchannels(1)
-        writer.setsampwidth(1)
-        writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*30)
+        writer.setsampwidth(2)
+        writer.setframerate(44100)
+        writer.writeframes(bytes(2*44100*12))
     silence=sample.getvalue()
     context=browser.new_context(viewport={"width":390,"height":844},
                                 service_workers="block")
@@ -3257,9 +3257,9 @@ def check_media_error_refresh_cancellation(browser, base):
     sample=io.BytesIO()
     with wave.open(sample,"wb") as writer:
         writer.setnchannels(1)
-        writer.setsampwidth(1)
-        writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*30)
+        writer.setsampwidth(2)
+        writer.setframerate(44100)
+        writer.writeframes(bytes(2*44100*12))
     silence=sample.getvalue()
     context=browser.new_context(viewport={"width":390,"height":844},
                                 service_workers="block")
