@@ -2987,7 +2987,7 @@ def check_autoplay_permission_block_keeps_song(browser, base):
             ?.includes('Autoplay blocked')""",timeout=TIMEOUT)
         blocked_song=page.locator("#listening-card").get_attribute("aria-label")
         require(blocked_song!=first_song,
-                "Natural preview advancement did not reach the next song")
+                "Deliberate Pass did not advance to another song")
         require(page.locator("#stage-play").get_attribute("aria-label")==
                 "Play preview","Blocked autoplay did not restore manual Play")
         require("Press Play" in page.locator("#continuity-hint").inner_text(),
