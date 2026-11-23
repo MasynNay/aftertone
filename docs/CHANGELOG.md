@@ -1,3 +1,9 @@
+## v0.12 development — Manual Play permission denials remain retryable (November 22, 2026)
+
+- An HTML media `NotAllowedError` from a **manual** Play now follows the same neutral browser-permission path as denied automatic playback: no blacklisted Deezer song, no broken-provider warning, no extra Keep/Pass, and no silent advance.
+- The discovery card keeps the same song visible with persistent instructions to check browser media permissions and press Play again. Repeating the denial does not mark the recording unavailable; a subsequent permitted Play resumes it as a single preview without unexpectedly restarting continuous listening.
+- Dedicated 390px Chromium and Firefox browser regressions use fictional provider metadata and controlled media-element outcomes to deny the first **two** keyboard Play attempts, then permit the third. They check focus, status, no failure-recovery UI and unchanged listening history. Actual browser codecs, provider rights, physical devices and accessibility tools require separate review.
+
 ## v0.12 development — Autoplay permission denial does not skip songs (November 22, 2026)
 
 - Consecutive automatic media failures are no longer cleared merely because `audio.play()` resolves. A stream must advance at least one second before the failure streak resets, so Firefox-style immediate decode errors cannot drain an entire listening queue without audio being heard.

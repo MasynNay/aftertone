@@ -171,7 +171,8 @@ let isLoadingAudio = false;
 let activeAudioFallback = false;
 let failedAudioId = null;
 let failedAudioQuota = false; // Rate limits need different recovery guidance from a broken CDN.
-let autoplayBlockedTrackId = null; // Browser gesture restrictions are not a broken recording or a vote.
+let permissionBlockedTrackId = null; // A browser permission denial is never a broken source or a vote.
+let permissionBlockedWasAutomatic = false;
 let resolved = new Map();
 const previewRequestScope=createPreviewRequestScope();
 let failedSources = new Set();
@@ -670,7 +671,8 @@ function stopAudio() {
   activeAudioFallback = false;
   failedAudioId = null;
   failedAudioQuota = false;
-  autoplayBlockedTrackId = null;
+  permissionBlockedTrackId = null;
+  permissionBlockedWasAutomatic = false;
 }
 
 async function resolveAudio(track) {
@@ -808,7 +810,7 @@ async function togglePlayback(track, automatic = false) {
     // previews just THIS song. Do not immediately restart a continuous session
     // that the browser refused: otherwise a delayed old media event can skip
     // another unheard track before the user has a chance to listen.
-    continuousListening = !challengeIds.length && autoplayBlockedTrackId !== track.id;
+    continuousListening = !challengeIds.length && permissionBlockedTrackId !== track.id;
   } else if (!automatic) continuousListening = false; // Collection playback is manual.
   const sameTrack = activeAudioId === track.id;
   if (!sameTrack) stopAudio();
@@ -817,7 +819,7 @@ async function togglePlayback(track, automatic = false) {
   activeAudioFallback = false;
   failedAudioId = null;
   failedAudioQuota = false;
-  if (!automatic) autoplayBlockedTrackId = null;
+  if (!automatic) permissionBlockedTrackId = null;
   isLoadingAudio = true;
   updatePlaybackView();
   try {
@@ -848,18 +850,23 @@ async function togglePlayback(track, automatic = false) {
     // the failure streak yet: an immediate media error after a nominally
     // successful play must still count toward the three-failure safety cap.
   } catch (error) {
-    // A denied automatic play is a browser gesture policy, NOT an unavailable
-    // song. Do not blacklist, vote on, or advance past an unheard recording.
-    // Keep the chosen discovery card ready for a real manual Play gesture.
+    // NotAllowedError means the browser denied a playback gesture. This is
+    // neither a provider outage nor evidence that the song is unavailable.
+    // Even deliberate manual Play can be rejected by browser media policy.
+    // Never blacklist the recording, advance the queue, or create a vote.
     if (generation !== audioGeneration) return; // Old stream was canceled by a swipe.
-    if (automatic && error?.name === 'NotAllowedError' &&
-        view === 'discover' && current?.id === track.id) {
+    if (error?.name === 'NotAllowedError') {
       continuousListening = false;
       consecutivePlaybackFailures = 0;
       stopAudio();
-      autoplayBlockedTrackId = track.id;
+      if (view === 'discover' && current?.id === track.id) {
+        permissionBlockedTrackId = track.id;
+        permissionBlockedWasAutomatic = automatic;
+      }
       updatePlaybackView();
-      toast('Automatic playback was blocked. Press Play to hear this song; nothing was skipped.');
+      toast(automatic
+        ? 'Automatic playback was blocked. Press Play to hear this song; nothing was skipped.'
+        : 'Your browser blocked playback. Check media permissions, then press Play again; this song was not marked unavailable.');
       return;
     }
     // A missing Commons upload or blocked format should never trap the player.
@@ -890,10 +897,12 @@ function updatePlaybackView() {
   const stop = $('#stop-session');
   if (stop) stop.hidden = !continuousListening;
   const hint = $('#continuity-hint');
-  if (hint) hint.textContent = challengeIds.length
-    ? 'Listen, then Keep or Pass. Failed clips can be skipped without a vote.'
-    : current?.id === autoplayBlockedTrackId
+  if (hint) hint.textContent = current?.id === permissionBlockedTrackId
+    ? (permissionBlockedWasAutomatic
       ? 'Automatic playback blocked by your browser · Press Play to continue'
+      : 'Browser blocked playback · Check media permissions, then press Play')
+    : challengeIds.length
+      ? 'Listen, then Keep or Pass. Failed clips can be skipped without a vote.'
       : continuousListening ? '● Auto-playing · Stop to end' : '▶ Play once for continuous listening';
   const button = $('#stage-play');
   if (button && current) {
@@ -921,7 +930,7 @@ function updatePlaybackView() {
     if (fill) fill.style.width = `${seconds / previewLength * 100}%`;
     if (time) time.textContent = `0:${String(Math.floor(seconds)).padStart(2, '0')} / 0:${previewLength}`;
     const status = $('#audio-status');
-    setTextIfChanged(status, loadingThisTrack ? 'Finding the recording… Activate Cancel loading preview to stop' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : autoplayBlockedTrackId === current.id ? 'Autoplay blocked — press Play to hear this song' : failedAudioId === current.id ? (failedAudioQuota ? 'Deezer requests limited — wait before retrying' : 'Stream unavailable — try another song or source') : 'Press play to sample this track');
+    setTextIfChanged(status, loadingThisTrack ? 'Finding the recording… Activate Cancel loading preview to stop' : playing ? (continuousListening ? 'Continuous listening · playing now' : 'Listening in progress') : permissionBlockedTrackId === current.id ? (permissionBlockedWasAutomatic ? 'Autoplay blocked — press Play to hear this song' : 'Browser blocked playback — check permissions and press Play again') : failedAudioId === current.id ? (failedAudioQuota ? 'Deezer requests limited — wait before retrying' : 'Stream unavailable — try another song or source') : 'Press play to sample this track');
   }
   // Recoverable failure controls belong to the discovery card, never the saved collection.
   const recovery=$('#preview-recovery');

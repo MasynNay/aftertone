@@ -1,3 +1,7 @@
+## When manual Play is blocked by the browser (v0.12 development)
+
+Some browsers can reject even a user-triggered Play with `NotAllowedError`. Discovery now shows a persistent text instruction to check media permissions and try Play again without falsely announcing a broken recording, counting a vote or skipping the song. After permission is restored, the same Play button remains keyboard operable and a successful retry plays only that song; the user can start a new continuous session separately. Controlled Chromium/Firefox tests cover two denials followed by keyboard recovery, while real screen-reader and physical mobile testing remains open.
+
 ## Continuous listening when autoplay requires a gesture (v0.12 development)
 
 When the browser rejects a new *automatic* audio play with `NotAllowedError`, the app stops continuous listening but leaves the unheard song and a visible text instruction to **Press Play** manually. Keyboard users can focus the original Play control and press Enter to resume that song once; continuous listening stays off after a browser permission refusal, rather than immediately restarting unsupported autoplay. No extra automatic Keep, Pass, unavailable-song mark or background skipping occurs; an explicitly pressed Pass still counts as the user's decision. Synthetic 390px Chromium/Firefox checks cover that state and keyboard recovery; real mobile/screen-reader checks remain open.

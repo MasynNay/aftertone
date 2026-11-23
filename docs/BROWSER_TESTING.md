@@ -1,3 +1,7 @@
+## Repeated manual browser permission denial (v0.12 development)
+
+At a 390px viewport, the Chromium and Firefox smoke suites use a controlled media element with fictional Deezer metadata to simulate two consecutive `NotAllowedError` rejections from explicit keyboard Play attempts, then a successful third attempt. After **each** denial, the same song must remain available, the browser-permission explanation persists, the failed-provider recovery panel stays hidden, continuous listening is off, the audio element is unloaded and Keep/Pass history/favorites stay unchanged. Successful keyboard replay must clear the warning, keep focus on Play and *not* reenable continuous listening without a separate new session. This is a controlled behavior regression, **not** evidence of native browser permissions, real provider rights or physical-device support.
+
 ## Autoplay permission recovery (v0.12 development)
 
 At a 390px viewport, Chromium and Firefox use fictional Deezer metadata and a controlled media element to exercise the *real application state machine* without depending on codec support. The listener explicitly Plays and Passes one song, then the next automatic `play()` rejects with the browser's `NotAllowedError`. The test requires exactly one deliberate Pass, unchanged favorites, no automatic skipping of the unheard next track, a stopped continuous-listening session and a persistent manual Play instruction instead of a broken-stream warning.
