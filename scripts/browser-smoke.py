@@ -2918,6 +2918,131 @@ def check_play_cancels_pending_preview(browser, base):
         context.close()
 
 
+def check_manual_play_permission_denial_is_retryable(browser, base):
+    """A rejected manual Play must not blacklist, vote on or skip the song."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"manual-permission-retry-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        # Isolate browser playback permission from media codec support, while
+        # keeping real provider resolution, buttons and asynchronous UI logic.
+        page.evaluate("""() => {
+          const search=document.querySelector('#music-search');
+          search.value='Fixture';
+          search.dispatchEvent(new Event('input',{bubbles:true}));
+          document.querySelector('#music-search-form').dispatchEvent(
+            new Event('submit',{bubbles:true,cancelable:true}));
+        }""")
+        page.wait_for_function("""() =>
+          Boolean(document.querySelector('#stage-play')) &&
+          Number(document.querySelector('#queue-count')?.textContent||0)>=3
+        """,timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          let paused=true,src='',position=0;
+          Object.defineProperty(player,'paused',{configurable:true,get:()=>paused});
+          Object.defineProperty(player,'src',{configurable:true,
+            get:()=>src,set:value=>{src=String(value||'');}});
+          Object.defineProperty(player,'currentTime',{configurable:true,
+            get:()=>position,set:value=>{position=Number(value)||0;}});
+          const remove=player.removeAttribute.bind(player);
+          player.removeAttribute=function(name) {
+            if(name==='src'){src='';return;}
+            return remove(name);
+          };
+          player.load=function(){};
+          player.pause=function(){
+            paused=true;
+            player.dispatchEvent(new Event('pause'));
+          };
+          window.__manualPolicyAttempts=0;
+          player.play=function(){
+            window.__manualPolicyAttempts++;
+            if(window.__manualPolicyAttempts<=2)
+              return Promise.reject(new DOMException(
+                'User media playback is restricted','NotAllowedError'));
+            paused=false;
+            player.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+          };
+        }""")
+        def snapshot():
+            return page.evaluate("""() => {
+              const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+              return {history:s.history||[],favorites:s.favorites||[]};
+            }""")
+        before=snapshot()
+        song=page.locator("#listening-card").get_attribute("aria-label")
+        play=page.locator("#stage-play")
+        play.focus()
+        for attempt in (1,2):
+            page.keyboard.press("Enter")
+            page.wait_for_function("""count =>
+              window.__manualPolicyAttempts===count &&
+              document.querySelector('#audio-status')?.textContent
+                ?.includes('Browser blocked playback')
+            """,arg=attempt,timeout=TIMEOUT)
+            require(page.locator("#stage-play").get_attribute("aria-label")=="Play preview",
+                    "Manual permission denial did not restore Play")
+            require("Check media permissions" in page.locator("#continuity-hint").inner_text(),
+                    "Manual browser permission denial lacks helpful instructions")
+            require(page.locator("#preview-recovery").is_hidden(),
+                    "Browser permission denial was mislabeled as a failed provider stream")
+            require(page.locator("#stop-session").is_hidden(),
+                    "Permission denial failed to stop continuous listening")
+            require(page.locator("#listening-card").get_attribute("aria-label")==song,
+                    "Permission denial skipped an unheard recording")
+            require(page.evaluate("""() => {
+              const player=document.querySelector('#player');
+              return player.paused && !player.getAttribute('src');
+            }"""),"Permission-denied audio was left loaded")
+            require(snapshot()==before,"Manual denied playback recorded a Keep or Pass")
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() =>
+          window.__manualPolicyAttempts===3 &&
+          document.querySelector('#stage-play')
+            ?.getAttribute('aria-label')==='Pause preview'
+        """,timeout=TIMEOUT)
+        require(page.locator("#stop-session").is_hidden(),
+                "Permission retry immediately restarted denied continuous listening")
+        require(page.locator("#listening-card").get_attribute("aria-label")==song,
+                "Successful manual retry replaced the unheard song")
+        require("Browser blocked playback" not in page.locator("#audio-status").inner_text(),
+                "Successful retry retained permission-denial status")
+        require(page.evaluate("document.activeElement?.id==='stage-play'"),
+                "Manual permission retry lost keyboard focus")
+        require(snapshot()==before,"Successful permission retry created a phantom vote")
+        require(not errors,"Manual permission denial exceptions: "+"; ".join(errors))
+        print(f"PASS {label}: two browser denials, neutral same-song keyboard retry")
+    except Exception:
+        try:
+            info=page.evaluate("""() => ({
+              attempts:window.__manualPolicyAttempts,
+              status:document.querySelector('#audio-status')?.textContent,
+              hint:document.querySelector('#continuity-hint')?.textContent,
+              play:document.querySelector('#stage-play')?.getAttribute('aria-label'),
+              song:document.querySelector('#listening-card')?.getAttribute('aria-label')
+            })""")
+            print(f"DEBUG {label}: "+json.dumps(info),flush=True)
+        except Exception:
+            pass
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_autoplay_permission_block_keeps_song(browser, base):
     """Autoplay permission denial must hold the next song without creating a vote.
 
@@ -4721,6 +4846,7 @@ def firefox_main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_manual_play_permission_denial_is_retryable(browser, base)
             check_autoplay_permission_block_keeps_song(browser, base)
             check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
@@ -4781,6 +4907,7 @@ def main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_manual_play_permission_denial_is_retryable(browser, base)
             check_autoplay_permission_block_keeps_song(browser, base)
             check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
