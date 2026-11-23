@@ -2947,6 +2947,14 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
         close=page.locator('#modal-root button[data-modal="close"]')
         if close.count():close.first.click(timeout=TIMEOUT)
+        # The default New Territory lane can legitimately run out of strict
+        # matches with fictional metadata. Use a loaded Wild Card catalog
+        # with multiple candidates so a deliberate Pass is testable.
+        page.locator('.discovery-paths [data-path="explore"]').click()
+        page.wait_for_function("""() =>
+          Boolean(document.querySelector('#stage-play')) &&
+          Number(document.querySelector('#queue-count')?.textContent||0)>=3
+        """,timeout=TIMEOUT)
         before=page.evaluate("""() => {
           const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
           return {history:s.history||[],favorites:s.favorites||[]};
@@ -3041,6 +3049,10 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         try:
             diagnostics=page.evaluate("""() => ({
               attempts:window.__autoPolicyCalls,
+              url:location.href,
+              path:document.querySelector('.discovery-paths .selected')?.dataset.path,
+              queue:document.querySelector('#queue-count')?.textContent,
+              content:document.querySelector('#main-content')?.innerText.slice(0,430),
               active:document.activeElement?.id,
               status:document.querySelector('#audio-status')?.textContent,
               hint:document.querySelector('#continuity-hint')?.textContent,
