@@ -3179,16 +3179,24 @@ def check_main_play_retries_terminal_media_error(browser, base):
         }""")
         play=page.locator("#stage-play")
         play.click()
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         require(requests["metadata"]>=1,"First Play did not request preview metadata")
 
         # A mid-stream media error gets a single transparent URL refresh.
         # After recovery succeeds, a second error is terminal for that attempt.
         page.evaluate("""() =>
           document.querySelector('#player').dispatchEvent(new Event('error'))""")
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         require(requests["metadata"]>=2,
                 "A media error did not request its allowed fresh URL")
         # Firefox may rerender the listening card while provider results
@@ -3214,8 +3222,12 @@ def check_main_play_retries_terminal_media_error(browser, base):
         failed_count=requests["metadata"]
         play.focus()
         page.keyboard.press("Enter")
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         require(requests["metadata"]>failed_count,
                 "Main Play reused the cached failed URL instead of refreshing Deezer metadata")
         require(recovery.is_hidden(),
@@ -3271,8 +3283,12 @@ def check_media_error_refresh_cancellation(browser, base):
             return {history:s.history||[],favorites:s.favorites||[]};
         }""")
         page.locator("#stage-play").click()
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         # Only the recovery request is held. The initial Play used a playable
         # 30-second original silence fixture, no third-party audio.
         page.evaluate("""() => {
