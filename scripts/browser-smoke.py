@@ -2980,6 +2980,24 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           const native=player.play.bind(player);
           window.__autoPolicyEvents=[];
           window.__autoPolicyCalls=0;
+          let previousLabel=document.querySelector('#listening-card')?.getAttribute('aria-label');
+          const record=detail=>{
+            if(window.__autoPolicyEvents.length<120)
+              window.__autoPolicyEvents.push(detail);
+          };
+          const observer=new MutationObserver(()=>{
+            const label=document.querySelector('#listening-card')?.getAttribute('aria-label')||'(empty)';
+            if(label!==previousLabel){previousLabel=label;record('card='+label);}
+          });
+          observer.observe(document.querySelector('#main-content'),{subtree:true,childList:true});
+          ['play','pause','ended','emptied','error','loadstart'].forEach(name=>
+            player.addEventListener(name,()=>record(
+              name+':'+Math.floor(player.currentTime||0)+
+              ',paused='+player.paused+',src='+player.currentSrc.slice(-16)
+            )));
+          player.addEventListener('timeupdate',()=>{
+            if(player.currentTime>=21)record('boundary:'+Math.floor(player.currentTime));
+          });
           window.__blockAutomaticOnce=true;
           player.play=function() {
             if(window.__blockAutomaticOnce) {
@@ -3088,6 +3106,7 @@ def check_autoplay_permission_block_keeps_song(browser, base):
               mediaNetworkState:document.querySelector('#player')?.networkState,
               mediaPaused:document.querySelector('#player')?.paused,
               url:location.href,
+              tracksDisplayed:document.querySelectorAll('.queue-tile').length,
               path:document.querySelector('.discovery-paths .selected')?.dataset.path,
               queue:document.querySelector('#queue-count')?.textContent,
               search:document.querySelector('#music-search')?.value,
