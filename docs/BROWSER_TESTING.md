@@ -1,12 +1,12 @@
 The autoplay test also checks that delayed media errors during a user Pass and the next play request cannot drain the loaded queue or create additional listening decisions.
 
-The autoplay test uses a standard 44.1 kHz 16-bit PCM silent WAV fixture to avoid differences in headless browser support for very-low-rate unsigned PCM. It also validates that a deliberate Pass is the only recorded choice.
+The autoplay-permission regression intentionally stubs the media element's play/pause/load operations while exercising the real application, provider metadata and DOM. This isolates permission/choice handling from native media codecs; separate playback smoke tests exercise actual media decoding. It validates that a deliberate Pass is the only recorded choice.
 
 ## Autoplay permission recovery (v0.12 development)
 
 The regression also dispatches a late synthetic `ended` event after manual replay to ensure a canceled earlier media source cannot skip the recovered song.
 
-At 390px, Chromium and Firefox play an original generated silent WAV, deliberately Pass that song, and then simulate the browser's `NotAllowedError` when the next track is started automatically. The test never modifies audio time, uses no synthetic media-end events for advancing, and expects only the user's one deliberate Pass in saved history. The test requires a persistent manual Play instruction, no automatic advance past the unheard next recording, no added listening history/favorites, no false broken-CDN recovery controls and successful same-track replay using Enter. It uses fictional Deezer metadata, not third-party music; real mobile autoplay policies and provider availability need separate manual checks.
+At 390px, Chromium and Firefox begin a controlled preview, deliberately Pass that song, and simulate the browser's `NotAllowedError` when the next track starts automatically. The test expects only the user's one deliberate Pass in saved history and checks that the manually replayed next song is not skipped by a late media-end event. The test requires a persistent manual Play instruction, no automatic advance past the unheard next recording, no added listening history/favorites, no false broken-CDN recovery controls and successful same-track replay using Enter. It uses fictional Deezer metadata, not third-party music; real mobile autoplay policies and provider availability need separate manual checks.
 
 ## Recovering from a terminal preview error via main Play (v0.12 development)
 
