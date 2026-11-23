@@ -1,3 +1,10 @@
+## v0.12 development — Verified local progress restore (November 22, 2026)
+
+- Restore now reads back every browser-storage write and deletion before reporting success. A storage adapter that silently drops a changed value triggers the same rollback as a thrown quota/security error; no false `Progress restored` message is shown.
+- Rollback writes are verified too, so AFTERTONE distinguishes confirmed recovery from an incomplete rollback instead of promising previously saved data was restored when it was not.
+- Malformed Music Duels data containing a null entry now produces a readable validation error rather than a low-level property-access exception.
+- Node regressions cover silently dropped writes, ignored playlist removals, incomplete rollback and invalid tournament metadata. This does not replace actual multi-device transfer or provider playback checks (issues #5 and #3).
+
 ## v0.12 development — Mobile Filters focus containment (November 22, 2026)
 
 - The fixed small-screen Filters drawer is an accessible dialog while open. Keyboard Tab and Shift+Tab remain inside its visible controls until Done or Escape closes it and returns focus to the opener.
