@@ -1657,8 +1657,16 @@ async function importPlaylistLinkFromDialog() {
 function openModal(kind, extra = {}) {
   cancelPlaylistLinkFlight();
   setThemeMenuOpen(false);
+  const focusedBefore=document.activeElement;
+  const wasMobileDrawerAction=document.body.classList.contains('mobile-filters-open') &&
+    Boolean(focusedBefore?.closest?.('#sidebar-preferences'));
+  // Avoid two simultaneous aria-modal dialogs if an action opens Help or
+  // another full dialog while the mobile discovery drawer is visible.
+  if (document.body.classList.contains('mobile-filters-open')) setMobileFiltersOpen(false);
   if(!modal) {
-    const opener=document.activeElement;
+    // An opener inside the now-hidden drawer is not a useful focus return
+    // target. Restore to the visible Filters toggle when that modal closes.
+    const opener=wasMobileDrawerAction ? $('#mobile-refine-toggle') : focusedBefore;
     modalReturnFocus=opener instanceof HTMLElement && opener!==document.body &&
       !modalRoot.contains(opener) ? opener : main;
   }
