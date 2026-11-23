@@ -2980,6 +2980,8 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           const native=player.play.bind(player);
           window.__autoPolicyEvents=[];
           window.__autoPolicyCalls=0;
+          const recorded=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[];
+          const requiredHistoryLength=recorded.length+1;
           let previousLabel=document.querySelector('#listening-card')?.getAttribute('aria-label');
           const record=detail=>{
             if(window.__autoPolicyEvents.length<120)
@@ -3000,7 +3002,11 @@ def check_autoplay_permission_block_keeps_song(browser, base):
           });
           window.__blockAutomaticOnce=true;
           player.play=function() {
-            if(window.__blockAutomaticOnce) {
+            // Background provider updates can try automatic playback even
+            // before the deliberate Pass animation commits. Block only AFTER
+            // the Pass is recorded, never an unrelated earlier resume.
+            const history=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[];
+            if(window.__blockAutomaticOnce && history.length>=requiredHistoryLength) {
               window.__blockAutomaticOnce=false;
               window.__autoPolicyCalls++;
               // Keep the refusal ONE SHOT. The original native play method
@@ -3016,8 +3022,10 @@ def check_autoplay_permission_block_keeps_song(browser, base):
         # Deliberate Pass is the sole listening decision in this scenario.
         # This rebuilds the card and legitimately attempts the next preview.
         pass_button=page.locator('#listening-card [data-action="pass"]')
-        pass_button.focus()
-        page.keyboard.press("Enter")
+        pass_button.click(timeout=TIMEOUT)
+        page.wait_for_function("""() =>
+          (JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[]).length>=1
+        """,timeout=TIMEOUT)
         page.wait_for_function("""() =>
           window.__autoPolicyCalls===1 &&
           document.querySelector('#audio-status')?.textContent
