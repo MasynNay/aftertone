@@ -2918,6 +2918,171 @@ def check_play_cancels_pending_preview(browser, base):
         context.close()
 
 
+def check_autoplay_permission_block_keeps_song(browser, base):
+    """Autoplay permission denial must hold the next song without creating a vote.
+
+    Use a controlled media element, not a codec/decoder-dependent WAV. Native
+    decoding and HTTP media recovery are exercised by the separate tests.
+    """
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"autoplay-policy-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        # A named search provides many deterministic fictional recordings.
+        page.evaluate("""() => {
+          const search=document.querySelector('#music-search');
+          search.value='Fixture';
+          search.dispatchEvent(new Event('input',{bubbles:true}));
+          document.querySelector('#music-search-form').dispatchEvent(
+            new Event('submit',{bubbles:true,cancelable:true}));
+        }""")
+        page.wait_for_function("""() =>
+          Boolean(document.querySelector('#stage-play')) &&
+          Number(document.querySelector('#queue-count')?.textContent||0)>=3
+        """,timeout=TIMEOUT)
+        # Isolate browser permission logic from third-party codecs. The mock
+        # implements only the media operations the app actually uses, retaining
+        # native button clicks, async provider lookups and DOM redraws.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          let paused=true,src='',position=0;
+          Object.defineProperty(player,'paused',{configurable:true,get:()=>paused});
+          Object.defineProperty(player,'src',{configurable:true,
+            get:()=>src,set:value=>{src=String(value||'');}});
+          Object.defineProperty(player,'currentTime',{configurable:true,
+            get:()=>position,set:value=>{position=Number(value)||0;}});
+          const remove=player.removeAttribute.bind(player);
+          player.removeAttribute=function(name) {
+            if(name==='src'){src='';return;}
+            return remove(name);
+          };
+          player.load=function(){};
+          player.pause=function(){
+            paused=true;
+            player.dispatchEvent(new Event('pause'));
+          };
+          player.play=function(){
+            paused=false;
+            player.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+          };
+          window.__autoplayPolicyEvents=[];
+          window.__autoPolicyCalls=0;
+        }""")
+        def choices():
+            return page.evaluate("""() => {
+              const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+              return {history:s.history||[],favorites:s.favorites||[]};
+            }""")
+        before=choices()
+        page.locator("#stage-play").click()
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+          ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        first_song=page.locator("#listening-card").get_attribute("aria-label")
+        require(page.locator("#stop-session").is_visible(),
+                "Manual Play did not start continuous listening")
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          const permittedPlay=player.play.bind(player);
+          const requiredHistoryLength=
+            (JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[]).length+1;
+          window.__blockAutomaticOnce=true;
+          player.play=function(){
+            const history=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[];
+            if(window.__blockAutomaticOnce && history.length>=requiredHistoryLength){
+              window.__blockAutomaticOnce=false;
+              window.__autoPolicyCalls++;
+              window.__autoplayPolicyEvents.push('automatic play denied');
+              player.play=permittedPlay; // Subsequent actual user activation works.
+              return Promise.reject(new DOMException(
+                'Playback requires user activation','NotAllowedError'));
+            }
+            return permittedPlay();
+          };
+        }""")
+        # Only the intentional Pass may change listening choices.
+        page.locator('#listening-card [data-action="pass"]').click(timeout=TIMEOUT)
+        page.wait_for_function("""() =>
+          (JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history||[]).length>=1
+        """,timeout=TIMEOUT)
+        page.wait_for_function("""() =>
+          window.__autoPolicyCalls===1 &&
+          document.querySelector('#audio-status')?.textContent
+            ?.includes('Autoplay blocked')""",timeout=TIMEOUT)
+        blocked_song=page.locator("#listening-card").get_attribute("aria-label")
+        require(blocked_song!=first_song,"Pass did not select another song")
+        require(page.locator("#stage-play").get_attribute("aria-label")=="Play preview",
+                "Blocked autoplay did not restore main Play")
+        require("Press Play" in page.locator("#continuity-hint").inner_text(),
+                "Autoplay denial has no persistent manual Play instruction")
+        require(page.locator("#stop-session").is_hidden(),
+                "Autoplay denial did not stop continuous listening")
+        require(page.locator("#preview-recovery").is_hidden(),
+                "Browser permission denial was mislabeled as a broken stream")
+        require(page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          return player.paused && !player.getAttribute('src');
+        }"""),"Automatic playback denial did not clear active media")
+        mid=choices()
+        require(len(mid["history"])==len(before["history"])+1 and
+                mid["history"][-1]["action"]=="pass" and
+                mid["favorites"]==before["favorites"],
+                "Autoplay denial created votes beyond the deliberate Pass")
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Autoplay denial skipped the next unheard recording")
+        play=page.locator("#stage-play")
+        play.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => document.querySelector('#stage-play')
+          ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        require(page.locator("#stop-session").is_hidden(),
+                "Manual permission recovery restarted the blocked auto session")
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Manual permission recovery changed the unheard recording")
+        # Late ended events must never advance a currently playing different
+        # recording just because an earlier source was disposed.
+        page.evaluate("""() => document.querySelector('#player')
+          .dispatchEvent(new Event('ended'))""")
+        require(page.locator("#listening-card").get_attribute("aria-label")==blocked_song,
+                "Stale ended event skipped the resumed recording")
+        require("Autoplay blocked" not in page.locator("#audio-status").inner_text(),
+                "Manual Play did not clear the stale permission warning")
+        require(page.evaluate("document.activeElement?.id==='stage-play'"),
+                "Manual permission recovery lost keyboard focus")
+        require(choices()==mid,"Manual recovery changed Keep/Pass history")
+        require(not errors,"Autoplay denial page exceptions: "+"; ".join(errors))
+        print(f"PASS {label}: intentional Pass, blocked next autoplay, same-song manual recovery")
+    except Exception:
+        try:
+            info=page.evaluate("""() => ({
+              attempts:window.__autoPolicyCalls,
+              events:window.__autoplayPolicyEvents,
+              status:document.querySelector('#audio-status')?.textContent,
+              hint:document.querySelector('#continuity-hint')?.textContent,
+              play:document.querySelector('#stage-play')?.getAttribute('aria-label'),
+              song:document.querySelector('#listening-card')?.getAttribute('aria-label'),
+              history:JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}').history?.length
+            })""")
+            print(f"DEBUG {label}: "+json.dumps(info),flush=True)
+        except Exception:
+            pass
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_main_play_retries_terminal_media_error(browser, base):
     """The primary Play button must not reuse a failed cached preview URL."""
     import io
@@ -2925,9 +3090,9 @@ def check_main_play_retries_terminal_media_error(browser, base):
     sample=io.BytesIO()
     with wave.open(sample,"wb") as writer:
         writer.setnchannels(1)
-        writer.setsampwidth(1)
-        writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*30)
+        writer.setsampwidth(2)
+        writer.setframerate(44100)
+        writer.writeframes(bytes(2*44100*12))
     silence=sample.getvalue()
     context=browser.new_context(viewport={"width":390,"height":844},
                                 service_workers="block")
@@ -2958,16 +3123,24 @@ def check_main_play_retries_terminal_media_error(browser, base):
         }""")
         play=page.locator("#stage-play")
         play.click()
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         require(requests["metadata"]>=1,"First Play did not request preview metadata")
 
         # A mid-stream media error gets a single transparent URL refresh.
         # After recovery succeeds, a second error is terminal for that attempt.
         page.evaluate("""() =>
           document.querySelector('#player').dispatchEvent(new Event('error'))""")
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         require(requests["metadata"]>=2,
                 "A media error did not request its allowed fresh URL")
         # Firefox may rerender the listening card while provider results
@@ -2993,8 +3166,12 @@ def check_main_play_retries_terminal_media_error(browser, base):
         failed_count=requests["metadata"]
         play.focus()
         page.keyboard.press("Enter")
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         require(requests["metadata"]>failed_count,
                 "Main Play reused the cached failed URL instead of refreshing Deezer metadata")
         require(recovery.is_hidden(),
@@ -3024,9 +3201,9 @@ def check_media_error_refresh_cancellation(browser, base):
     sample=io.BytesIO()
     with wave.open(sample,"wb") as writer:
         writer.setnchannels(1)
-        writer.setsampwidth(1)
-        writer.setframerate(8000)
-        writer.writeframes(bytes([128])*8000*30)
+        writer.setsampwidth(2)
+        writer.setframerate(44100)
+        writer.writeframes(bytes(2*44100*12))
     silence=sample.getvalue()
     context=browser.new_context(viewport={"width":390,"height":844},
                                 service_workers="block")
@@ -3050,8 +3227,12 @@ def check_media_error_refresh_cancellation(browser, base):
             return {history:s.history||[],favorites:s.favorites||[]};
         }""")
         page.locator("#stage-play").click()
-        page.wait_for_function("""() => document.querySelector('#stage-play')
-            ?.getAttribute('aria-label')==='Pause preview'""",timeout=TIMEOUT)
+        page.wait_for_function("""() => {
+          const button=document.querySelector('#stage-play');
+          const status=document.querySelector('#audio-status')?.textContent||'';
+          return button?.getAttribute('aria-label')==='Pause preview' &&
+            !status.includes('Finding the recording');
+        }""",timeout=TIMEOUT)
         # Only the recovery request is held. The initial Play used a playable
         # 30-second original silence fixture, no third-party audio.
         page.evaluate("""() => {
@@ -4540,6 +4721,7 @@ def firefox_main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_autoplay_permission_block_keeps_song(browser, base)
             check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
@@ -4599,6 +4781,7 @@ def main():
             check_first_listen_provider_retry(browser, base)
             check_abandoned_preview_metadata_cancellation(browser, base)
             check_play_cancels_pending_preview(browser, base)
+            check_autoplay_permission_block_keeps_song(browser, base)
             check_main_play_retries_terminal_media_error(browser, base)
             check_media_error_refresh_cancellation(browser, base)
             check_modal_interrupts_pending_preview(browser, base)
