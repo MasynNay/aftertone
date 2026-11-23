@@ -1,3 +1,7 @@
+## Mobile Filters keyboard containment and redraw recovery (v0.12 development)
+
+At 320px and 390px, the fixed discovery Filters drawer uses dialog semantics only while it overlays the listening room. Its visible controls form a contained Tab/Shift+Tab sequence; Escape and Done close it and return focus to Filters. Keyboard discovery shortcuts cannot accidentally rate songs behind the open drawer. Background catalog rerenders preserve focus on the same Done or collapse control, and resizing to desktop dismisses the mobile dialog state. Opening a full Help/other dialog while the drawer is visible closes the drawer first to avoid competing focus scopes. Synthetic Chromium/Firefox browser checks cover keyboard, resize and no-vote behavior. Manual assistive-technology and physical-device checks remain open (#7).
+
 ## When manual Play is blocked by the browser (v0.12 development)
 
 Some browsers can reject even a user-triggered Play with `NotAllowedError`. Discovery now shows a persistent text instruction to check media permissions and try Play again without falsely announcing a broken recording, counting a vote or skipping the song. After permission is restored, the same Play button remains keyboard operable and a successful retry plays only that song; the user can start a new continuous session separately. Controlled Chromium/Firefox tests cover two denials followed by keyboard recovery, while real screen-reader and physical mobile testing remains open.
