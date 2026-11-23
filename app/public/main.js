@@ -988,7 +988,11 @@ audio.addEventListener('ended', () => {
 audio.addEventListener('play', updatePlaybackView);
 audio.addEventListener('pause', updatePlaybackView);
 audio.addEventListener('error', async () => {
-  if (!activeAudioId) return;
+  // Media elements can fire a late error from the previous source while the
+  // listener's Keep/Pass animation is switching tracks. During a new play()
+  // request, its promise reports genuine load/permission errors separately.
+  // Do not let either transition event trigger recursive automatic skips.
+  if (!activeAudioId || animatingChoice || isLoadingAudio) return;
   const activeId = activeAudioId;
   const track = lookup(activeId);
   const generation = audioGeneration;
