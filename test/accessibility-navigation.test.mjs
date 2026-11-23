@@ -162,8 +162,32 @@ test('mobile Filters dismissal, search submission, and navigation always synchro
   assert.match(submit,/setMobileFiltersOpen\(false\)/);
   assert.match(submit,/main\.focus\(\{preventScroll:true\}\)/);
   const keys=main.slice(main.indexOf("window.addEventListener('keydown'"),main.indexOf('// Gestures follow the pointer'));
-  assert.match(keys,/event\.key==='Escape' && document\.body\.classList\.contains\('mobile-filters-open'\)/);
+  assert.match(keys,/if \(document\.body\.classList\.contains\('mobile-filters-open'\)\) \{/);
+  assert.match(keys,/if \(event\.key==='Escape'\)/);
   assert.match(keys,/setMobileFiltersOpen\(false,'toggle'\)/);
+  assert.match(keys,/event\.key==='Tab'\) trapMobileFiltersTab\(event\)/);
+});
+
+test('mobile Filters temporarily behave as a focused dialog and unwind on desktop resize',()=>{
+  const helper=main.slice(main.indexOf("function setMobileFiltersOpen("),
+    main.indexOf("function goTo(nextView)"));
+  assert.match(helper,/side\.setAttribute\('role','dialog'\)/);
+  assert.match(helper,/side\.setAttribute\('aria-modal','true'\)/);
+  assert.match(helper,/side\.removeAttribute\('aria-modal'\)/);
+  assert.match(helper,/function trapMobileFiltersTab\(event\)/);
+  assert.match(helper,/side\.querySelectorAll\(/);
+  assert.match(helper,/!element\.closest\('\[hidden\], \[inert\]'\)/);
+  assert.match(helper,/last\.focus\(\{preventScroll:true\}\)/);
+  assert.match(helper,/first\.focus\(\{preventScroll:true\}\)/);
+  assert.match(helper,/matchMedia\('\(min-width: 901px\)'\)/);
+  const render=main.slice(main.indexOf('function render()'),main.indexOf('function renderModal()'));
+  assert.match(render,/focusedMobileFilterAction/);
+  assert.match(render,/close-mobile-filters/);
+  assert.match(render,/toggle-side-filters/);
+  assert.match(render,/side\.querySelector\('\[data-action="'\+focusedMobileFilterAction/);
+  const modal=main.slice(main.indexOf('function openModal('),main.indexOf('function recordDecision('));
+  assert.match(modal,/wasMobileDrawerAction/);
+  assert.match(modal,/setMobileFiltersOpen\(false\)/);
 });
 
 test('filter redraws retain focus on active select boxes',()=>{
