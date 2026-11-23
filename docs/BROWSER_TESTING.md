@@ -1,5 +1,7 @@
 The autoplay test also checks that delayed media errors during a user Pass and the next play request cannot drain the loaded queue or create additional listening decisions.
 
+The autoplay test uses a standard 44.1 kHz 16-bit PCM silent WAV fixture to avoid differences in headless browser support for very-low-rate unsigned PCM. It also validates that a deliberate Pass is the only recorded choice.
+
 ## Autoplay permission recovery (v0.12 development)
 
 The regression also dispatches a late synthetic `ended` event after manual replay to ensure a canceled earlier media source cannot skip the recovered song.
