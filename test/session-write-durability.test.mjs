@@ -85,3 +85,23 @@ test('swipe, Undo and Collection changes are committed only after verified persi
   assert.match(ui,/if\(!commitSessionChange\(removeFavorite\(state,id\)\)\)return;/);
   assert.match(ui,/if\(restored!==state && !commitSessionChange\(restored\)\)return;/);
 });
+
+test('Music Duels collection saves and destructive resets never announce false success',()=>{
+  const source=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const duels=source.slice(source.indexOf("if(action==='save-champions')"),
+    source.indexOf('function voteActiveDuel('));
+  assert.match(duels,/if\(!commitSessionChange\(next\)\)return;/);
+  assert.match(duels,/return toast\(added\?/);
+  assert.match(duels,/if\(action==='save-podium'\)/);
+  assert.match(duels,/return toast\('The podium tracks are in your Collection.'/);
+  const podium=duels.slice(duels.indexOf("if(action==='save-podium')"));
+  assert.ok(podium.indexOf('commitSessionChange(next)')<podium.indexOf('addToCatalog([track])'));
+  const champions=duels.slice(0,duels.indexOf("if(action==='create-cup')"));
+  assert.ok(champions.indexOf('commitSessionChange(next)')<champions.indexOf('addToCatalog([track])'));
+  const actions=source.slice(source.indexOf("case 'reset-listens':"),
+    source.indexOf("case 'export-json':"));
+  assert.match(actions,/if\(!commitSessionChange\(\{\.\.\.state,history:\[\]\}\)\)return;/);
+  const quiz=source.slice(source.indexOf('const quizMood='),
+    source.indexOf("const preview = event.target.closest('[data-preview]')"));
+  assert.ok(quiz.indexOf('commitSessionChange(next)')<quiz.indexOf('quizSession.mood=mood;'));
+});
