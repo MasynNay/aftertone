@@ -874,14 +874,23 @@ async function togglePlayback(track, automatic = false) {
       audio.pause();
       activeAudioId = null;
     }
-    if (failedSources.size >= 320) failedSources.delete(failedSources.values().next().value);
-    failedSources.add(track.id);
+    // A provider quota limit is not evidence that this recording is broken.
+    // Never blacklist it or start a chain of additional automatic requests.
+    // Hold the current song so the listener can explicitly retry later.
+    const rateLimited = track.source === 'deezer' && error?.status === 429;
+    if (!rateLimited) {
+      if (failedSources.size >= 320) failedSources.delete(failedSources.values().next().value);
+      failedSources.add(track.id);
+    }
     failedAudioId = track.id;
-    failedAudioQuota = track.source === 'deezer' && error?.status === 429;
+    failedAudioQuota = rateLimited;
     toast(failedAudioQuota
       ? 'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without voting.'
       : `${SOURCE_LABEL[track.source] || 'This source'} could not play this recording. Try again or skip without voting.`);
-    if (automatic && continuousListening && generation === audioGeneration) {
+    if (rateLimited) {
+      continuousListening = false;
+      consecutivePlaybackFailures = 0;
+    } else if (automatic && continuousListening && generation === audioGeneration) {
       consecutivePlaybackFailures++;
       if (consecutivePlaybackFailures >= 3) { continuousListening = false; toast('Several tracks could not play. Continuous listening stopped.'); }
       else queueMicrotask(() => { if (continuousListening && current?.id === track.id) advancePreview(); });
@@ -1033,6 +1042,9 @@ audio.addEventListener('error', async () => {
       return true;
     } catch (error) {
       if (!isCurrent()) return true; // No stale warnings or failure state.
+      // A fresh preview link refused due to quota must stay retryable. Do
+      // not misclassify an upstream throttle as a damaged audio recording.
+      if (track?.source === 'deezer' && error?.status === 429) failedAudioQuota = true;
       console.warn(warning, error);
       return false;
     } finally {
@@ -1057,9 +1069,14 @@ audio.addEventListener('error', async () => {
     // A terminal error should never leave a previous source playing while
     // announcing that the same recording is unavailable.
     audio.pause();
-    failedSources.add(activeId);
-    toast(`${SOURCE_LABEL[track?.source] || 'Music provider'} could not deliver this audio.`);
-    if (continuousListening && current?.id === activeId) {
+    if (!failedAudioQuota) failedSources.add(activeId);
+    toast(failedAudioQuota
+      ? 'Deezer is temporarily limiting requests. Wait before Retry Preview; this song was not skipped.'
+      : `${SOURCE_LABEL[track?.source] || 'Music provider'} could not deliver this audio.`);
+    if (failedAudioQuota) {
+      continuousListening = false;
+      consecutivePlaybackFailures = 0;
+    } else if (continuousListening && current?.id === activeId) {
       consecutivePlaybackFailures++;
       if (consecutivePlaybackFailures >= 3) { continuousListening = false; toast('Several tracks failed playback. Continuous listening stopped.'); }
       else advancePreview();
