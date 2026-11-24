@@ -312,7 +312,23 @@ let challengeLookupSerial = 0;
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const lookup = (id) => catalog.find((track) => track.id === id) ?? null;
-const persist = () => { if (!saveState(localStorage, state)) toast('Local storage unavailable; progress may not persist.'); };
+const persist = () => {
+  const saved=saveState(localStorage,state);
+  if(!saved) toast('Browser storage did not save your progress. Check site data permissions.');
+  return saved;
+};
+/** Keep the current song/favorites intact if a browser drops a write.
+ * Persist the proposed state BEFORE installing it in memory, so a false
+ * success cannot advance to a new recording or remove a saved favorite.
+ */
+function commitSessionChange(next) {
+  if(!saveState(localStorage,next)) {
+    toast('Your change was NOT saved. Check browser storage, then try again.');
+    return false;
+  }
+  state=next;
+  return true;
+}
 const currentTheme = () => THEMES.find((t) => t.id === state.theme) || THEMES[0];
 function themeSwatch(theme, large = false) {
   return `<button class="${large ? 'theme-tile' : 'theme-dot'} ${theme.id === state.theme ? 'active' : ''}" data-set-theme="${html(theme.id)}" title="${html(theme.name)}" aria-label="${html(theme.name)} theme" aria-pressed="${theme.id === state.theme}" style="--swatch:${theme.swatch};${large ? `--tile-bg:${theme.colors.bg};--tile-surface:${theme.colors.surface};--tile-accent:${theme.colors.accent}` : ''}">${large ? `<span class="theme-tile-preview"><i></i><i></i><i></i></span><strong>${html(theme.name)}</strong><small>${html(theme.description)}</small>` : ''}</button>`;
@@ -1766,20 +1782,25 @@ function openModal(kind, extra = {}) {
 }
 
 function recordDecision(id, action, extra = {}) {
-  if (challengeIds.length) challengeResponses.push({ id, action });
-  const meta = lookup(id);
-  state = recordChoice(state, { id, action, genre: meta?.genre, artist: meta?.artist, context: searchQuery ? 'search' : 'discovery', route: state.discoveryMix, ...extra });
-  if (action === 'like') {
-    const track = lookup(id);
-    if (track && !state.savedTracks.some((t) => t.id === id)) state.savedTracks = [...state.savedTracks, track].slice(-1500);
-    if (track) void expandRelatedFromLike(track,seedVersion);
+  const meta=lookup(id);
+  let next=recordChoice(state,{id,action,genre:meta?.genre,artist:meta?.artist,
+    context:searchQuery?'search':'discovery',route:state.discoveryMix,...extra});
+  if(action==='like' && meta && !next.savedTracks.some(track=>track.id===id))
+    next={...next,savedTracks:[...next.savedTracks,meta].slice(-1500)};
+  // A failed/quota-limited or silently ignored write must not count as a
+  // Keep/Pass, change the active song, or advance a shared challenge.
+  if(!commitSessionChange(next)) {
+    render(); // Restore the card after its swipe feedback was applied.
+    return false;
   }
-  persist();
+  if(challengeIds.length)challengeResponses.push({id,action});
+  if(action==='like' && meta)void expandRelatedFromLike(meta,seedVersion);
   stopAudio();
   chooseNext();
   render();
   maybeTopUp();
   maybeResumeContinuous();
+  return true;
 }
 
 function closeModal() {
@@ -2497,8 +2518,7 @@ document.addEventListener('click', async (event) => {
       if (challengeIds.length || !state.history.length) return;
       const returnFocus = document.activeElement === action;
       const lastId = state.history.at(-1).id;
-      state = restoreLastChoice(state);
-      persist();
+      if(!commitSessionChange(restoreLastChoice(state)))return;
       stopContinuous();
       current = lookup(lastId) || selectNext(catalog, state.history, state.genre);
       render();
@@ -2527,9 +2547,9 @@ document.addEventListener('click', async (event) => {
     case 'remove-favorite': {
       if (!state.favorites.includes(id)) return;
       const returnFocus=document.activeElement===action;
-      lastRemovedFavorite={id,index:state.favorites.indexOf(id),title:lookup(id)?.title || 'Song'};
-      state=removeFavorite(state,id);
-      persist();
+      const removed={id,index:state.favorites.indexOf(id),title:lookup(id)?.title || 'Song'};
+      if(!commitSessionChange(removeFavorite(state,id)))return;
+      lastRemovedFavorite=removed;
       render();
       if (returnFocus) ($('[data-action="undo-remove-favorite"]') || main).focus({preventScroll:true});
       return;
@@ -2538,9 +2558,9 @@ document.addEventListener('click', async (event) => {
       if (!lastRemovedFavorite) return;
       const returnFocus=document.activeElement===action;
       const {id:removedId,index}=lastRemovedFavorite;
-      lastRemovedFavorite=null;
       const restored=restoreRemovedFavorite(state,removedId,index);
-      if (restored!==state) {state=restored;persist();}
+      if(restored!==state && !commitSessionChange(restored))return;
+      lastRemovedFavorite=null;
       render();
       if (returnFocus) ($('#collection-search') || main).focus({preventScroll:true});
       return;
