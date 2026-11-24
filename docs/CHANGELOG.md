@@ -1,3 +1,12 @@
+## v0.12 development — Verified, write-before-change listening progress (November 23, 2026)
+
+- Normal saved listening sessions now verify browser storage read-back after every `setItem`; silently discarded writes, blocked storage reads, and quota errors return failure rather than a false saved-success.
+- **Keep/Pass** prepares a candidate state and commits it before advancing the song, starting recommendation expansion, or recording a shared-challenge vote. A blocked write retains the same current track and permits a genuine user retry.
+- **Undo last decision, Collection Remove and Undo Remove** preserve the previous in-memory and browser state when persistence fails, including retaining Undo for a subsequent retry.
+- **Music Duels "Save Podium" and "Save Champions"**, Tune Lab mood ratings, and destructive listening-history reset likewise require verified persistence before changing or confirming saved data.
+- Node tests cover successful writes, silent discard, thrown quota/read errors and retry after recovery. Synthetic 390px Chromium/Firefox checks exercise failed Keep, remove and Undo, followed by successful retries without phantom votes. Ordinary preference-change failures continue to display a warning; real private-browser/quota testing remains open (#5/#7).
+- No format migration, provider traffic, gameplay voting semantics, or changes to provider licensing.
+
 ## v0.12 development — Large Collection paging and mobile responsiveness (November 23, 2026)
 
 - Collection now displays **40 saved-song cards per page** instead of mounting potentially 1,500 cards on a phone. Accessible Previous/Next buttons, a page selector, exact result ranges and a keyboard-focus target let listeners move through the library without a full-page reload.
