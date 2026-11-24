@@ -150,6 +150,9 @@ const quizStorageKey = 'aftertone:tune-lab:v1';
 let quizStats = (() => { try { const data=JSON.parse(localStorage.getItem(quizStorageKey)||'null'); return {answered:Math.max(0,Number(data?.answered)||0),correct:Math.max(0,Number(data?.correct)||0)}; } catch { return {answered:0,correct:0}; } })();
 let current = null;
 let renderedListeningTrackId = null; // private: never expose blind-mode identity in card HTML
+// Per-timeupdate progress may change, but hundreds of Collection buttons do
+// not. Resync controls only on playback changes or a full view rebuild.
+let previewButtonStateKey = null;
 let modal = null;
 let playlistLinkFlight = null;
 // Closing or replacing a playlist dialog must stop its in-flight provider
@@ -998,23 +1001,45 @@ function updatePlaybackView() {
     const time=$('#duel-preview-time');if(time)time.textContent=`0:${String(Math.floor(elapsed)).padStart(2,'0')} / 0:${previewLength}`;
     const fill=$('#duel-preview-fill');if(fill)fill.style.width=`${elapsed/previewLength*100}%`;
   }
-  // Collection players share the same audio element, but no duplicate playback.
-  document.querySelectorAll('[data-preview], [data-duel-play]').forEach((button) => {
-    const id=button.dataset.preview || button.dataset.duelPlay;
-    const playing=activeAudioId===id && !audio.paused;
-    const loading=isLoadingAudio && activeAudioId===id;
-    const side=button.dataset.duelPlay
-      ? button.closest('.duel-contender')?.querySelector('.duel-side-label')?.textContent?.slice(-1)
-      : null;
-    const needsRetry=Boolean(side && (failedAudioId===id || permissionBlockedTrackId===id) && !loading);
-    button.textContent=loading ? '× Cancel loading' :
-      playing ? 'Ⅱ Pause' : side ? needsRetry ? `↻ Retry ${side}` : `▶ Preview ${side}` : '▶ Listen';
-    if(side)button.setAttribute('aria-label',loading
-      ? `Cancel loading contender ${side} preview`
-      : playing ? `Pause contender ${side} preview`
-      : needsRetry ? `Retry contender ${side} preview`
-      : `Preview contender ${side}`);
-  });
+  // Collection and Duel buttons do not depend on currentTime. On mobile,
+  // scanning and rewriting every saved-track button for every media timeupdate
+  // can make a large Collection sluggish and repeatedly disturb accessibility
+  // labels. A full render explicitly invalidates this key below.
+  const buttonKey=[view,activeAudioId,audio.paused,isLoadingAudio,
+    failedAudioId,permissionBlockedTrackId].join('|');
+  if(previewButtonStateKey!==buttonKey) {
+    previewButtonStateKey=buttonKey;
+    document.querySelectorAll('[data-preview], [data-duel-play]').forEach((button) => {
+      const id=button.dataset.preview || button.dataset.duelPlay;
+      const playing=activeAudioId===id && !audio.paused;
+      const loading=isLoadingAudio && activeAudioId===id;
+      const side=button.dataset.duelPlay
+        ? button.closest('.duel-contender')?.querySelector('.duel-side-label')?.textContent?.slice(-1)
+        : null;
+      const needsRetry=Boolean(side && (failedAudioId===id || permissionBlockedTrackId===id) && !loading);
+      const text=loading ? '× Cancel loading' :
+        playing ? 'Ⅱ Pause' : side ? needsRetry ? `↻ Retry ${side}` : `▶ Preview ${side}` : '▶ Listen';
+      setTextIfChanged(button,text);
+      // A Collection button starts as "Listen to SONG". Without updating
+      // aria-label, a screen reader announces "Listen" even when it PAUSES or
+      // CANCELS loading. Never attach hidden Mystery Duels metadata here.
+      const trackTitle=side ? null : button.closest('.track-tile')
+        ?.querySelector('.tile-body strong')?.textContent?.trim();
+      const accessible=side
+        ? loading ? `Cancel loading contender ${side} preview`
+          : playing ? `Pause contender ${side} preview`
+          : needsRetry ? `Retry contender ${side} preview`
+          : `Preview contender ${side}`
+        : trackTitle
+          ? loading ? `Cancel loading ${trackTitle} preview`
+            : playing ? `Pause ${trackTitle} preview`
+            : `Listen to ${trackTitle}`
+          : loading ? 'Cancel loading preview'
+            : playing ? 'Pause preview' : 'Listen to preview';
+      if(button.getAttribute('aria-label')!==accessible)
+        button.setAttribute('aria-label',accessible);
+    });
+  }
 }
 
 audio.addEventListener('timeupdate', () => {
@@ -1373,6 +1398,9 @@ function render() {
     (same || sameTrack || fallback).focus({preventScroll:true});
   }
   applySavedVolume();
+  // render() replaced the controls: reapply the currently active Play state
+  // even when the player itself has not changed.
+  previewButtonStateKey=null;
   updatePlaybackView();
   if(focusedQuizMood && view==='quiz') {
     const replacement=main.querySelector('[data-quiz-mood="'+focusedQuizMood+'"]');
