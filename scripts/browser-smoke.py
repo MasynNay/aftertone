@@ -1673,6 +1673,119 @@ def check_large_collection_pagination(browser, base):
         context.close()
 
 
+
+def check_session_write_failure_rollbacks(browser, base):
+    """Silent and throwing session writes must not create false Keep/Pass or Undo."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"session-write-durability-{browser.browser_type.name}"
+    def snapshot():
+        return page.evaluate("""() => {
+          const value=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {history:value.history, favorites:value.favorites,
+            savedTracks:value.savedTracks};
+        }""")
+    def set_block(mode):
+        page.evaluate("(mode)=>{window.__blockSessionWrites=mode;}",mode)
+    def assert_blocked():
+        page.wait_for_function("""() =>
+          document.querySelector('#toast')?.textContent
+            ?.includes('NOT saved')
+        """,timeout=TIMEOUT)
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const original=Storage.prototype.setItem;
+          window.__blockSessionWrites=null;
+          Storage.prototype.setItem=function(key,value){
+            if(key==='aftertone:session:v1' && window.__blockSessionWrites){
+              if(window.__blockSessionWrites==='throw')
+                throw new DOMException('Fixture quota exhausted','QuotaExceededError');
+              return; // Simulate a storage wrapper silently discarding writes.
+            }
+            return original.call(this,key,value);
+          };
+        }""")
+        initial=snapshot()
+        original_track=page.locator('#listening-card').get_attribute('aria-label')
+        set_block('ignore')
+        page.locator('#listening-card [data-action="like"]').click()
+        assert_blocked()
+        require(snapshot()==initial,'A silently ignored Keep altered persisted choices')
+        require(page.locator('#listening-card').get_attribute('aria-label')==original_track,
+                'A failed Keep advanced to an unheard track')
+        require(page.locator('#listening-card [data-action="like"]').count()==1,
+                'Failed Keep lost the retry control')
+        set_block(None)
+        page.locator('#listening-card [data-action="like"]').click()
+        page.wait_for_function("""() =>
+          JSON.parse(localStorage.getItem('aftertone:session:v1')).favorites.length===1
+        """,timeout=TIMEOUT)
+        liked=snapshot()
+        require(len(liked["history"])==1,'Retry Keep did not record exactly one decision')
+
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require(page.locator('.collection-grid .track-tile').count()==1,
+                'Successfully saved favorite was missing from Collection')
+        set_block('throw')
+        page.locator('.collection-grid [data-action="remove-favorite"]').first.click()
+        assert_blocked()
+        require(snapshot()==liked,'Thrown browser quota error removed saved data')
+        require(page.locator('.collection-grid .track-tile').count()==1,
+                'Failed removal still changed the visible Collection')
+        require(page.locator('[data-action="undo-remove-favorite"]').count()==0,
+                'Failed removal created a misleading Undo action')
+
+        set_block(None)
+        page.locator('.collection-grid [data-action="remove-favorite"]').first.click()
+        page.wait_for_function("""() =>
+          JSON.parse(localStorage.getItem('aftertone:session:v1')).favorites.length===0
+        """,timeout=TIMEOUT)
+        require(page.locator('[data-action="undo-remove-favorite"]').count()==1,
+                'Successful remove did not offer Undo')
+        set_block('ignore')
+        page.locator('[data-action="undo-remove-favorite"]').click()
+        assert_blocked()
+        require(snapshot()["favorites"]==[],'Silent storage failure performed a false Undo')
+        require(page.locator('[data-action="undo-remove-favorite"]').count()==1,
+                'Failed Undo cannot be retried')
+        set_block(None)
+        page.locator('[data-action="undo-remove-favorite"]').click()
+        page.wait_for_function("""() =>
+          JSON.parse(localStorage.getItem('aftertone:session:v1')).favorites.length===1
+        """,timeout=TIMEOUT)
+        require(snapshot()==liked,'Remove and Undo failed to restore original data')
+
+        page.locator('#main-nav button[data-view="discover"]').click()
+        set_block('ignore')
+        page.locator('#listening-card [data-action="undo"]').click()
+        assert_blocked()
+        require(snapshot()==liked,'Failed listening Undo corrupted the last decision')
+        set_block(None)
+        page.locator('#listening-card [data-action="undo"]').click()
+        page.wait_for_function("""() =>
+          JSON.parse(localStorage.getItem('aftertone:session:v1')).history.length===0
+        """,timeout=TIMEOUT)
+        require(snapshot()["favorites"]==[],'Successful listening Undo retained a phantom favorite')
+        require(not errors,'Session persistence browser errors: '+'; '.join(errors))
+        print(f"PASS {label}: silent Keep, thrown Remove, failed Undo, recovery, no false votes")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_collection_undo_remove(browser, base):
     """Removing the last favorite can be undone without creating a listening vote."""
     context=browser.new_context(viewport={"width":1024,"height":800},
@@ -5451,6 +5564,7 @@ def firefox_main():
             check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_session_write_failure_rollbacks(browser, base)
             check_large_collection_pagination(browser, base)
             check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
@@ -5516,6 +5630,7 @@ def main():
             check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_session_write_failure_rollbacks(browser, base)
             check_large_collection_pagination(browser, base)
             check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
