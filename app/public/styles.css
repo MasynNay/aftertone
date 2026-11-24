@@ -1124,6 +1124,59 @@ h1 em {
   min-height: 44px;
 }
 
+/* Bounded saved-library paging: 40 cards per DOM render, including phones. */
+.collection-paging {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 14px 0;
+}
+.collection-paging > span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.collection-paging > span:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.collection-paging-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.collection-paging-actions button,
+.collection-paging-actions select {
+  min-height: 44px;
+}
+.collection-paging-actions label {
+  color: var(--muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.collection-paging-actions select {
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+@media (max-width: 520px) {
+  .collection-paging-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .collection-paging-actions button {
+    flex: 1 1 auto;
+  }
+}
+
 .collection-tools {
   display: flex;
   align-items: center;
