@@ -3657,7 +3657,7 @@ def check_duel_preview_failure_retry(browser, base):
           document.querySelector('#duel-preview-feedback')?.textContent
             ?.includes('temporarily limiting previews')
         """,timeout=TIMEOUT)
-        require('No vote was recorded' in feedback.inner_text(),
+        require('no vote was recorded' in feedback.inner_text().lower(),
                 'Quota warning failed to reassure a neutral retry')
         require(first.get_attribute('aria-label')=='Retry contender A preview',
                 'Failed first contender did not expose keyboard-accessible Retry')
