@@ -80,7 +80,7 @@ test('swipe, Undo and Collection changes are committed only after verified persi
   assert.doesNotMatch(record,/\bpersist\(\)/,'Do not double-save after committing');
 
   const ui=source.slice(source.indexOf("case 'undo': {"),
-    source.indexOf("case 'export-json':"));
+    source.indexOf("nav.addEventListener('click'"));
   assert.match(ui,/if\(!commitSessionChange\(restoreLastChoice\(state\)\)\)return;/);
   assert.match(ui,/if\(!commitSessionChange\(removeFavorite\(state,id\)\)\)return;/);
   assert.match(ui,/if\(restored!==state && !commitSessionChange\(restored\)\)return;/);
