@@ -122,5 +122,6 @@ test('navigation includes Duels and player controls use the shared audio engine'
   assert.match(js,/duelPreview.*data-duel-play/);
   assert.match(js,/return togglePlayback\(duelTrack\(duelPreview.dataset.duelPlay\)\)/);
   assert.match(js,/voteActiveDuel/);
-  assert.match(js,/state\.favorites\.push\(track\.id\)/);
+  assert.match(js,/next\.favorites\.push\(track\.id\)/);
+  assert.match(js,/if\(!commitSessionChange\(next\)\)return;/);
 });
