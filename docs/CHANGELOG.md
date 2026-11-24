@@ -1,3 +1,10 @@
+## v0.12 development — Collection preview accessibility and mobile playback efficiency (November 23, 2026)
+
+- Collection playback buttons now announce their **current** action with the recording's visible title: Listen, Pause, or Cancel loading. Screen readers no longer hear a stale "Listen to SONG" label when the control would pause or cancel.
+- Repeated media `timeupdate` events update the progress display without scanning and rewriting every saved-song preview button on each tick. Full Collection/duel rerenders explicitly invalidate the cached playback-control state so freshly rebuilt buttons still match the current player.
+- Button text and accessible names are only written when they actually change; Music Duels contender labels remain identity-safe for Mystery Matchups.
+- New Node tests and synthetic 390px Chromium/Firefox browser checks cover Play/Pause/Cancel labels, 12 saved songs, grid sort during playback, and absence of repeated button queries across media ticks. Real-device and screen-reader acceptance still require manual review (#7).
+
 ## v0.12 development — Music Duels preview recovery and keyboard guidance (November 23, 2026)
 
 - Music Duels now shows a persistent, politely announced message when a contender's preview fails or browser media permissions deny playback. The tournament no longer misleadingly displays a failed recording as merely Paused or as an untouched match.
