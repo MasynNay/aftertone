@@ -1,3 +1,10 @@
+## v0.12 development — Music Duels preview recovery and keyboard guidance (November 23, 2026)
+
+- Music Duels now shows a persistent, politely announced message when a contender's preview fails or browser media permissions deny playback. The tournament no longer misleadingly displays a failed recording as merely Paused or as an untouched match.
+- Contender preview buttons change to an explicitly labeled **Retry A / Retry B** action after a failure. A fresh preview clears the old warning; no failure or retry changes tournament votes, listening history or favorites.
+- Mystery Matchups recovery status identifies only **contender A/B**, never the song's title or artist. Timers remain outside the polite live announcement region so assistive technology is not flooded with time updates.
+- Node and synthetic 390px Chromium/Firefox browser regressions cover failed preview metadata, manual retry, permission denial, unchanged saved data and mystery privacy. Physical device and screen-reader testing remain open (#2, #7).
+
 ## v0.12 development — Guard stranded tournaments and verify bracket saves (November 23, 2026)
 
 - Reject a corrupted 8- or 16-song Music Duels archive where every matchup in the last recorded round is decided but its required following round is missing. Those records previously could load as active tournaments despite having no playable next matchup.

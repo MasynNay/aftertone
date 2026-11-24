@@ -859,7 +859,8 @@ async function togglePlayback(track, automatic = false) {
       continuousListening = false;
       consecutivePlaybackFailures = 0;
       stopAudio();
-      if (view === 'discover' && current?.id === track.id) {
+      if ((view === 'discover' && current?.id === track.id) || view === 'duels') {
+        // Bracket previews also need a persistent, non-voting explanation.
         permissionBlockedTrackId = track.id;
         permissionBlockedWasAutomatic = automatic;
       }
@@ -963,13 +964,36 @@ function updatePlaybackView() {
   if(duelStatus && view==='duels') {
     const selected=duelTournaments.find(t=>t.id===selectedDuelId);
     const match=nextDuelMatch(selected);
-    const contender=selected?.entries.find(t=>t.id===activeAudioId && [match?.a,match?.b].includes(t.id));
-    // In Mystery Matchups neither the card nor the shared status bar may
-    // disclose the track identity before the bracket is completed.
+    // The active audio ID is cleared after failed metadata resolution.
+    // Retain the failed/permission-blocked contender in the UI so it never
+    // masquerades as an untouched match or an ordinary paused recording.
+    const matchIds=[match?.a,match?.b];
+    const contenderId=[activeAudioId,failedAudioId,permissionBlockedTrackId]
+      .find(id=>id && matchIds.includes(id));
+    const contender=selected?.entries.find(t=>t.id===contenderId);
+    const side=match?.a===contender?.id ? 'A' : 'B';
+    const previewFailed=Boolean(contender && failedAudioId===contender.id && !isLoadingAudio);
+    const permissionDenied=Boolean(contender && permissionBlockedTrackId===contender.id && !isLoadingAudio);
+    // In Mystery Matchups neither the card nor the status message may
+    // disclose the track identity before the bracket has finished.
     const contenderLabel=isMysteryTournament(selected)
-      ? (match?.a===contender?.id ? 'Mystery contender A' : 'Mystery contender B')
+      ? `Mystery contender ${side}`
       : contender ? `${contender.artist} — ${contender.title}` : '';
-    duelStatus.textContent=contender ? (isLoadingAudio ? `Loading ${contenderLabel}…` : audio.paused ? `Paused · ${contenderLabel}` : `♪ Playing ${contenderLabel}`) : '▶ Choose a contender to preview';
+    duelStatus.textContent=contender
+      ? isLoadingAudio ? `Loading ${contenderLabel}…`
+        : previewFailed ? `${failedAudioQuota ? 'Deezer requests limited' : 'Preview unavailable'} · Contender ${side}`
+        : permissionDenied ? `Browser blocked preview · Contender ${side}`
+        : audio.paused ? `Paused · ${contenderLabel}` : `♪ Playing ${contenderLabel}`
+      : '▶ Choose a contender to preview';
+    const feedback=$('#duel-preview-feedback');
+    if(feedback) setTextIfChanged(feedback,
+      previewFailed
+        ? failedAudioQuota
+          ? `Deezer is temporarily limiting previews. Wait before retrying contender ${side}; no vote was recorded.`
+          : `Contender ${side} could not play. Retry this preview or try the other contender. No vote was recorded.`
+        : permissionDenied
+          ? `Your browser blocked contender ${side}'s preview. Check media permissions and retry; no vote was recorded.`
+          : '');
     const elapsed=contender?Math.min(previewLength,Number(audio.currentTime)||0):0;
     const time=$('#duel-preview-time');if(time)time.textContent=`0:${String(Math.floor(elapsed)).padStart(2,'0')} / 0:${previewLength}`;
     const fill=$('#duel-preview-fill');if(fill)fill.style.width=`${elapsed/previewLength*100}%`;
@@ -978,8 +1002,18 @@ function updatePlaybackView() {
   document.querySelectorAll('[data-preview], [data-duel-play]').forEach((button) => {
     const id=button.dataset.preview || button.dataset.duelPlay;
     const playing=activeAudioId===id && !audio.paused;
-    button.textContent=isLoadingAudio && activeAudioId===id ? '× Cancel loading' :
-      playing ? 'Ⅱ Pause' : button.dataset.duelPlay ? `▶ Preview ${button.closest('.duel-contender')?.querySelector('.duel-side-label')?.textContent?.slice(-1) || ''}` : '▶ Listen';
+    const loading=isLoadingAudio && activeAudioId===id;
+    const side=button.dataset.duelPlay
+      ? button.closest('.duel-contender')?.querySelector('.duel-side-label')?.textContent?.slice(-1)
+      : null;
+    const needsRetry=Boolean(side && (failedAudioId===id || permissionBlockedTrackId===id) && !loading);
+    button.textContent=loading ? '× Cancel loading' :
+      playing ? 'Ⅱ Pause' : side ? needsRetry ? `↻ Retry ${side}` : `▶ Preview ${side}` : '▶ Listen';
+    if(side)button.setAttribute('aria-label',loading
+      ? `Cancel loading contender ${side} preview`
+      : playing ? `Pause contender ${side} preview`
+      : needsRetry ? `Retry contender ${side} preview`
+      : `Preview contender ${side}`);
   });
 }
 

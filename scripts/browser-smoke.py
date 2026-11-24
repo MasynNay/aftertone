@@ -3578,6 +3578,148 @@ def check_tune_lab_keyboard_continuity(browser, base):
 
 
 
+
+def check_duel_preview_failure_retry(browser, base):
+    """Failed mystery previews must retain a private, accessible retry message.
+
+    No live provider music or rights are asserted; all metadata is fictional.
+    """
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    state={"limited":False,"requests":0}
+    def provider(route):
+        parsed=urlsplit(route.request.url)
+        if parsed.path.startswith("/track/"):
+            state["requests"]+=1
+            if state["limited"]:
+                callback=parse_qs(parsed.query).get("callback",[""])[0]
+                require(re.fullmatch(r"__aftertoneDeezer_\d+",callback),
+                        "Unexpected synthetic provider callback")
+                payload={"error":{"code":429,"message":"Fixture preview rate limit"}}
+                route.fulfill(status=200,content_type="application/javascript",
+                              body=f"window[{json.dumps(callback)}]({json.dumps(payload)});")
+                return
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",provider)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"duels-preview-retry-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count(): close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="duels"]').click()
+        page.locator('#duel-size').select_option('4')
+        page.locator('[data-duel-theme="mystery"]').click()
+        page.locator('[data-duel-action="create"]').click()
+        page.locator('#duel-active-event [data-duel-play]').first.wait_for(
+            state='visible',timeout=TIMEOUT)
+        # Prevent browser decoder and CDN behavior from interfering with
+        # provider quota and permission regression checks.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          let paused=true,src='',position=0;
+          Object.defineProperty(player,'paused',{configurable:true,get:()=>paused});
+          Object.defineProperty(player,'src',{configurable:true,
+            get:()=>src,set:v=>{src=String(v||'');}});
+          Object.defineProperty(player,'currentTime',{configurable:true,
+            get:()=>position,set:v=>{position=Number(v)||0;}});
+          const remove=player.removeAttribute.bind(player);
+          player.removeAttribute=function(name){
+            if(name==='src'){src='';return;}
+            return remove(name);
+          };
+          player.load=function(){};
+          player.pause=function(){paused=true;player.dispatchEvent(new Event('pause'));};
+          player.play=function(){
+            paused=false;player.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+          };
+        }""")
+        def snapshot():
+            return page.evaluate("""() => ({
+              session:localStorage.getItem('aftertone:session:v1'),
+              duels:localStorage.getItem('aftertone:duels:v1'),
+            })""")
+        before=snapshot()
+        first=page.locator('#duel-active-event [data-duel-play]').first
+        second=page.locator('#duel-active-event [data-duel-play]').nth(1)
+        state["limited"]=True
+        first.focus()
+        page.keyboard.press('Enter')
+        feedback=page.locator('#duel-preview-feedback')
+        page.wait_for_function("""() =>
+          document.querySelector('#duel-preview-feedback')?.textContent
+            ?.includes('temporarily limiting previews')
+        """,timeout=TIMEOUT)
+        require('no vote was recorded' in feedback.inner_text().lower(),
+                'Quota warning failed to reassure a neutral retry')
+        require(first.get_attribute('aria-label')=='Retry contender A preview',
+                'Failed first contender did not expose keyboard-accessible Retry')
+        require('Deezer requests limited' in page.locator('#duel-now-playing').inner_text(),
+                'Quota failure incorrectly displayed as Paused or untouched')
+        require('Fixture Artist' not in feedback.inner_text() and
+                'Fixture Melody' not in feedback.inner_text(),
+                'Mystery preview failure revealed track identity')
+        require(before==snapshot(), 'Preview failure unexpectedly changed saved votes')
+
+        state["limited"]=False
+        prev=state["requests"]
+        page.keyboard.press('Enter')
+        page.wait_for_function("""() =>
+          document.querySelector('#duel-active-event [data-duel-play]')
+            ?.getAttribute('aria-label')==='Pause contender A preview'
+        """,timeout=TIMEOUT)
+        require(state["requests"]>prev,'Retry failed to request fresh Deezer metadata')
+        require(feedback.inner_text().strip()=='',
+                'Successful retry left a stale error announcement')
+        require(before==snapshot(),'Retry silently changed Music Duels or saved listening choices')
+
+        # A second contender can be denied by the user's browser rather than
+        # the music provider. It must also remain retryable with no false vote.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          const permitted=player.play.bind(player);
+          let deny=true;
+          player.play=function(){
+            if(deny){deny=false;return Promise.reject(new DOMException(
+              'Preview requires permission','NotAllowedError'));}
+            return permitted();
+          };
+        }""")
+        second.focus()
+        page.keyboard.press('Enter')
+        page.wait_for_function("""() =>
+          document.querySelector('#duel-preview-feedback')?.textContent
+            ?.includes('browser blocked contender B')
+        """,timeout=TIMEOUT)
+        require(second.get_attribute('aria-label')=='Retry contender B preview',
+                'Blocked contender did not provide a retry action')
+        require('Browser blocked preview' in page.locator('#duel-now-playing').inner_text(),
+                'Browser permission denial was mistaken for a paused preview')
+        require(before==snapshot(),'Browser permission denial created a vote')
+        page.keyboard.press('Enter')
+        page.wait_for_function("""() =>
+          document.querySelectorAll('#duel-active-event [data-duel-play]')[1]
+            ?.getAttribute('aria-label')==='Pause contender B preview'
+        """,timeout=TIMEOUT)
+        require(feedback.inner_text().strip()=='',
+                'Permission retry left a stale error announcement')
+        require(before==snapshot(),'Permission recovery altered saved choices')
+        require(not errors,'Duels preview browser errors: '+'; '.join(errors))
+        print(f"PASS {label}: rate limit, media policy, keyboard retry and mystery privacy")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_duels_keyboard_continuity(browser, base):
     """A real keyboard can start, finish, close and reopen a Music Duels bracket."""
     context=browser.new_context(viewport={"width":390,"height":844},
@@ -5040,6 +5182,7 @@ def firefox_main():
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
+            check_duel_preview_failure_retry(browser, base)
             check_challenge_manual_copy_fallback(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
@@ -5102,6 +5245,7 @@ def main():
             check_choice_keyboard_focus(browser, base)
             check_tune_lab_keyboard_continuity(browser, base)
             check_duels_keyboard_continuity(browser, base)
+            check_duel_preview_failure_retry(browser, base)
             check_challenge_manual_copy_fallback(browser, base)
             check_shared_deezer_challenge(browser, base)
             check_curated_shared_challenge(browser, base)
