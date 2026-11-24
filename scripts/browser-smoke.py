@@ -4892,6 +4892,124 @@ def check_blind_mode_focus_and_shared_lock(browser, base):
         context.close()
 
 
+
+def check_autoplay_quota_holds_unheard_song(browser, base):
+    """An automatic 429 must stop radio on the same song, not exhaust the next tracks."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    state={"limited":False,"metadata":0}
+    def provider(route):
+        parsed=urlsplit(route.request.url)
+        if parsed.path.startswith("/track/"):
+            state["metadata"]+=1
+            if state["limited"]:
+                callback=parse_qs(parsed.query).get("callback",[""])[0]
+                require(re.fullmatch(r"__aftertoneDeezer_\\d+",callback),
+                        "Unexpected synthetic provider callback")
+                payload={"error":{"code":429,"message":"Synthetic automatic quota limit"}}
+                route.fulfill(status=200,content_type="application/javascript",
+                              body=f"window[{json.dumps(callback)}]({json.dumps(payload)});")
+                return
+        return mock_deezer(route)
+    context.route("https://api.deezer.com/**",provider)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"autoplay-quota-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const search=document.querySelector('#music-search');
+          search.value='Fixture';
+          search.dispatchEvent(new Event('input',{bubbles:true}));
+          document.querySelector('#music-search-form').dispatchEvent(
+            new Event('submit',{bubbles:true,cancelable:true}));
+        }""")
+        page.wait_for_function("""() =>
+          Boolean(document.querySelector('#stage-play')) &&
+          Number(document.querySelector('#queue-count')?.textContent||0)>=3
+        """,timeout=TIMEOUT)
+        # Playback is simulated so metadata throttling is deterministic and
+        # independent of browser codecs and third-party CDN availability.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          let paused=true,src='',position=0;
+          Object.defineProperty(player,'paused',{configurable:true,get:()=>paused});
+          Object.defineProperty(player,'src',{configurable:true,
+            get:()=>src,set:value=>{src=String(value||'');}});
+          Object.defineProperty(player,'currentTime',{configurable:true,
+            get:()=>position,set:value=>{position=Number(value)||0;}});
+          const remove=player.removeAttribute.bind(player);
+          player.removeAttribute=function(name) {
+            if(name==='src'){src='';return;}
+            return remove(name);
+          };
+          player.load=function(){};
+          player.pause=function(){paused=true;player.dispatchEvent(new Event('pause'));};
+          player.play=function(){
+            paused=false;
+            player.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+          };
+        }""")
+        def choices():
+            return page.evaluate("""() => {
+              const s=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
+              return {history:s.history||[],favorites:s.favorites||[]};
+            }""")
+        before=choices()
+        page.locator("#stage-play").click()
+        page.wait_for_function("""() =>
+          document.querySelector('#stage-play')?.getAttribute('aria-label')==='Pause preview'
+        """,timeout=TIMEOUT)
+        first=page.locator("#listening-card").get_attribute("aria-label")
+        require(page.locator("#stop-session").is_visible(),
+                "Manual Play must establish an automatic listening session")
+        state["limited"]=True
+        page.locator('#listening-card [data-action="pass"]').click(timeout=TIMEOUT)
+        page.locator("#preview-recovery").wait_for(state="visible",timeout=TIMEOUT)
+        second=page.locator("#listening-card").get_attribute("aria-label")
+        require(first!=second,"The intentional Pass did not select the next recording")
+        require(page.locator("#stop-session").is_hidden(),
+                "A Deezer rate limit must stop the automatic listening session")
+        require("temporarily limiting requests" in page.locator("#preview-recovery").inner_text(),
+                "Automatic quota failure did not retain the manual retry guidance")
+        requests=state["metadata"]
+        page.wait_for_timeout(300)
+        require(requests==state["metadata"],
+                "Quota-limited autoplay kept issuing additional provider requests")
+        require(second==page.locator("#listening-card").get_attribute("aria-label"),
+                "Rate-limited autoplay skipped an unheard recording")
+        after=choices()
+        require(len(after["history"])==len(before["history"])+1 and
+                after["history"][-1]["action"]=="pass" and
+                after["favorites"]==before["favorites"],
+                "An automatic quota failure created unintended Keep/Pass choices")
+        state["limited"]=False
+        page.get_by_role("button",name="Retry Preview",exact=True).click()
+        page.wait_for_function("""() =>
+          document.querySelector('#stage-play')?.getAttribute('aria-label')==='Pause preview'
+        """,timeout=TIMEOUT)
+        require(state["metadata"]>requests,
+                "Deliberate Retry Preview did not request fresh metadata")
+        require(page.locator("#listening-card").get_attribute("aria-label")==second,
+                "Deliberate Retry Preview changed the selected song")
+        require(choices()==after,"Retrying a quota-limited preview recorded an unintended vote")
+        require(not errors,"Autoplay quota browser errors: "+"; ".join(errors))
+        print(f"PASS {label}: quota stops autoplay, holds next song and permits deliberate retry")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def firefox_main():
     with serve_build() as base, sync_playwright() as playwright:
         browser = playwright.firefox.launch(headless=True)
@@ -4908,6 +5026,7 @@ def firefox_main():
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
+            check_autoplay_quota_holds_unheard_song(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_first_listen_guided_play(browser, base)
             check_first_listen_provider_retry(browser, base)
@@ -4969,6 +5088,7 @@ def main():
             check_reflow_reduced_motion(browser, base, 360, 740)
             check_preview_recovery_keyboard(browser, base)
             check_deezer_preview_quota_recovery(browser, base)
+            check_autoplay_quota_holds_unheard_song(browser, base)
             check_deezer_preview_on_demand(browser, base)
             check_first_listen_guided_play(browser, base)
             check_first_listen_provider_retry(browser, base)
