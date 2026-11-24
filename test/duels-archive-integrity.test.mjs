@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createTournament, voteDuel, nextDuelMatch, loadDuelStore,
-  saveDuelStore, DUEL_STORAGE_KEY, hallOfFame,
+  saveDuelStore, saveDuelSelection, DUEL_STORAGE_KEY, DUEL_SELECTION_KEY, hallOfFame,
 } from '../app/src/duels.mjs';
 import {createProgressBackup,restoreProgressBackup} from '../app/src/progress-backup.mjs';
 
@@ -115,4 +115,63 @@ test('backup restore rejects forged Duels results without modifying existing pro
   assert.throws(()=>restoreProgressBackup(target,JSON.stringify(backup)),
     /damaged or unsupported tournament/);
   assert.deepEqual(target.entries(),before);
+});
+
+test('a fully voted opening round without its next round is not resumable',()=>{
+  for(const size of [8,16]) {
+    const original=createTournament({
+      id:'duel_stranded_'+size,tracks:tracks.slice(0,size),
+    });
+    const stranded=tamper(original,t=>{
+      for(const match of t.rounds[0])match.winner=match.a;
+    });
+    // A real final vote would immediately append the following round.
+    assert.equal(nextDuelMatch(stranded),null);
+    assert.equal(reload(stranded).length,0,
+      `Missing next round after ${size}-song opening must not load`);
+
+    const source=storage();
+    source.setItem(DUEL_STORAGE_KEY,
+      JSON.stringify({version:1,tournaments:[stranded]}));
+    assert.throws(()=>createProgressBackup(source),/Music Duels data .* damaged/,
+      'Do not export a backup containing an unresumable bracket');
+
+    const valid=storage();
+    assert.equal(saveDuelStore(valid,[original]),true);
+    const imported=JSON.parse(createProgressBackup(valid));
+    imported.tournaments=[stranded];
+    const target=storage();
+    assert.equal(saveDuelStore(target,[finished(4)]),true);
+    const snapshot=target.entries();
+    assert.throws(()=>restoreProgressBackup(target,JSON.stringify(imported)),
+      /damaged or unsupported tournament/);
+    assert.deepEqual(target.entries(),snapshot,
+      'Reject corrupt imported brackets before modifying stored progress');
+  }
+});
+
+test('silent browser storage write failures cannot claim that a vote or selection was saved',()=>{
+  const first=createTournament({id:'duel_write_0001',tracks:tracks.slice(0,4)});
+  const nextVote=next(first);
+  const actual=storage();
+  assert.equal(saveDuelStore(actual,[first]),true);
+  assert.equal(saveDuelSelection(actual,first.id),true);
+  const originalArchive=actual.getItem(DUEL_STORAGE_KEY);
+  const originalSelection=actual.getItem(DUEL_SELECTION_KEY);
+  const ignored={
+    getItem:key=>actual.getItem(key),
+    setItem:(_key,_value)=>{},
+  };
+  assert.equal(saveDuelStore(ignored,[nextVote]),false);
+  assert.equal(saveDuelSelection(ignored,'duel_other_0002'),false);
+  assert.equal(actual.getItem(DUEL_STORAGE_KEY),originalArchive,
+    'A silently dropped vote must not be treated as a persisted result');
+  assert.equal(actual.getItem(DUEL_SELECTION_KEY),originalSelection);
+
+  const brokenRead={
+    setItem:(key,value)=>actual.setItem(key,value),
+    getItem:()=>{throw new Error('Storage read unavailable');},
+  };
+  assert.equal(saveDuelStore(brokenRead,[nextVote]),false);
+  assert.equal(saveDuelSelection(brokenRead,first.id),false);
 });
