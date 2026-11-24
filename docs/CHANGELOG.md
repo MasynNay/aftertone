@@ -1,3 +1,10 @@
+## v0.12 development — Guard stranded tournaments and verify bracket saves (November 23, 2026)
+
+- Reject a corrupted 8- or 16-song Music Duels archive where every matchup in the last recorded round is decided but its required following round is missing. Those records previously could load as active tournaments despite having no playable next matchup.
+- Confirm tournament vote and selected-bracket persistence by reading the browser storage value after each write. Silently dropped saves now report failure, preventing the app from presenting an unsaved vote as stored.
+- Tests cover normal round progression, missing follow-up rounds, damaged backup export/import with unchanged target data, silently ignored storage writes, and storage read errors.
+- No storage schema, tournament-voting rules, or audio preview behavior changed.
+
 ## v0.12 development — Stop autoplay on Deezer rate limits (November 23, 2026)
 
 - A Deezer HTTP/JSONP 429 encountered during automatic preview loading now stops continuous listening immediately. AFTERTONE leaves the current unheard song on screen with the existing manual Retry Preview and Skip Without Voting controls instead of automatically requesting the next songs.
