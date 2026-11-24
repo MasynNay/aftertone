@@ -2142,12 +2142,22 @@ def check_swipe_pointer_safety(browser, base, width):
         return found["x"],found["y"],found["box"]
 
     def drag(dx,dy,button="left",release_outside=False):
+        if release_outside:
+            # Some phone layouts place the listening card almost flush with
+            # the viewport edge. Reserve an inset in THIS isolated fixture so
+            # the test can release outside the card but inside the browser.
+            # Otherwise the test asserts its own impossible coordinates before
+            # exercising the actual browser pointer-capture behavior.
+            page.evaluate("""() => {
+              const card=document.querySelector('#listening-card');
+              card.style.maxWidth='calc(100% - 40px)';
+            }""")
         x,y,box=anchor(from_right=dx<0)
         page.mouse.move(x,y)
         page.mouse.down(button=button)
         if release_outside:
             endx=box["x"]+box["width"]+6
-            require(endx<width,"The pointer release target is outside the phone viewport")
+            require(endx<width,"Outside-card pointer release must remain inside the phone viewport")
             page.mouse.move(endx,y,steps=8)
         else:
             page.mouse.move(x+dx,y+dy,steps=8)
