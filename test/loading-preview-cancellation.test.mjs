@@ -23,7 +23,8 @@ test('loading preview exposes a cancel action and accurately announces recovery'
   assert.match(view,/button\.title = loadingThisTrack \? 'Cancel loading preview'/);
   assert.match(view,/Finding the recording… Activate Cancel loading preview to stop/);
   assert.match(view,/const loading=isLoadingAudio && activeAudioId===id/);
-  assert.match(view,/button\.textContent=loading \? '× Cancel loading'/);
+  assert.match(view,/const text=loading \? '× Cancel loading'/);
+  assert.match(view,/setTextIfChanged\(button,text\)/);
 });
 
 test('canceling a preview never records a Keep/Pass or leaves stale audio in place',()=>{

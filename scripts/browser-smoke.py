@@ -3720,6 +3720,136 @@ def check_duel_preview_failure_retry(browser, base):
         context.close()
 
 
+
+def check_collection_preview_a11y_and_timeupdate(browser, base):
+    """Saved previews update their spoken action without rescanning every time tick."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on('pageerror',lambda error:errors.append(str(error)))
+    label=f"collection-preview-a11y-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator('#listening-card').wait_for(state='visible',timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const state=JSON.parse(localStorage.getItem(key));
+          state.favorites=Array.from({length:12},(_,i)=>'deezer:'+(9100001+i));
+          state.savedTracks=Array.from({length:12},(_,i)=>({
+            id:'deezer:'+(9100001+i),source:'deezer',
+            title:'Fixture Melody '+String(i+1).padStart(2,'0'),
+            artist:'Fixture Artist '+String(i+1).padStart(2,'0'),
+            genre:'pop',artwork:null,
+          }));
+          localStorage.setItem(key,JSON.stringify(state));
+        }""")
+        page.reload(wait_until='load',timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        page.locator('[data-preview="deezer:9100001"]').wait_for(
+            state='visible',timeout=TIMEOUT)
+        require(page.locator('[data-preview]').count()==12,
+                'Fixture saved songs failed to render in Collection')
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          let paused=true,src='',position=2;
+          Object.defineProperty(player,'paused',{configurable:true,get:()=>paused});
+          Object.defineProperty(player,'src',{configurable:true,
+            get:()=>src,set:value=>{src=String(value||'');}});
+          Object.defineProperty(player,'currentTime',{configurable:true,
+            get:()=>position,set:value=>{position=Number(value)||0;}});
+          const remove=player.removeAttribute.bind(player);
+          player.removeAttribute=function(name){
+            if(name==='src'){src='';return;}
+            return remove(name);
+          };
+          player.load=function(){};
+          player.pause=function(){paused=true;player.dispatchEvent(new Event('pause'));};
+          player.play=function(){
+            paused=false;player.dispatchEvent(new Event('play'));
+            return Promise.resolve();
+          };
+          window.__previewQueries=0;
+          const originalQuery=document.querySelectorAll.bind(document);
+          document.querySelectorAll=function(selector){
+            if(selector==='[data-preview], [data-duel-play]')
+              window.__previewQueries++;
+            return originalQuery(selector);
+          };
+        }""")
+        def preview():
+            return page.locator('[data-preview="deezer:9100001"]')
+        require(preview().get_attribute('aria-label')=='Listen to Fixture Melody 01',
+                'Initial Collection preview has the wrong accessible song label')
+        snapshot=page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        preview().focus()
+        page.keyboard.press('Enter')
+        page.wait_for_function("""() =>
+          document.querySelector('[data-preview="deezer:9100001"]')
+            ?.getAttribute('aria-label')==='Pause Fixture Melody 01 preview'
+        """,timeout=TIMEOUT)
+        require('Ⅱ Pause' in preview().inner_text(),
+                'Collection Play did not expose its new Pause action')
+        require(page.locator('[data-preview="deezer:9100002"]').get_attribute('aria-label')
+                =='Listen to Fixture Melody 02',
+                'Playing one recording altered another preview label')
+
+        page.evaluate("""() => {
+          window.__previewQueries=0;
+          const audio=document.querySelector('#player');
+          for(let n=0;n<12;n++)audio.dispatchEvent(new Event('timeupdate'));
+        }""")
+        require(page.evaluate("window.__previewQueries") == 0,
+                'Media timeupdates reselected every Collection preview control')
+        # A render replaces the Collection grid. The cache must be invalidated.
+        page.locator('#sort-select').select_option('title')
+        require(preview().get_attribute('aria-label')=='Pause Fixture Melody 01 preview',
+                'Collection rerender lost the active Pause accessible name')
+        preview().click()
+        page.wait_for_function("""() =>
+          document.querySelector('[data-preview="deezer:9100001"]')
+            ?.getAttribute('aria-label')==='Listen to Fixture Melody 01'
+        """,timeout=TIMEOUT)
+
+        # Pending browser playback should announce Cancel, then restore Listen
+        # after a second activation without affecting saved history.
+        page.evaluate("""() => {
+          const player=document.querySelector('#player');
+          player.play=function(){
+            return new Promise(resolve=>{window.__finishCollectionPlay=resolve;});
+          };
+        }""")
+        preview().focus()
+        page.keyboard.press('Enter')
+        page.wait_for_function("""() =>
+          document.querySelector('[data-preview="deezer:9100001"]')
+            ?.getAttribute('aria-label')==='Cancel loading Fixture Melody 01 preview'
+        """,timeout=TIMEOUT)
+        page.keyboard.press('Enter')
+        page.wait_for_function("""() =>
+          document.querySelector('[data-preview="deezer:9100001"]')
+            ?.getAttribute('aria-label')==='Listen to Fixture Melody 01'
+        """,timeout=TIMEOUT)
+        page.evaluate("window.__finishCollectionPlay?.()")
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==snapshot,
+                'Play, Pause and Cancel unexpectedly changed saved listening choices')
+        require(not errors,'Collection preview browser errors: '+'; '.join(errors))
+        print(f"PASS {label}: correct Play/Pause/Cancel labels and no timeupdate grid churn")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_duels_keyboard_continuity(browser, base):
     """A real keyboard can start, finish, close and reopen a Music Duels bracket."""
     context=browser.new_context(viewport={"width":390,"height":844},
@@ -5199,6 +5329,7 @@ def firefox_main():
             check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
@@ -5262,6 +5393,7 @@ def main():
             check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
             check_cancel_stale_discovery(browser, base)
