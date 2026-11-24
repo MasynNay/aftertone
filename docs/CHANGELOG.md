@@ -1,3 +1,11 @@
+## v0.12 development — Large Collection paging and mobile responsiveness (November 23, 2026)
+
+- Collection now displays **40 saved-song cards per page** instead of mounting potentially 1,500 cards on a phone. Accessible Previous/Next buttons, a page selector, exact result ranges and a keyboard-focus target let listeners move through the library without a full-page reload.
+- Search and sorting operate across **the entire saved library**, then select the visible page; changes to search/sort reset the cursor. The view safely clamps a stale cursor after deletions, restores or library changes rather than showing an empty phantom page.
+- Catalog lookups use a per-render ID index, and Recently Kept sorting uses saved favorite positions instead of repeatedly searching the favorites array. These address two avoidable performance costs on large libraries.
+- **Undo Remove, export JSON/CSV and progress backups retain the entire collection**, never just the current page. No saved-data format or music-playback logic changes.
+- Node regressions cover 123 saved songs, page sizes, global filters/sorts, stale cursors, empty searches and keyboard wiring. Chromium and Firefox browser checks at 390px verify page navigation/focus, global search, full CSV export and Undo with fictional entries. Manual real-phone and screen-reader acceptance remains open (#5/#7).
+
 ## v0.12 development — Collection preview accessibility and mobile playback efficiency (November 23, 2026)
 
 - Collection playback buttons now announce their **current** action with the recording's visible title: Listen, Pause, or Cancel loading. Screen readers no longer hear a stale "Listen to SONG" label when the control would pause or cancel.
