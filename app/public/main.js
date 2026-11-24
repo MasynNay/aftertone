@@ -2176,15 +2176,18 @@ function handleDuelAction(action, id=null) {
   }
   if(action==='save-champions') {
     const winners=hallOfFame(duelTournaments).filter(t=>t.gold>0);
+    const next={...state,favorites:[...state.favorites],savedTracks:[...state.savedTracks]};
     let added=0;
     for(const track of winners) {
-      if(!catalogIds.has(track.id))addToCatalog([track]);
-      if(!state.favorites.includes(track.id)){state.favorites.push(track.id);added++;}
-      if(!state.savedTracks.some(t=>t.id===track.id))state.savedTracks.push(track);
+      if(!next.favorites.includes(track.id)){next.favorites.push(track.id);added++;}
+      if(!next.savedTracks.some(t=>t.id===track.id))next.savedTracks.push(track);
     }
-    state.favorites=state.favorites.slice(-5000);
-    state.savedTracks=state.savedTracks.slice(-1500);
-    persist();render();return toast(added?`${added} champions added to your Collection.`:'All champions are already saved.');
+    next.favorites=next.favorites.slice(-5000);
+    next.savedTracks=next.savedTracks.slice(-1500);
+    if(!commitSessionChange(next))return;
+    for(const track of winners)if(!catalogIds.has(track.id))addToCatalog([track]);
+    render();
+    return toast(added?`${added} champions added to your Collection.`:'All champions are already saved.');
   }
   if(action==='create-cup') {
     const champions=availableChampions(duelTournaments);
@@ -2208,15 +2211,18 @@ function handleDuelAction(action, id=null) {
   if(action==='export-podium')return exportDuelPodium(event);
   if(action==='save-podium') {
     const entries=podiumTracks(event);
+    const next={...state,favorites:[...state.favorites],savedTracks:[...state.savedTracks]};
     for(const track of entries) {
-      if(!catalogIds.has(track.id))addToCatalog([track]);
-      if(!state.favorites.includes(track.id))state.favorites.push(track.id);
-      if(!state.savedTracks.some(t=>t.id===track.id))state.savedTracks.push(track);
+      if(!next.favorites.includes(track.id))next.favorites.push(track.id);
+      if(!next.savedTracks.some(t=>t.id===track.id))next.savedTracks.push(track);
     }
-    // Respect the original storage cap; podium rankings stay in the archive.
-    state.favorites=state.favorites.slice(-5000);
-    state.savedTracks=state.savedTracks.slice(-1500);
-    persist();render();return toast('The podium tracks are in your Collection.');
+    // Keep the original caps and do not add UI catalog entries before saving.
+    next.favorites=next.favorites.slice(-5000);
+    next.savedTracks=next.savedTracks.slice(-1500);
+    if(!commitSessionChange(next))return;
+    for(const track of entries)if(!catalogIds.has(track.id))addToCatalog([track]);
+    render();
+    return toast('The podium tracks are in your Collection.');
   }
 }
 function voteActiveDuel(winnerId) {
@@ -2408,10 +2414,12 @@ document.addEventListener('click', async (event) => {
   if(quizMood && view==='quiz' && quizSession?.answer!==null) {
     const mood=quizMood.dataset.quizMood;
     if (!MOODS.includes(mood)) return;
+    // A mood check-in should not look saved if storage rejects the change.
+    const next={...state,history:state.history.map(h=>h.id===quizSession.id
+      ? {...h,mood} : h)};
+    if(!commitSessionChange(next))return;
     quizSession.mood=mood;
-    // A mood check-in is optional and updates your taste without another like.
-    state.history = state.history.map(h=>h.id===quizSession.id ? {...h,mood} : h);
-    persist(); return render();
+    return render();
   }
   const preview = event.target.closest('[data-preview]');
   if (preview) return togglePlayback(lookup(preview.dataset.preview));
@@ -2639,7 +2647,8 @@ document.addEventListener('click', async (event) => {
     case 'exit-challenge': return exitSharedChallenge(document.activeElement===action);
     case 'reset-listens':
       if (!confirm('Restart discovery? Saved favorites will stay, but listening history and recognition scores will be cleared.')) return;
-      state = { ...state, history: [] }; persist(); chooseNext(); return render();
+      if(!commitSessionChange({...state,history:[]}))return;
+      chooseNext();return render();
     default: return;
   }
 });
