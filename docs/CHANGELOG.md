@@ -1,3 +1,10 @@
+## v0.12 development — Stop autoplay on Deezer rate limits (November 23, 2026)
+
+- A Deezer HTTP/JSONP 429 encountered during automatic preview loading now stops continuous listening immediately. AFTERTONE leaves the current unheard song on screen with the existing manual Retry Preview and Skip Without Voting controls instead of automatically requesting the next songs.
+- A rate-limited metadata response is a temporary provider outage, **not** proof the recording is broken: it no longer blacklists that track or consumes the three-failure autoplay skip allowance. The same handling applies if a stale Deezer URL refresh encounters quota limits after playback had begun.
+- New 390px Chromium and Firefox browser smoke journeys start continuous listening, Pass one fictional recording, simulate a 429 on the next automatic preview, verify no extra provider calls or false decisions, then retry manually after synthetic recovery.
+- All tests use fictional provider fixtures; real Deezer permissions and actual browser-device behavior remain subject to manual review (issues #2, #3 and #7).
+
 ## v0.12 development — Verify saved Music Duels brackets (November 23, 2026)
 
 - Loading tournament history now verifies that every matchup uses the entrants or winners of its preceding round, that votes occur in order, and that bronze pairings match the losing semifinalists. A corrupted or forged later round is excluded instead of appearing as a resumable bracket.
