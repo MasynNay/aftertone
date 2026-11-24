@@ -99,7 +99,7 @@ test('Music Duels collection saves and destructive resets never announce false s
   const champions=duels.slice(0,duels.indexOf("if(action==='create-cup')"));
   assert.ok(champions.indexOf('commitSessionChange(next)')<champions.indexOf('addToCatalog([track])'));
   const actions=source.slice(source.indexOf("case 'reset-listens':"),
-    source.indexOf("case 'export-json':"));
+    source.indexOf("nav.addEventListener('click'"));
   assert.match(actions,/if\(!commitSessionChange\(\{\.\.\.state,history:\[\]\}\)\)return;/);
   const quiz=source.slice(source.indexOf('const quizMood='),
     source.indexOf("const preview = event.target.closest('[data-preview]')"));
