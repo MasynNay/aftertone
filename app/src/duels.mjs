@@ -163,6 +163,11 @@ function consistentBracket(t) {
       return false;
   } else if(t.thirdPlace!=null)return false;
 
+  // voteDuel appends the next round as soon as the last match is decided.
+  // A nonfinal, fully decided final stored round is not resumable: its next
+  // match is missing, so it must not appear as an active tournament.
+  if(t.status==='active' && t.rounds.at(-1).every(match=>match.winner!==null))
+    return false;
   const final=t.rounds.at(-1)[0];
   const completed=t.rounds.length===roundsNeeded && t.rounds.at(-1).length===1 &&
     final.winner!==null;
@@ -195,8 +200,11 @@ export function loadDuelStore(storage) {
 
 export function saveDuelStore(storage, tournaments) {
   try {
-    storage.setItem(DUEL_STORAGE_KEY, JSON.stringify({version:1,tournaments:tournaments.slice(-DUEL_MAX_ARCHIVES)}));
-    return true;
+    const payload=JSON.stringify({version:1,tournaments:tournaments.slice(-DUEL_MAX_ARCHIVES)});
+    storage.setItem(DUEL_STORAGE_KEY,payload);
+    // Some storage adapters silently discard writes (for example when full).
+    // Do not claim a vote was saved until read-back matches exactly.
+    return storage.getItem(DUEL_STORAGE_KEY)===payload;
   } catch { return false; }
 }
 
@@ -213,8 +221,11 @@ export function loadDuelSelection(storage,tournaments=[]) {
   return [...tournaments].reverse().find(event=>event.status==='active')?.id || null;
 }
 export function saveDuelSelection(storage,id) {
-  try {storage.setItem(DUEL_SELECTION_KEY,id||'closed');return true;}
-  catch {return false;}
+  try {
+    const selection=id||'closed';
+    storage.setItem(DUEL_SELECTION_KEY,selection);
+    return storage.getItem(DUEL_SELECTION_KEY)===selection;
+  } catch {return false;}
 }
 
 /** CSV export is playlist-ready metadata, not an unauthorized audio download. */
