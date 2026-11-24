@@ -127,6 +127,8 @@ test('Collection displays a persistent, escaped Undo action even after last save
     'Do not offer Undo after the song is already present');
   const app=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
   assert.match(app,/restoreRemovedFavorite\(state,removedId,index\)/);
-  assert.match(app,/lastRemovedFavorite=\{id,index:state\.favorites\.indexOf\(id\)/);
+  assert.match(app,/const removed=\{id,index:state\.favorites\.indexOf\(id\)/);
+  assert.match(app,/if\(!commitSessionChange\(removeFavorite\(state,id\)\)\)return;/);
+  assert.match(app,/lastRemovedFavorite=removed;/);
   assert.match(app,/\$\('\[data-action="undo-remove-favorite"\]'\) \|\| main/);
 });
