@@ -51,7 +51,14 @@ export function loadState(storage) {
   catch { return createInitialState(); }
 }
 
+/** A successful setItem call is not sufficient evidence of a saved choice.
+ * Some storage wrappers/private contexts silently discard writes; confirm the
+ * exact payload was retained before the app advances a listening decision.
+ */
 export function saveState(storage, state) {
-  try { storage.setItem(STORAGE_KEY, JSON.stringify(state)); return true; }
-  catch { return false; }
+  try {
+    const payload=JSON.stringify(state);
+    storage.setItem(STORAGE_KEY,payload);
+    return storage.getItem(STORAGE_KEY)===payload;
+  } catch { return false; }
 }
