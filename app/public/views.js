@@ -221,7 +221,8 @@ function renderCollection() {
       <option value="title" ${collectionSort==='title'?'selected':''}>Song title</option>
       <option value="artist" ${collectionSort==='artist'?'selected':''}>Artist</option>
     </select></label>
-    ${filtered?'<button type="button" class="secondary-button" data-action="clear-collection-filters">Clear Filters</button>':''}
+    ${collectionQuery?'<button type="button" class="secondary-button" data-action="clear-collection-search">Clear Search</button>':''}
+    ${genre!=='all'||mood!=='all'?'<button type="button" class="secondary-button" data-action="clear-collection-filters">Clear Filters</button>':''}
     <button class="secondary-button" data-action="export-csv">CSV ↧</button>
   </div>
   ${filtered ? `<p class="collection-match-count" role="status" aria-live="polite" aria-atomic="true">Showing ${paged.total} of ${items.length} saved ${items.length===1?'song':'songs'}.</p>` : ''}
