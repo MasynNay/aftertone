@@ -1,3 +1,12 @@
+## v0.12 development — Full-library genre and mood Collection filters (November 23, 2026)
+
+- Collection now has **Genre** and **Mood** filters, with actual saved-song counts in each option. They combine with existing text search and title/artist/recent sorting before selecting the visible 40-song page, so results reflect the **whole** library rather than just currently rendered cards.
+- Mood filters use the listener's latest saved **Tune Lab mood** for a song when present, falling back to the track's supplied mood; blank, unknown and generic "Fresh" values are not presented as meaningful facet choices. No genre or mood is fabricated.
+- Changing a facet resets paging and restores keyboard focus to the rebuilt dropdown. Combined-filter result counts use an accessible status; the empty state has **Show All Saved Songs**, and a dedicated Clear Filters action restores the full library. Search-only Clear Search remains available.
+- Browsing filters are ephemeral UI state. They never alter favorites, history, track metadata, exports or backup format. CSV/JSON/backup operations continue to cover all saved songs, including those hidden by filters.
+- Pure Node regressions cover 123 saved songs, intersected filters, stale cursors, mood overrides, XSS-safe labels, and keyboard wiring; fictional 390px Chromium/Firefox browser scenarios cover filtering, mobile overflow, keyboard focus, and exporting all 123 songs.
+- Real phone and screen-reader acceptance remains open (#7). No new provider/preview use or licensing assertion (#3).
+
 ## v0.12 development — Verified, write-before-change listening progress (November 23, 2026)
 
 - Normal saved listening sessions now verify browser storage read-back after every `setItem`; silently discarded writes, blocked storage reads, and quota errors return failure rather than a false saved-success.
