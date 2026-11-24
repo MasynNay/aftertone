@@ -1786,6 +1786,117 @@ def check_session_write_failure_rollbacks(browser, base):
         context.close()
 
 
+
+def check_collection_genre_mood_filters(browser, base):
+    """Saved-song facets operate globally and never change the actual collection."""
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                accept_downloads=True,service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"collection-facets-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator('#listening-card').wait_for(state='visible',timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const state=JSON.parse(localStorage.getItem(key));
+          const tracks=Array.from({length:123},(_,i)=>({
+            id:'deezer:'+(8600001+i),source:'deezer',
+            title:'Fixture Song '+String(i+1).padStart(3,'0'),
+            artist:'Fixture Artist '+(i%7+1),
+            genre:i%2?'rock':'pop',
+            mood:['Warm','Dreamy','Reflective'][i%3],
+            artwork:null,
+          }));
+          state.favorites=tracks.map(t=>t.id);
+          state.savedTracks=tracks;
+          state.history=[{id:tracks[0].id,action:'like',
+            artist:tracks[0].artist,genre:'pop',mood:'Bright',
+            recognized:true,at:1720000000000}];
+          localStorage.setItem(key,JSON.stringify(state));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        grid=page.locator('.collection-grid .track-tile')
+        require(grid.count()==40,'Initial Collection grid exceeded 40 songs')
+        genre=page.locator('#collection-genre')
+        mood=page.locator('#collection-mood')
+        require('rock (61)' in genre.inner_text(),
+                'Facet counts did not include songs on older pages')
+        require('Dreamy (41)' in mood.inner_text(),
+                'Mood menu did not use the full library')
+        require('Bright (1)' in mood.inner_text(),
+                'Tune Lab mood was not reflected in saved Collection facets')
+        before=page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        genre.focus()
+        genre.select_option('rock')
+        require(page.evaluate("document.activeElement?.id==='collection-genre'"),
+                'Genre selection did not return keyboard focus to the rebuilt menu')
+        require(grid.count()==40,'Genre filtering did not retain bounded pages')
+        require('Showing 61 of 123' in page.locator('.collection-match-count').inner_text(),
+                'Genre result count was limited to current page')
+        mood=page.locator('#collection-mood')
+        mood.focus()
+        mood.select_option('Dreamy')
+        require(page.evaluate("document.activeElement?.id==='collection-mood'"),
+                'Mood selection did not return keyboard focus to the rebuilt menu')
+        require(grid.count()==21,'Combined genre and mood facets returned wrong songs')
+        require('Showing 21 of 123' in page.locator('.collection-match-count').inner_text(),
+                'Combined filter count was incorrect')
+        require(page.locator('#collection-page-select').count()==0,
+                'Narrowing to 21 songs retained an invalid paging select')
+        require(page.evaluate("document.documentElement.scrollWidth <= innerWidth+2"),
+                'Mobile Collection facets caused horizontal overflow')
+        page.locator('#sort-select').select_option('title')
+        require(grid.count()==21,'Sorting a filtered Collection lost its match set')
+        require(page.locator('#collection-genre').input_value()=='rock' and
+                page.locator('#collection-mood').input_value()=='Dreamy',
+                'Sorting silently cleared the selected facets')
+        # Export applies to the complete saved library, never just the filter.
+        with page.expect_download(timeout=TIMEOUT) as download_info:
+            page.locator('[data-action="export-csv"]').click()
+        csv=Path(download_info.value.path()).read_text(encoding='utf-8')
+        require(csv.count('Fixture Song')==123,
+                'Filtered CSV incorrectly exported only visible songs')
+        page.locator('#collection-genre').select_option('pop')
+        page.locator('#collection-mood').select_option('Bright')
+        require(grid.count()==1 and
+                page.locator('[data-preview="deezer:8600001"]').count()==1,
+                'Explicit Tune Lab mood did not override the track source mood')
+        page.locator('#collection-genre').select_option('rock')
+        require(page.get_by_role('heading',name='No Matches.').is_visible(),
+                'Empty facet intersection did not show recovery guidance')
+        page.get_by_role('button',name='Show All Saved Songs').click()
+        require(page.locator('#collection-genre').input_value()=='all' and
+                page.locator('#collection-mood').input_value()=='all',
+                'Empty-state recovery did not reset all active facets')
+        require(grid.count()==40,'Clear filters did not recover the full saved library')
+        require(page.evaluate("document.activeElement?.id==='collection-search'"),
+                'Filter recovery did not restore keyboard focus to Collection search')
+        page.locator('#collection-search').fill('Fixture Song 002')
+        require(grid.count()==1,'Search after facet reset found incorrect entries')
+        page.locator('[data-action="clear-collection-search"]').click()
+        require(grid.count()==40,'Search-only Clear action regressed after adding facets')
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==before,
+                'Browse-only facets or exports unexpectedly rewrote saved progress')
+        require(not errors,'Collection facet browser errors: '+'; '.join(errors))
+        print(f"PASS {label}: full-library facets, mood overrides, responsive keyboard recovery and full CSV")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_collection_undo_remove(browser, base):
     """Removing the last favorite can be undone without creating a listening vote."""
     context=browser.new_context(viewport={"width":1024,"height":800},
@@ -5566,6 +5677,7 @@ def firefox_main():
             check_collection_search_recovery(browser, base)
             check_session_write_failure_rollbacks(browser, base)
             check_large_collection_pagination(browser, base)
+            check_collection_genre_mood_filters(browser, base)
             check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
@@ -5632,6 +5744,7 @@ def main():
             check_collection_search_recovery(browser, base)
             check_session_write_failure_rollbacks(browser, base)
             check_large_collection_pagination(browser, base)
+            check_collection_genre_mood_filters(browser, base)
             check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
