@@ -4907,7 +4907,7 @@ def check_autoplay_quota_holds_unheard_song(browser, base):
             state["metadata"]+=1
             if state["limited"]:
                 callback=parse_qs(parsed.query).get("callback",[""])[0]
-                require(re.fullmatch(r"__aftertoneDeezer_\\d+",callback),
+                require(re.fullmatch(r"__aftertoneDeezer_\d+",callback),
                         "Unexpected synthetic provider callback")
                 payload={"error":{"code":429,"message":"Synthetic automatic quota limit"}}
                 route.fulfill(status=200,content_type="application/javascript",
