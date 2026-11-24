@@ -269,6 +269,7 @@ const sourceRemembered = () => { try { return Boolean(localStorage.getItem('afte
 let catalogLive = false;
 let collectionQuery = '';
 let collectionSort = 'recent';
+let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
 // Undo for the most recent removal remains visible while this tab is open.
 let lastRemovedFavorite = null;
 let pointerStart = null;
@@ -1346,7 +1347,7 @@ function render() {
   // removing/adding a track never leaves the visitor on an empty phantom page.
   challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1366,7 +1367,11 @@ function render() {
     }
   }
   switch (view) {
-    case 'collection': main.innerHTML = pages.renderCollection(); break;
+    case 'collection':
+      main.innerHTML = pages.renderCollection();
+      // The view clamps stale positions after deletions or collection changes.
+      collectionPage=Number(main.querySelector('#collection-page-select')?.value||1);
+      break;
     case 'taste': main.innerHTML = pages.renderTaste(); break;
     case 'challenges': main.innerHTML = pages.renderChallenges(); break;
     case 'quiz': main.innerHTML = pages.renderQuizLab(); break;
@@ -2500,9 +2505,21 @@ document.addEventListener('click', async (event) => {
       if (returnFocus) restoreDecisionFocus('undo');
       return toast('Last choice undone.');
     }
+    case 'collection-page': {
+      if(view!=='collection' || action.disabled) return;
+      const targetPage=Number(action.dataset.page);
+      if(!Number.isSafeInteger(targetPage) || targetPage<1) return;
+      collectionPage=targetPage;
+      render();
+      // Focus the result count near the new first tile, so keyboard users
+      // do not remain at a removed button below the previous page.
+      (main.querySelector('#collection-page-status') || main).focus();
+      return;
+    }
     case 'clear-collection-search': {
       const returnFocus=document.activeElement===action;
       collectionQuery='';
+      collectionPage=1;
       render();
       if (returnFocus) $('#collection-search')?.focus({preventScroll:true});
       return;
@@ -2678,9 +2695,19 @@ document.addEventListener('change', (event) => {
     state.discovery = ['hits','variety'].includes(event.target.value) ? event.target.value : 'hits';
     persist(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp();
   }
+  if (event.target.id === 'collection-page-select') {
+    if(view!=='collection')return;
+    const next=Number(event.target.value);
+    if(!Number.isSafeInteger(next)||next<1)return;
+    collectionPage=next;
+    render();
+    (main.querySelector('#collection-page-status') || main).focus();
+    return;
+  }
   if (event.target.id === 'sort-select') {
     const returnFocus=document.activeElement===event.target;
     collectionSort=['recent','title','artist'].includes(event.target.value) ? event.target.value : 'recent';
+    collectionPage=1;
     render();
     if (returnFocus) $('#sort-select')?.focus({preventScroll:true});
   }
@@ -2711,6 +2738,7 @@ document.addEventListener('input', (event) => {
     const selection={start:event.target.selectionStart,end:event.target.selectionEnd,
       direction:event.target.selectionDirection};
     collectionQuery = event.target.value;
+    collectionPage=1;
     render();
     const input = $('#collection-search');
     if (input) {

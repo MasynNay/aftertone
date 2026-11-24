@@ -1561,6 +1561,118 @@ def check_collection_search_recovery(browser, base):
 
 
 
+
+def check_large_collection_pagination(browser, base):
+    """123 fictional saved songs render in bounded, navigable pages on phones.
+
+    Verify full-data exports and Undo remain intact across pages. No real
+    music/provider endpoints or commercial audio are involved.
+    """
+    origin=urlsplit(base).netloc
+    context=browser.new_context(viewport={"width":390,"height":844},
+                                accept_downloads=True,service_workers="block")
+    context.route("**/*",lambda route:route.continue_()
+                  if urlsplit(route.request.url).netloc==origin else route.abort())
+    context.route("https://api.deezer.com/**",mock_deezer)
+    page=context.new_page()
+    errors=[]
+    page.on("pageerror",lambda error:errors.append(str(error)))
+    label=f"large-collection-pagination-{browser.browser_type.name}"
+    try:
+        page.goto(base+"/demo/",wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const state=JSON.parse(localStorage.getItem(key));
+          const tracks=Array.from({length:123},(_,i)=>({
+            id:'deezer:'+(8100001+i),source:'deezer',
+            title:'Fixture Melody '+String(i+1).padStart(3,'0'),
+            artist:'Fixture Artist '+String(i%5+1),
+            genre:i%2?'rock':'pop',artwork:null,mood:'Warm',
+          }));
+          state.favorites=tracks.map(t=>t.id);
+          state.savedTracks=tracks;
+          localStorage.setItem(key,JSON.stringify(state));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        grid=page.locator('.collection-grid .track-tile')
+        require(grid.count()==40,'Collection rendered more than one 40-song page')
+        require('Songs 1–40 of 123' in page.locator('#collection-page-status').inner_text(),
+                'Page 1 count is incorrect')
+        require(page.evaluate("document.documentElement.scrollWidth <= innerWidth+2"),
+                'Collection paging introduced horizontal overflow on a phone')
+        before=page.evaluate("""() => {
+          const saved=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {favorites:saved.favorites,history:saved.history,
+            savedTracks:saved.savedTracks};
+        }""")
+        top=page.locator('.collection-paging').first
+        top.locator('[data-action="collection-page"][data-page="2"]').focus()
+        page.keyboard.press("Enter")
+        require(grid.count()==40,'Second page rendered an unbounded grid')
+        require('Songs 41–80 of 123' in page.locator('#collection-page-status').inner_text(),
+                'Next-page navigation lost the page range')
+        require(page.evaluate("document.activeElement?.id==='collection-page-status'"),
+                'Page navigation did not move keyboard focus to new results')
+        page.locator('#collection-page-select').select_option('4')
+        require(grid.count()==3,'Last page should contain the remaining three tracks')
+        require('Songs 121–123 of 123' in page.locator('#collection-page-status').inner_text(),
+                'Direct page selection did not jump to final page')
+        require(page.locator('[data-preview="deezer:8100001"]').count()==1,
+                'Last page lost the oldest saved track')
+        require(page.evaluate("document.activeElement?.id==='collection-page-status'"),
+                'Page select did not announce new page results')
+
+        # Export must include all 123 songs, not just the three visible ones.
+        with page.expect_download(timeout=TIMEOUT) as download_info:
+            page.locator('[data-action="export-csv"]').click()
+        exported=Path(download_info.value.path()).read_text(encoding='utf-8')
+        require(exported.count('Fixture Melody')==123,
+                'CSV export incorrectly limited saved songs to current page')
+        require(page.evaluate("""() => {
+          const saved=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return saved.favorites.length;
+        }""")==123,'Paging/export dropped saved favorites')
+
+        page.locator('#collection-search').fill('Fixture Melody 001')
+        require(grid.count()==1,'Global search omitted song on an older page')
+        require('Showing 1 of 123' in page.locator('.collection-match-count').inner_text(),
+                'Search count was scoped to the current page')
+        require(page.locator('#collection-page-select').count()==0,
+                'A one-result search left an invalid page selector')
+        page.locator('[data-action="clear-collection-search"]').click()
+        require(grid.count()==40,'Clear Search failed to reset paging')
+        page.locator('#collection-page-select').select_option('4')
+        # Removing a song preserves Undo and does not impact unrelated votes.
+        page.locator('[data-action="remove-favorite"]').first.click()
+        require(grid.count()==2,'Removing a saved song did not refresh page length')
+        undo=page.locator('[data-action="undo-remove-favorite"]')
+        require(undo.count()==1,'Undo was lost on paginated Collection')
+        undo.click()
+        require(grid.count()==3,'Undo did not restore the removed saved song')
+        after=page.evaluate("""() => {
+          const saved=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {favorites:saved.favorites,history:saved.history,
+            savedTracks:saved.savedTracks};
+        }""")
+        require(after['favorites']==before['favorites'],
+                'Remove and Undo changed the original saved order')
+        require(after['history']==before['history'],
+                'Paging or Undo inserted an unrequested listening choice')
+        require(not errors,'Paginated Collection browser errors: '+'; '.join(errors))
+        print(f"PASS {label}: 123 saved songs, 40-card pages, full export, focus, search, Undo")
+    except Exception:
+        screenshot(page,f"FAILED-{label}")
+        raise
+    finally:
+        context.close()
+
+
 def check_collection_undo_remove(browser, base):
     """Removing the last favorite can be undone without creating a listening vote."""
     context=browser.new_context(viewport={"width":1024,"height":800},
@@ -2030,12 +2142,22 @@ def check_swipe_pointer_safety(browser, base, width):
         return found["x"],found["y"],found["box"]
 
     def drag(dx,dy,button="left",release_outside=False):
+        if release_outside:
+            # Some phone layouts place the listening card almost flush with
+            # the viewport edge. Reserve an inset in THIS isolated fixture so
+            # the test can release outside the card but inside the browser.
+            # Otherwise the test asserts its own impossible coordinates before
+            # exercising the actual browser pointer-capture behavior.
+            page.evaluate("""() => {
+              const card=document.querySelector('#listening-card');
+              card.style.maxWidth='calc(100% - 40px)';
+            }""")
         x,y,box=anchor(from_right=dx<0)
         page.mouse.move(x,y)
         page.mouse.down(button=button)
         if release_outside:
             endx=box["x"]+box["width"]+6
-            require(endx<width,"The pointer release target is outside the phone viewport")
+            require(endx<width,"Outside-card pointer release must remain inside the phone viewport")
             page.mouse.move(endx,y,steps=8)
         else:
             page.mouse.move(x+dx,y+dy,steps=8)
@@ -5329,6 +5451,7 @@ def firefox_main():
             check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_large_collection_pagination(browser, base)
             check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
@@ -5393,6 +5516,7 @@ def main():
             check_blind_mode_focus_and_shared_lock(browser, base)
             check_search_draft_survives_rerenders(browser, base)
             check_collection_search_recovery(browser, base)
+            check_large_collection_pagination(browser, base)
             check_collection_preview_a11y_and_timeupdate(browser, base)
             check_collection_csv_formula_safety(browser, base)
             check_collection_undo_remove(browser, base)
