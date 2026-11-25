@@ -269,6 +269,8 @@ const sourceRemembered = () => { try { return Boolean(localStorage.getItem('afte
 let catalogLive = false;
 let collectionQuery = '';
 let collectionSort = 'recent';
+let collectionGenre = 'all'; // Browse-only facet; never persisted or included in backups.
+let collectionMood = 'all';
 let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
 // Undo for the most recent removal remains visible while this tab is open.
 let lastRemovedFavorite = null;
@@ -1363,7 +1365,7 @@ function render() {
   // removing/adding a track never leaves the visitor on an empty phantom page.
   challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1387,6 +1389,8 @@ function render() {
       main.innerHTML = pages.renderCollection();
       // The view clamps stale positions after deletions or collection changes.
       collectionPage=Number(main.querySelector('#collection-page-select')?.value||1);
+      collectionGenre=main.querySelector('#collection-genre')?.value||'all';
+      collectionMood=main.querySelector('#collection-mood')?.value||'all';
       break;
     case 'taste': main.innerHTML = pages.renderTaste(); break;
     case 'challenges': main.innerHTML = pages.renderChallenges(); break;
@@ -2544,6 +2548,14 @@ document.addEventListener('click', async (event) => {
       (main.querySelector('#collection-page-status') || main).focus();
       return;
     }
+    case 'clear-collection-filters': {
+      if(view!=='collection')return;
+      const returnFocus=document.activeElement===action;
+      collectionQuery='';collectionGenre='all';collectionMood='all';collectionPage=1;
+      render();
+      if(returnFocus)$('#collection-search')?.focus({preventScroll:true});
+      return;
+    }
     case 'clear-collection-search': {
       const returnFocus=document.activeElement===action;
       collectionQuery='';
@@ -2731,6 +2743,17 @@ document.addEventListener('change', (event) => {
     collectionPage=next;
     render();
     (main.querySelector('#collection-page-status') || main).focus();
+    return;
+  }
+  if(event.target.id==='collection-genre' || event.target.id==='collection-mood') {
+    if(view!=='collection')return;
+    const previousId=event.target.id;
+    if(previousId==='collection-genre')collectionGenre=event.target.value;
+    else collectionMood=event.target.value;
+    collectionPage=1;
+    render();
+    // The select has been replaced by render(). Preserve keyboard context.
+    $('#'+previousId)?.focus({preventScroll:true});
     return;
   }
   if (event.target.id === 'sort-select') {

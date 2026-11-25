@@ -1,5 +1,5 @@
 import { computeTaste } from '../src/taste.mjs';
-import {collectionPageModel} from '../src/collection-pagination.mjs';
+import {collectionFacets,collectionPageModel} from '../src/collection-pagination.mjs';
 import {eligibleChallengeTracks,challengeLibraryPage,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
 import { firstListenAction } from '../src/discovery/first-listen.mjs';
@@ -10,7 +10,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   // One index per render avoids searching the full catalog for every saved
   // song. Keep the FIRST matching entry, matching the previous .find behavior.
   const byId=new Map();
@@ -184,8 +184,15 @@ function renderQuizLab() {
 
 function renderCollection() {
   const items = state.favorites.map(lookup).filter(Boolean);
+  const facets=collectionFacets(items,state.history);
+  // A deleted last song may remove a facet. Fall back visibly to "All" rather
+  // than silently leaving a hidden filter applied to the remaining library.
+  const genre=facets.genres.some(f=>f.value===collectionGenre)?collectionGenre:'all';
+  const mood=facets.moods.some(f=>f.value===collectionMood)?collectionMood:'all';
+  const filtered=Boolean(collectionQuery.trim() || genre!=='all' || mood!=='all');
   const paged=collectionPageModel(items,state.favorites,{
     query:collectionQuery,sort:collectionSort,page:collectionPage,
+    genre,mood,moodById:facets.moodById,
   });
   const pagingControls=(bottom=false)=>paged.pages<=1?'':`<nav class="collection-paging" aria-label="Saved song pages">
     ${bottom?`<span>Page ${paged.page} of ${paged.pages}</span>`
@@ -199,12 +206,30 @@ function renderCollection() {
   return `<section><div class="eyebrow">KEEP WHAT MOVES YOU</div><div class="page-head"><div><h1>Your Collection<span style="color:var(--accent)">.</span></h1><p class="lead">No algorithms telling you what to love. Every track here earned its place.</p></div><div class="collection-header-actions"><button class="secondary-button" data-action="export-json" ${items.length ? '' : 'disabled'}>↧ Export Library</button><button class="secondary-button" data-action="backup-progress">↧ Backup Progress</button><button class="secondary-button" data-action="restore-progress" aria-describedby="collection-backup-note">↥ Restore Backup</button><input id="progress-backup-file" type="file" accept=".json,application/json" aria-label="Choose an AFTERTONE progress backup" hidden /></div></div>
   <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
-  ${items.length ? `<div class="collection-tools"><input id="collection-search" class="search-input" type="search" placeholder="Search songs, artists, genres…" aria-label="Search saved music" value="${html(collectionQuery)}" /><select class="select-input" id="sort-select" aria-label="Sort collection"><option value="recent" ${collectionSort === 'recent' ? 'selected' : ''}>Recently kept</option><option value="title" ${collectionSort === 'title' ? 'selected' : ''}>Song title</option><option value="artist" ${collectionSort === 'artist' ? 'selected' : ''}>Artist</option></select>${collectionQuery ? '<button type="button" class="secondary-button" data-action="clear-collection-search">Clear Search</button>' : ''}<button class="secondary-button" data-action="export-csv">CSV ↧</button></div>
-  ${collectionQuery ? `<p class="collection-match-count">Showing ${paged.total} of ${items.length} saved ${items.length===1?'song':'songs'}.</p>` : ''}
+  ${items.length ? `<div class="collection-tools">
+    <input id="collection-search" class="search-input" type="search" placeholder="Search songs, artists, moods…" aria-label="Search saved music" value="${html(collectionQuery)}" />
+    <label class="collection-facet"><span>Genre</span><select class="select-input" id="collection-genre" aria-label="Filter saved songs by genre">
+      <option value="all">All genres</option>
+      ${facets.genres.map(f=>`<option value="${html(f.value)}" ${genre===f.value?'selected':''}>${html(f.value)} (${f.count})</option>`).join('')}
+    </select></label>
+    <label class="collection-facet"><span>Mood</span><select class="select-input" id="collection-mood" aria-label="Filter saved songs by mood">
+      <option value="all">All moods</option>
+      ${facets.moods.map(f=>`<option value="${html(f.value)}" ${mood===f.value?'selected':''}>${html(f.value)} (${f.count})</option>`).join('')}
+    </select></label>
+    <label class="collection-facet"><span>Sort</span><select class="select-input" id="sort-select" aria-label="Sort collection">
+      <option value="recent" ${collectionSort==='recent'?'selected':''}>Recently kept</option>
+      <option value="title" ${collectionSort==='title'?'selected':''}>Song title</option>
+      <option value="artist" ${collectionSort==='artist'?'selected':''}>Artist</option>
+    </select></label>
+    ${collectionQuery?'<button type="button" class="secondary-button" data-action="clear-collection-search">Clear Search</button>':''}
+    ${genre!=='all'||mood!=='all'?'<button type="button" class="secondary-button" data-action="clear-collection-filters">Clear Filters</button>':''}
+    <button class="secondary-button" data-action="export-csv">CSV ↧</button>
+  </div>
+  ${filtered ? `<p class="collection-match-count" role="status" aria-live="polite" aria-atomic="true">Showing ${paged.total} of ${items.length} saved ${items.length===1?'song':'songs'}.</p>` : ''}
   ${paged.total ? `${paged.pages>1?pagingControls():''}<div class="collection-grid">${paged.visible.map((track) => {
-    const [a,b] = shade(track.id); const event = state.history.find((item) => item.id === track.id);
-    return `<article class="track-tile"><div class="tile-art" style="--tone-a:${a};--tone-b:${b}">${track.artwork ? `<img loading="lazy" src="${urlSafe(track.artwork)}" alt="" />` : '<span class="art-glyph">◉</span>'}<span class="tile-count">${event?.recognized ? 'RECOGNIZED' : 'DISCOVERED'}</span></div><div class="tile-body"><strong title="${html(track.title)}">${html(track.title)}</strong><p>${html(track.artist)}</p><div class="tag-row">${tag(track.genre)}${tag(event?.mood || track.mood)}</div><div class="tile-actions"><button data-preview="${html(track.id)}" aria-label="Listen to ${html(track.title)}">▶ Listen</button><button data-action="remove-favorite" data-id="${html(track.id)}" class="remove-button" aria-label="Remove ${html(track.title)} from collection">×</button></div></div></article>`;
-  }).join('')}</div>${pagingControls(true)}` : `<div class="empty-state"><h2>No Matches.</h2><p>No saved songs matched this search. Clear it to see your collection again.</p><button type="button" class="accent-button" data-action="clear-collection-search">Show All Saved Songs</button></div>`}
+    const [a,b] = shade(track.id); const event = facets.eventById.get(track.id);
+    return `<article class="track-tile"><div class="tile-art" style="--tone-a:${a};--tone-b:${b}">${track.artwork ? `<img loading="lazy" src="${urlSafe(track.artwork)}" alt="" />` : '<span class="art-glyph">◉</span>'}<span class="tile-count">${event?.recognized ? 'RECOGNIZED' : 'DISCOVERED'}</span></div><div class="tile-body"><strong title="${html(track.title)}">${html(track.title)}</strong><p>${html(track.artist)}</p><div class="tag-row">${tag(track.genre)}${tag(facets.moodById.get(track.id) || track.mood)}</div><div class="tile-actions"><button data-preview="${html(track.id)}" aria-label="Listen to ${html(track.title)}">▶ Listen</button><button data-action="remove-favorite" data-id="${html(track.id)}" class="remove-button" aria-label="Remove ${html(track.title)} from collection">×</button></div></div></article>`;
+  }).join('')}</div>${pagingControls(true)}` : `<div class="empty-state"><h2>No Matches.</h2><p>No saved songs match these search or filter choices. Clear filters to see your collection again.</p><button type="button" class="accent-button" data-action="${genre==='all'&&mood==='all'?'clear-collection-search':'clear-collection-filters'}">Show All Saved Songs</button></div>`}
   <p style="font-size:11px;color:var(--dim);margin-top:22px">${plural(items.length,'saved track')} · Recordings provided by their source hosts. Visit the original source for attribution and licensing.</p>` : `<div class="empty-state"><div class="empty-icon">♡</div><h2>Nothing Saved Yet.</h2><p>Start swiping. The moment a track catches your ear, your collection comes to life.</p><button class="accent-button" data-view="discover">Explore Music →</button></div>`}</section>`;
 }
 

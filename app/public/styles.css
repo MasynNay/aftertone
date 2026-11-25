@@ -1177,6 +1177,43 @@ h1 em {
   }
 }
 
+/* Browse-only Collection facets: compact on desktop, full-width on phones. */
+.collection-facet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.collection-facet .select-input {
+  min-height: 44px;
+  min-width: 110px;
+  max-width: 220px;
+  text-overflow: ellipsis;
+}
+.collection-facet:focus-within span {
+  color: var(--text);
+}
+@media (max-width: 520px) {
+  .collection-facet {
+    flex: 1 1 calc(50% - 8px);
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .collection-facet span {
+    flex-basis: 100%;
+  }
+  .collection-facet .select-input {
+    width: 100%;
+    max-width: 100%;
+  }
+  .collection-tools > [data-action="clear-collection-filters"],
+  .collection-tools > [data-action="clear-collection-search"] {
+    min-height: 44px;
+  }
+}
+
 .collection-tools {
   display: flex;
   align-items: center;
