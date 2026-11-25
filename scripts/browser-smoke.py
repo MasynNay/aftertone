@@ -1830,12 +1830,16 @@ def check_collection_genre_mood_filters(browser, base):
         require(grid.count()==40,'Initial Collection grid exceeded 40 songs')
         genre=page.locator('#collection-genre')
         mood=page.locator('#collection-mood')
-        require('rock (61)' in genre.inner_text(),
-                'Facet counts did not include songs on older pages')
-        require('Dreamy (41)' in mood.inner_text(),
-                'Mood menu did not use the full library')
-        require('Bright (1)' in mood.inner_text(),
-                'Tune Lab mood was not reflected in saved Collection facets')
+        # Firefox reports innerText for <select> differently from Chromium.
+        # Inspect actual option text to assert the entire selectable menu.
+        genre_options=genre.locator('option').all_text_contents()
+        mood_options=mood.locator('option').all_text_contents()
+        require('rock (61)' in genre_options,
+                f'Facet counts did not include older pages: {genre_options!r}')
+        require('Dreamy (41)' in mood_options,
+                f'Mood menu did not use the full library: {mood_options!r}')
+        require('Bright (1)' in mood_options,
+                f'Tune Lab mood was not reflected: {mood_options!r}')
         before=page.evaluate("localStorage.getItem('aftertone:session:v1')")
         genre.focus()
         genre.select_option('rock')
