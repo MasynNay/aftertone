@@ -1,3 +1,5 @@
+**v0.12 Achievement Cabinet (November 28, 2026):** 19 dynamic milestones, category progress, accessible filters, next steps and Discovery Passport link. Derived from current retained local evidence; no separate persistence or synthetic listening scores. CI and physical-device checks remain required.
+
 **v0.12 Music Duels League (November 28, 2026):** Added round-robin competitions, matchday schedules, standings, tie rules, and archive/backup integration alongside unchanged knockout and Champions Cup formats. Full CI and live-device/provider checks remain required.
 
 **v0.12 Smart Mixes (November 28, 2026):** Dynamic, local saved-song groupings by recent order, recognition, genre and mood with shared saved-preview playback. No new persistence schema or inferred listening signals. Integrated CI and actual provider/device testing remain required.

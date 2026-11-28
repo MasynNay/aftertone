@@ -30,6 +30,7 @@ import { renderDuels } from './duels-view.js';
 import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
+import {ACHIEVEMENT_FILTERS} from '/src/achievements.mjs';
 import {smartPlaylists} from '/src/smart-playlists.mjs';
 import {buildSavedQueue,nextSavedIndex} from '/src/saved-playback.mjs';
 import {editPersonalPlaylist,personalPlaylists} from '/src/personal-playlists.mjs';
@@ -285,6 +286,7 @@ let collectionMood = 'all';
 let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
 let collectionRecoveryFlight=null,collectionRecoveryMessage='';
 const collectionRecoveryAttempted=new Set();
+let achievementFilter='all'; // View-only progress browsing.
 let recapPeriod='all'; // Read-only recap date range.
 let journalFilter='all',journalPage=1,journalPath='all',journalQuery=''; // Read-only Taste Map browsing.
 // Undo for the most recent removal remains visible while this tab is open.
@@ -1484,7 +1486,7 @@ function render() {
   const queue=view==='discover'&&!challengeIds.length?discoveryQueueSnapshot(activeFeed):null;
   const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, personalPlaylistId,personalPlaylistPage,smartPlaylistId, journalFilter,journalPage,journalPath,journalQuery,recapPeriod,removedFavorite: lastRemovedFavorite,
     collectionRecovery:view==='collection'?{...collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted),busy:Boolean(collectionRecoveryFlight),message:collectionRecoveryMessage}:null,
-    feed: activeFeed?{ ...activeFeed, loading: activeFeed.loading || (!activeFeed.primed && !current), available:queue?.ready??0,queue,autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }:{}, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
+    feed: activeFeed?{ ...activeFeed, loading: activeFeed.loading || (!activeFeed.primed && !current), available:queue?.ready??0,queue,autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }:{}, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats, tournaments:duelTournaments, achievementFilter });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
   if (focusedMobileFilterAction && side && document.body.classList.contains('mobile-filters-open')) {
@@ -2829,6 +2831,18 @@ document.addEventListener('click', async (event) => {
       render();
       if (returnFocus) restoreDecisionFocus('undo');
       return toast('Last choice undone.');
+    }
+    case 'open-achievements': {
+      achievementFilter='all';goTo('taste');
+      $('#achievement-heading')?.focus({preventScroll:true});
+      $('#achievement-heading')?.scrollIntoView({behavior:motionSafeScroll(),block:'start'});
+      return;
+    }
+    case 'achievement-filter': {
+      if(view!=='taste'||!ACHIEVEMENT_FILTERS.includes(action.dataset.filter))return;
+      achievementFilter=action.dataset.filter;render();
+      main.querySelector('[data-action="achievement-filter"][data-filter="'+achievementFilter+'"]')?.focus({preventScroll:true});
+      return;
     }
     case 'recap-period': {
       if(view!=='taste'||!RECAP_PERIODS.includes(action.dataset.period))return;

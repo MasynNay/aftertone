@@ -3,10 +3,11 @@
  * persisted listening decisions or Tune Lab answers; no invented scores.
  * We do not count auto-advanced previews as a decision.
  */
+import {artistKey} from './rotation.mjs';
 export function getPassportProgress(history = [], quizStats = {}) {
   const events = Array.isArray(history) ? history : [];
   const kept = events.filter(event => event?.action === 'like');
-  const distinctArtists = new Set(kept.map(event => String(event.artist || '').trim().toLocaleLowerCase()).filter(Boolean));
+  const distinctArtists = new Set(kept.map(event => artistKey(event.artist)).filter(key=>key&&!['unknown','unknown artist','various artists'].includes(key)));
   const wildcardDecisions = events.filter(event => !['search','challenge'].includes(event?.context) && event?.route === 'explore' && ['like','pass'].includes(event.action)).length;
   const answered = Math.max(0, Number(quizStats.answered) || 0);
   const definitions = [
