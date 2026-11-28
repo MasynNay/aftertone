@@ -33,6 +33,7 @@ import { csvRows } from '/src/csv.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
 import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
 import {collectionRecoveryPlan,prepareRecoveredFavorites} from '/src/collection-recovery.mjs';
+import {RECAP_PERIODS} from '/src/listening-recap.mjs';
 import {JOURNAL_FILTERS,JOURNAL_PATHS} from '/src/listening-journal.mjs';
 
 const main = document.querySelector('#main-content');
@@ -278,6 +279,7 @@ let collectionMood = 'all';
 let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
 let collectionRecoveryFlight=null,collectionRecoveryMessage='';
 const collectionRecoveryAttempted=new Set();
+let recapPeriod='all'; // Read-only recap date range.
 let journalFilter='all',journalPage=1,journalPath='all',journalQuery=''; // Read-only Taste Map browsing.
 // Undo for the most recent removal remains visible while this tab is open.
 let lastRemovedFavorite = null;
@@ -1463,7 +1465,7 @@ function render() {
   updateChrome();
   const activeFeed=view==='discover'?getFeed():null;
   const queue=view==='discover'&&!challengeIds.length?discoveryQueueSnapshot(activeFeed):null;
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,journalPath,journalQuery,removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,journalPath,journalQuery,recapPeriod,removedFavorite: lastRemovedFavorite,
     collectionRecovery:view==='collection'?{...collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted),busy:Boolean(collectionRecoveryFlight),message:collectionRecoveryMessage}:null,
     feed: activeFeed?{ ...activeFeed, loading: activeFeed.loading || (!activeFeed.primed && !current), available:queue?.ready??0,queue,autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }:{}, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
@@ -2687,8 +2689,8 @@ document.addEventListener('click', async (event) => {
   }
   const preview = event.target.closest('[data-preview]');
   if (preview) return togglePlayback(lookup(preview.dataset.preview));
-  const path=event.target.closest('[data-path]');
-  if(path && ['familiar','balanced','explore'].includes(path.dataset.path)) {
+  const path=event.target.closest('.discovery-paths .path-option[data-path]');
+  if(view==='discover' && path && ['familiar','balanced','explore'].includes(path.dataset.path)) {
     changeDiscoveryPath(path.dataset.path); // Distinct request and presentation pools.
     return;
   }
@@ -2801,6 +2803,18 @@ document.addEventListener('click', async (event) => {
       render();
       if (returnFocus) restoreDecisionFocus('undo');
       return toast('Last choice undone.');
+    }
+    case 'recap-period': {
+      if(view!=='taste'||!RECAP_PERIODS.includes(action.dataset.period))return;
+      const focused=document.activeElement===action;
+      recapPeriod=action.dataset.period;render();
+      if(focused)main.querySelector('[data-action="recap-period"][data-period="'+recapPeriod+'"]')?.focus({preventScroll:true});
+      return;
+    }
+    case 'recap-artist': {
+      if(view!=='taste'||!action.dataset.artist)return;
+      journalQuery=action.dataset.artist.slice(0,120);journalFilter='all';journalPath='all';journalPage=1;
+      render();$('#journal-page-status')?.focus();return;
     }
     case 'journal-filter': {
       if(view!=='taste'||!JOURNAL_FILTERS.includes(action.dataset.filter))return;

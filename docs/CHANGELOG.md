@@ -1,3 +1,9 @@
+## v0.12 development — Listening Recap and journal interaction (November 28, 2026)
+
+- Added a local listening recap with 7-day, 30-day and all-history metrics, daily Keep/Pass activity, top artists and genres, and a keyboard-accessible data table.
+- Artist insight cards open the existing searchable journal; fixed journal path controls being intercepted by discovery-mode switching. Neither recap nor journal browsing writes listening data or preferences.
+- UTC calendar-day labels and undated-history disclosure prevent invented listening statistics. All-history means retained decisions, not lifetime analytics.
+
 ## v0.12 development — Honest discovery queue and refill controls (November 27, 2026)
 
 ### Journal browsing (development)

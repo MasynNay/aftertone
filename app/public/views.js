@@ -1,6 +1,7 @@
 import { computeTaste } from '../src/taste.mjs';
 import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
 import {collectionInsights} from '../src/collection-insights.mjs';
+import {listeningRecap} from '../src/listening-recap.mjs';
 import {listeningJournal} from '../src/listening-journal.mjs';
 import {eligibleChallengeTracks,challengeLibraryPage,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
@@ -13,7 +14,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', journalFilter='all',journalPage=1,journalPath='all',journalQuery='',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', journalFilter='all',journalPage=1,journalPath='all',journalQuery='',recapPeriod='all',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   // One index per render avoids searching the full catalog for every saved
   // song. Keep the FIRST matching entry, matching the previous .find behavior.
   const byId=new Map();
@@ -317,6 +318,26 @@ function renderListeningJournal() {
     </section>`;
 }
 
+
+function renderListeningRecap() {
+  const recap=listeningRecap(state.history,catalog,{period:recapPeriod});
+  const peak=Math.max(1,...recap.activity.map(day=>day.total));
+  const ranking=(label,rows,artists=false)=>`<div class="recap-ranking"><h3>${label}</h3>${rows.length?rows.map(row=>`<div class="recap-rank-row"><div><strong>${html(row.label)}</strong><span>${row.kept} kept · ${row.passed} passed</span></div><div class="recap-rank-meter" aria-hidden="true"><span style="width:${row.total?100*row.kept/row.total:0}%"></span></div>${artists?`<button type="button" class="secondary-button" data-action="recap-artist" data-artist="${html(row.label)}" aria-label="Find decisions for ${html(row.label)}">View</button>`:''}</div>`).join(''):'<p class="empty-micro">Not enough identified music in this period.</p>'}</div>`;
+  return `<section class="panel listening-recap" aria-labelledby="recap-heading">
+    <div class="panel-heading"><div><span class="eyebrow">YOUR SOUND IN NUMBERS</span><h2 id="recap-heading">Listening Recap.</h2></div><span class="panel-accent" aria-hidden="true">↗</span></div>
+    <div class="recap-periods" role="group" aria-label="Listening recap period">${[['7','7 days'],['30','30 days'],['all','All history']].map(([id,label])=>`<button type="button" class="secondary-button" data-action="recap-period" data-period="${id}" aria-pressed="${recap.period===id}">${label}</button>`).join('')}</div>
+    <p id="recap-status" role="status" aria-live="polite">${recap.total?recap.total+' recorded '+(recap.total===1?'decision':'decisions')+' in this period.':'No recorded decisions in this period.'} ${recap.undated?recap.undated+' decisions have no reliable date and appear only in All history.':''}</p>
+    <div class="recap-metrics"><div><strong>${recap.total}</strong><span>Decisions</span></div><div><strong>${recap.kept}</strong><span>Kept</span></div><div><strong>${recap.keepRate===null?'—':recap.keepRate+'%'}</strong><span>Keep rate</span></div><div><strong>${recap.artists}</strong><span>Identified artists</span></div></div>
+    <div class="recap-activity"><div><h3>Daily activity</h3><span>Last ${recap.chartDays} calendar days · UTC · ${recap.activeDays} active days</span></div>
+    <div class="recap-legend"><span><i></i> Kept</span><span><i></i> Passed</span></div>
+    <div class="recap-chart" aria-hidden="true">${recap.activity.map(day=>`<div class="recap-day" title="${day.date}: ${day.kept} kept, ${day.passed} passed"><span class="recap-day-bar" style="height:${100*day.total/peak}%"><i style="flex:${day.passed}"></i><i style="flex:${day.kept}"></i></span></div>`).join('')}</div>
+    <div class="recap-axis"><span>${recap.activity[0].date.slice(5)}</span><span>${recap.activity.at(-1).date.slice(5)}</span></div>
+    <details class="recap-data"><summary>Daily activity data</summary><div class="recap-table-scroll"><table><thead><tr><th scope="col">UTC date</th><th scope="col">Kept</th><th scope="col">Passed</th></tr></thead><tbody>${recap.activity.map(day=>`<tr><th scope="row">${day.date}</th><td>${day.kept}</td><td>${day.passed}</td></tr>`).join('')}</tbody></table></div></details></div>
+    <div class="recap-rankings">${ranking('Artist signals',recap.topArtists,true)}${ranking('Genre signals',recap.topGenres)}</div>
+    <p class="journal-copy">Ranked by Keeps, then total decisions. ${recap.unknownArtist?recap.unknownArtist+' decisions lack artist details. ':''}Only deliberate Keep/Pass choices are counted; preview time is not tracked. All history covers the retained local journal, not lifetime activity.</p>
+  </section>`;
+}
+
 function renderTaste() {
   const taste = computeTaste(state.history, catalog);
   const genres = taste.genres.filter(([, n]) => n > 0);
@@ -326,6 +347,7 @@ function renderTaste() {
   <div class="taste-overview"><div class="panel map-panel"><div class="panel-heading map-head"><div><span class="panel-title">The constellation</span><p style="font-size:11px;color:var(--muted);margin:6px 0 0">Each node is a genre you've connected with. ${taste.identifiedGenres} of ${taste.total} choices have known genre information; unclassified songs still count in your totals.</p></div><span class="panel-accent">✳</span></div>${createMapSvg(taste)}</div>
   <div class="right-column"><div class="panel"><div class="panel-heading"><span class="panel-title">Favorite frequencies</span><span class="panel-accent">≋</span></div>${genres.length ? `<div class="taste-bars">${genres.slice(0, 6).map(([genre, score]) => `<div><div class="bar-label"><strong style="text-transform:capitalize">${html(genre)}</strong><span>${score} pts</span></div><div class="meter"><span style="width:${score / genres[0][1] * 100}%"></span></div></div>`).join('')}</div>` : '<p class="empty-micro">Nothing mapped yet. Let the music find you.</p>'}</div>
   <div class="panel"><div class="panel-heading"><span class="panel-title">Your listening moods</span><span class="panel-accent">♡</span></div>${moods.length ? `<div class="tag-row">${moods.slice(0, 7).map(([mood]) => tag(mood)).join('')}</div>` : '<p class="empty-micro">Mood signals appear when you save tracks.</p>'}</div></div></div>
+  ${renderListeningRecap()}
   ${renderListeningJournal()}
   <div class="panel" style="margin-top:22px"><div class="panel-heading"><span class="panel-title">How it gets smarter</span><span class="panel-accent">↗</span></div><div class="insight-list"><div class="insight"><strong>Preference isn't recognition</strong><p>Liking a new sound counts just as much as liking a familiar one. Trivia accuracy is tracked separately so obscure artists still get a fair shot.</p></div><div class="insight"><strong>A little unpredictability is a feature</strong><p>Suggestions balance your genre preferences with new styles and avoid repeatedly playing the same artist. You can still steer your session using a genre filter.</p></div><div class="insight"><strong>Your data belongs to you</strong><p>Your likes, passes and guesses stay in local browser storage. Export them whenever you want. There is no user account or analytics collection.</p></div></div></div></section>`;
 }

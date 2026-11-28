@@ -1269,6 +1269,30 @@ def check_choice_keyboard_focus(browser, base):
         page.locator('[data-action="journal-filter"][data-filter="all"]').click()
         require(page.locator('.journal-entries li').count()==1,
                 "Clearing journal filter lost recorded history")
+        before = page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        journal_path = page.locator('[data-action="journal-path"]:not([data-path="all"])').first
+        journal_path.focus()
+        page.keyboard.press("Enter")
+        require(page.locator('[data-action="journal-path"][aria-pressed="true"]').get_attribute("data-path") != "all",
+                "Journal path did not change its own filter")
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')") == before,
+                "Journal path changed discovery preferences or history")
+        week=page.locator('[data-action="recap-period"][data-period="7"]')
+        week.focus()
+        page.keyboard.press("Enter")
+        require(page.locator('[data-action="recap-period"][data-period="7"]').get_attribute("aria-pressed")=="true",
+                "Recap range did not switch")
+        require(page.locator('.recap-day').count()==7 and page.locator('.recap-data tbody tr').count()==7,
+                "Recap activity chart/table did not change together")
+        require(page.evaluate("document.activeElement?.dataset?.period")=="7",
+                "Recap date selection lost keyboard focus")
+        page.locator('[data-action="recap-period"][data-period="all"]').click()
+        page.locator('[data-action="recap-artist"]').first.click()
+        require(page.locator('#journal-search').input_value() != "" and
+                page.locator('.journal-entries li').count()==1,
+                "Recap artist drill-down did not find the journal decision")
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')") == before,
+                "Recap interactions changed saved progress")
         require(page.evaluate("""() => {
             const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
             return s.history.length===1 && s.favorites.length===1 && !!s.history[0].title;
