@@ -6,6 +6,7 @@ import {STORAGE_KEY,loadState,sanitizeState} from './persistence.mjs';
 import {DUEL_STORAGE_KEY,loadDuelStore,DUEL_MAX_ARCHIVES} from './duels.mjs';
 import {parseFavoriteArtists} from './discovery-personalization.mjs';
 import {parsePlaylist} from './playlist-import.mjs';
+import {MAX_HISTORY,MAX_FAVORITE_IDS,MAX_SAVED_TRACKS as MAX_TRACKS} from './collection-capacity.mjs';
 import {PLAYLIST_STORAGE_KEY as PLAYLIST_KEY,ARTISTS_STORAGE_KEY as ARTISTS_KEY,MAX_SAVED_PLAYLIST_TRACKS as MAX_PLAYLIST_TRACKS} from './personalization-store.mjs';
 
 export const BACKUP_FORMAT='aftertone-progress';
@@ -14,8 +15,7 @@ export const BACKUP_MAX_BYTES=4_000_000;
 const QUIZ_KEY='aftertone:tune-lab:v1';
 const LYRIC_OFFSETS_KEY='aftertone:lyric-offsets:v1';
 const MAX_LYRIC_OFFSETS=200;
-const MAX_HISTORY=5000;
-const MAX_TRACKS=1500;
+
 
 function boundedCount(value,label) {
   if (!Number.isSafeInteger(value) || value<0 || value>1_000_000)
@@ -51,7 +51,7 @@ function safeArtists(value) {
 function safeSession(raw) {
   if(!raw || typeof raw!=='object' || raw.version!==1 ||
      !Array.isArray(raw.history) || raw.history.length>MAX_HISTORY ||
-     !Array.isArray(raw.favorites) || raw.favorites.length>MAX_HISTORY ||
+     !Array.isArray(raw.favorites) || raw.favorites.length>MAX_FAVORITE_IDS ||
      !Array.isArray(raw.savedTracks) || raw.savedTracks.length>MAX_TRACKS)
     throw new Error('Backup has an unsupported or malformed listening session.');
   const normalized=sanitizeState(raw);
@@ -63,6 +63,7 @@ function safeSession(raw) {
   // must not become persistent UI or recommendation state.
   normalized.history=normalized.history.map(event=>({
     id:event.id,action:event.action,genre:event.genre,artist:event.artist,
+    ...(event.alreadySaved===true?{alreadySaved:true}:{}),
     ...(typeof event.title==='string'&&event.title.trim()?{title:event.title.trim().slice(0,180)}:{}),
     context:event.context,route:event.route,
     recognized:typeof event.recognized==='boolean'?event.recognized:null,

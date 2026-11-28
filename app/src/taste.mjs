@@ -1,5 +1,6 @@
 /** Pure recommendation and taste-modeling functions. No access to DOM or storage. */
 import { artistKey, chooseListeningLane } from './discovery/rotation.mjs';
+import {MAX_HISTORY} from './collection-capacity.mjs';
 
 export const MOODS = ['Bright', 'Warm', 'Dreamy', 'Intense', 'Reflective', 'Hopeful', 'Bold', 'Focused', 'Mysterious'];
 
@@ -122,11 +123,12 @@ export function selectNext(catalog, history, genre = 'all', random = Math.random
 
 export function recordChoice(state, { id, action, recognized = null, correct = null, mood = null, genre = null, artist = null, title = null, context = 'discovery', route = 'balanced', at = Date.now() }) {
   if (!id || !['like', 'pass'].includes(action) || state.history.some((item) => item.id === id)) return state;
-  const event = { id, action, recognized, correct, mood, genre, artist, ...(typeof title==='string'&&title.trim()?{title:title.trim().slice(0,180)}:{}), context: ['search','challenge'].includes(context) ? context : 'discovery', route: ['balanced','familiar','explore'].includes(route) ? route : 'balanced', at };
+  const alreadySaved=action==='like' && state.favorites.includes(id);
+  const event = { id, action, recognized, correct, mood, genre, artist, ...(alreadySaved?{alreadySaved:true}:{}), ...(typeof title==='string'&&title.trim()?{title:title.trim().slice(0,180)}:{}), context: ['search','challenge'].includes(context) ? context : 'discovery', route: ['balanced','familiar','explore'].includes(route) ? route : 'balanced', at };
   return {
     ...state,
-    history: [...state.history, event].slice(-5000),
-    favorites: action === 'like' ? [...state.favorites, id] : state.favorites,
+    history: [...state.history, event].slice(-MAX_HISTORY),
+    favorites: action === 'like' && !alreadySaved ? [...state.favorites, id] : state.favorites,
   };
 }
 
@@ -149,5 +151,5 @@ export function restoreLastChoice(state) {
   if (!state.history.length) return state;
   const history = state.history.slice(0, -1);
   const undone = state.history.at(-1);
-  return { ...state, history, favorites: undone.action === 'like' ? state.favorites.filter((id) => id !== undone.id) : state.favorites };
+  return { ...state, history, favorites: undone.action === 'like' && undone.alreadySaved !== true ? state.favorites.filter((id) => id !== undone.id) : state.favorites };
 }

@@ -30,6 +30,7 @@ import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTo
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
+import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
 import {JOURNAL_FILTERS} from '/src/listening-journal.mjs';
 
 const main = document.querySelector('#main-content');
@@ -1818,8 +1819,10 @@ function recordDecision(id, action, extra = {}) {
   const meta=lookup(id);
   let next=recordChoice(state,{id,action,genre:meta?.genre,artist:meta?.artist,title:meta?.title,
     context:challengeIds.length?'challenge':searchQuery?'search':'discovery',route:state.discoveryMix,...extra});
-  if(action==='like' && meta && !next.savedTracks.some(track=>track.id===id))
-    next={...next,savedTracks:[...next.savedTracks,meta].slice(-1500)};
+  if(action==='like' && next!==state) {
+    try { next=addCollectionTracks(next,meta?[meta]:[]); }
+    catch(error) { stopContinuous();render();toast(error.message);return false; }
+  }
   // A failed/quota-limited or silently ignored write must not count as a
   // Keep/Pass, change the active song, or advance a shared challenge.
   if(!commitSessionChange(next)) {
@@ -2248,14 +2251,10 @@ function handleDuelAction(action, id=null) {
   }
   if(action==='save-champions') {
     const winners=hallOfFame(duelTournaments).filter(t=>t.gold>0);
-    const next={...state,favorites:[...state.favorites],savedTracks:[...state.savedTracks]};
-    let added=0;
-    for(const track of winners) {
-      if(!next.favorites.includes(track.id)){next.favorites.push(track.id);added++;}
-      if(!next.savedTracks.some(t=>t.id===track.id))next.savedTracks.push(track);
-    }
-    next.favorites=next.favorites.slice(-5000);
-    next.savedTracks=next.savedTracks.slice(-1500);
+    let next;
+    try { next=addCollectionTracks(state,winners); }
+    catch(error){return toast(error.message);}
+    const added=next.favorites.length-state.favorites.length;
     if(!commitSessionChange(next))return;
     for(const track of winners)if(!catalogIds.has(track.id))addToCatalog([track]);
     render();
@@ -2283,14 +2282,9 @@ function handleDuelAction(action, id=null) {
   if(action==='export-podium')return exportDuelPodium(event);
   if(action==='save-podium') {
     const entries=podiumTracks(event);
-    const next={...state,favorites:[...state.favorites],savedTracks:[...state.savedTracks]};
-    for(const track of entries) {
-      if(!next.favorites.includes(track.id))next.favorites.push(track.id);
-      if(!next.savedTracks.some(t=>t.id===track.id))next.savedTracks.push(track);
-    }
-    // Keep the original caps and do not add UI catalog entries before saving.
-    next.favorites=next.favorites.slice(-5000);
-    next.savedTracks=next.savedTracks.slice(-1500);
+    let next;
+    try { next=addCollectionTracks(state,entries); }
+    catch(error){return toast(error.message);}
     if(!commitSessionChange(next))return;
     for(const track of entries)if(!catalogIds.has(track.id))addToCatalog([track]);
     render();
@@ -2703,8 +2697,14 @@ document.addEventListener('click', async (event) => {
       if (!lastRemovedFavorite) return;
       const returnFocus=document.activeElement===action;
       const {id:removedId,index}=lastRemovedFavorite;
-      const restored=restoreRemovedFavorite(state,removedId,index);
-      if(restored!==state && !commitSessionChange(restored))return;
+      let restored=restoreRemovedFavorite(state,removedId,index);
+      if(restored!==state) {
+        if(restored.favorites.length>MAX_FAVORITE_IDS)return toast('Collection is full. Remove a song before restoring this favorite.');
+        const metadata=lookup(removedId);
+        try { restored=addCollectionTracks(restored,metadata?[metadata]:[]); }
+        catch(error){return toast(error.message);}
+        if(!commitSessionChange(restored))return;
+      }
       lastRemovedFavorite=null;
       render();
       if (returnFocus) ($('#collection-search') || main).focus({preventScroll:true});
@@ -2783,7 +2783,7 @@ document.addEventListener('click', async (event) => {
       return continueSharedChallenge(document.activeElement===action);
     case 'exit-challenge': return exitSharedChallenge(document.activeElement===action);
     case 'reset-listens':
-      if (!confirm('Restart discovery? Saved favorites will stay, but listening history and recognition scores will be cleared.')) return;
+      if (!confirm('Restart discovery? Listening history will be cleared. Saved favorites and Tune Lab scores will stay.')) return;
       if(!commitSessionChange({...state,history:[]}))return;
       chooseNext();return render();
     default: return;
