@@ -4611,6 +4611,31 @@ def check_duels_keyboard_continuity(browser, base):
         page.keyboard.press("Enter")
         require(page.evaluate("document.activeElement?.id==='duel-podium-heading'"),
                 "Reopening the finished bracket did not focus the podium")
+        # Round-robin league: six unique matchups for four entrants.
+        page.locator('#duel-size').select_option('4')
+        page.locator('#duel-format').select_option('league')
+        require('6 matchups' in page.locator('#duel-format-description').inner_text(),
+                'League setup did not explain the match count')
+        page.locator('[data-duel-action="create"]').click()
+        require(page.locator('#duel-league-heading').inner_text()=='League Standings',
+                'League did not open standings')
+        before=page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        for match_index in range(6):
+            page.locator('#duel-active-event [data-duel-vote]').first.focus()
+            page.keyboard.press('Enter')
+            if match_index<5:
+                require(page.locator('#duel-active-event [data-duel-vote]').count()==2,
+                        'League ended before every matchup')
+        require(page.locator('#duel-podium-heading').count()==1,
+                'League did not finish with a podium')
+        require(page.locator('.duel-league-table tbody tr').count()==4,
+                'League final standings omitted entrants')
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==before,
+                'League votes changed listening progress')
+        page.reload(wait_until='load',timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="duels"]').click()
+        require(page.locator('#duel-league-heading').count()==1,
+                'Completed league did not survive reload')
         require(not errors,"Duels keyboard browser errors: "+"; ".join(errors))
         print(f"PASS {browser.browser_type.name}: Duels bracket, votes, podium, archive and period focus")
     except Exception:

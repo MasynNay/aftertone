@@ -2289,10 +2289,13 @@ function refreshDuelAvailability() {
   const music=duelSongPool();
   const tracks=poolKind==='favorites'?music.filter(t=>state.favorites.includes(t.id)):music;
   const result=tournamentAvailability({themeId,tracks,favoriteIds:state.favorites,size});
+  const format=$('#duel-format')?.value||'knockout';
+  const description=$('#duel-format-description');
+  if(description)description.textContent=format==='league'?'League: '+(size*(size-1)/2)+' matchups · everyone plays everyone once. Ties use head-to-head wins, then draw order.':'Knockout: '+size+' matchups with a bronze playoff.';
   const label=$('#duel-eligibility');
   if(label){label.textContent=result.message;label.classList.toggle('is-ready',result.ready);}
   const submit=$('[data-duel-action="create"]');
-  if(submit){submit.disabled=!result.ready;submit.setAttribute('aria-describedby','duel-eligibility');}
+  if(submit){submit.disabled=!result.ready;submit.setAttribute('aria-describedby','duel-eligibility duel-format-description');submit.textContent=format==='league'?'✦ Start League':'✦ Start Bracket';}
   const help=$('[data-duel-action="discover-more"]');
   if(help)help.hidden=result.ready;
   document.querySelectorAll('[data-duel-theme]').forEach(button=>{
@@ -2355,11 +2358,12 @@ function handleDuelAction(action, id=null) {
     if(![4,8,16].includes(size)) return;
     const themeId=$('#duel-theme-choice')?.value||'open';
     const poolKind=$('#duel-pool')?.value||'all';
+    const format=$('#duel-format')?.value==='league'?'league':'knockout';
     const music=duelSongPool();
     const pool=poolKind==='favorites'?music.filter(t=>state.favorites.includes(t.id)):music;
     try {
       const tracks=pickThemedEntries({themeId,tracks:pool,favoriteIds:state.favorites,size});
-      registerTournament(createTournament({id:createDuelId(),name:$('#duel-name')?.value||`${tournamentTheme(themeId).name} · ${new Date().toLocaleDateString()}`,themeId,tracks}));
+      registerTournament(createTournament({id:createDuelId(),name:$('#duel-name')?.value||`${tournamentTheme(themeId).name} · ${new Date().toLocaleDateString()}`,themeId,tracks,format}));
     } catch(error){toast(error.message);}
     return;
   }
@@ -2425,6 +2429,7 @@ function voteActiveDuel(winnerId) {
     if(!writeDuelArchive(duelTournaments.map((event,i)=>i===index?updated:event)))return;
     stopAudio();render();focusDuelStage();
     if(updated.status==='complete') toast('Tournament complete! Your podium is ready.');
+    else if(match.stage==='league')toast('League result saved.');
     else if(match.stage==='third')toast('Bronze decided. Time for the grand final!');
     else toast('Winner advances!');
   }catch(error){toast(error.message);}
@@ -3104,7 +3109,7 @@ document.addEventListener('change', (event) => {
     if(file)void importProgressBackupFile(file);
     return;
   }
-  if(view==='duels' && ['duel-size','duel-pool'].includes(event.target.id)) {
+  if(view==='duels' && ['duel-size','duel-pool','duel-format'].includes(event.target.id)) {
     refreshDuelAvailability();return;
   }
   if(view==='duels' && event.target.id==='duel-season') {

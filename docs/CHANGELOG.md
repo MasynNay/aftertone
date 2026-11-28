@@ -1,3 +1,8 @@
+## v0.12 development — Music Duels League (November 28, 2026)
+
+- Added optional 4-, 8-, and 16-song round-robin leagues alongside knockout brackets. Each song meets every other song once (6, 28 or 120 matchups), with provisional and final standings, deterministic tie rules and archived podiums.
+- League votes use the existing verified archive transaction, preview player and explicit podium saving. Backup validation reconstructs the entire schedule and rejects forged or out-of-order results. Mystery mode hides identities until completion.
+
 ## v0.12 development — Smart Mixes (November 28, 2026)
 
 - Dynamic local mixes for recently saved songs, explicitly recognized and unfamiliar songs, and top recorded genres and moods. No guessed recognition or audio traits.
