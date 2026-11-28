@@ -1,7 +1,6 @@
 import { computeTaste } from '../src/taste.mjs';
 import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
 import {collectionInsights} from '../src/collection-insights.mjs';
-import {renderCollectionInsights} from './collection-insights-view.js';
 import {eligibleChallengeTracks,challengeLibraryPage,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
 import { firstListenAction } from '../src/discovery/first-listen.mjs';
@@ -181,6 +180,34 @@ function renderQuizLab() {
     return `<div class="quiz-feature"><div class="quiz-track"><div class="quiz-track-art">${track.artwork ? `<img src="${urlSafe(track.artwork)}" alt="Cover art" />` : '<span>♫</span>'}</div><div><span class="eyebrow">FROM YOUR FAVORITES</span><h2>${isArtist ? html(track.title) : html(track.artist)}</h2><p>${quiz.quiz.label}</p></div></div><div class="quiz-answers">${answerList}</div>
     ${correct ? `<div class="quiz-feedback" id="quiz-feedback" tabindex="-1" role="status" aria-live="polite">${quiz.quiz.options[quiz.answer]===quiz.quiz.correct ? '✓ Correct!' : `The answer was ${html(quiz.quiz.correct)}.`}</div><div class="quiz-moods" role="group" aria-label="What feeling does this song bring?"><span>What feeling does this song bring?</span>${['Bright','Warm','Dreamy','Intense','Reflective','Hopeful'].map(m=>`<button type="button" data-quiz-mood="${m}" class="${quiz.mood===m?'selected':''}" aria-pressed="${quiz.mood===m}">${m}</button>`).join('')}</div><div class="quiz-bottom"><button class="accent-button" data-action="quiz-next">Next question →</button><button class="secondary-button" data-view="discover">Back to Music</button></div>` : `<div class="quiz-bottom"><button class="secondary-button" data-action="quiz-next">Skip this question</button></div>`}</div>`;
   })()}
+  </section>`;
+}
+
+export function renderCollectionInsights(insights,{genre='all',mood='all'}={}) {
+  if(!insights?.saved)return '';
+  const group=(kind,label,options,selected)=>options.length?`<div class="collection-insights-group">
+    <span>${label}</span><div class="collection-insights-chips" role="group" aria-label="${label}">
+      ${options.map(f=>{
+        const active=collectionSearchKey(selected)===collectionSearchKey(f.value);
+        return `<button type="button" data-action="collection-quick-filter"
+          data-filter-kind="${kind}" data-filter-value="${html(f.value)}"
+          aria-pressed="${active}" class="collection-insights-chip ${active?'is-selected':''}"
+          aria-label="${kind==='genre'?'Filter genre':'Filter mood'}: ${html(f.value)}, ${f.count} saved ${f.count===1?'song':'songs'}">${html(f.value)} <small>${f.count}</small></button>`;
+      }).join('')}
+    </div></div>`:'';
+  return `<section class="collection-insights" aria-label="Your Collection at a glance">
+    <div class="collection-insights-head"><strong>YOUR SOUND, AT A GLANCE</strong><span>Based on your full saved library</span></div>
+    <div class="collection-insights-metrics">
+      <div><strong>${insights.saved}</strong><span>Saved songs</span></div>
+      <div><strong>${insights.artists}</strong><span>Artists</span></div>
+      <div><strong>${insights.genres}</strong><span>Genres</span></div>
+      <div><strong>${insights.moods}</strong><span>Moods</span></div>
+    </div>
+    ${insights.missing?`<p class="collection-insights-note" role="status">${insights.missing} saved ${insights.missing===1?'song ID lacks':'song IDs lack'} track details in this browser. These IDs remain in your backups, but cannot appear as cards until metadata becomes available.</p>`:''}
+    <div class="collection-insights-shortcuts">
+      ${group('genre','Explore genres',insights.topGenres,genre)}
+      ${group('mood','Explore moods',insights.topMoods,mood)}
+    </div>
   </section>`;
 }
 
