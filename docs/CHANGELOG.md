@@ -1,3 +1,11 @@
+## v0.12 development — Saved Collection overview and quick filters (November 27, 2026)
+
+- The Collection page now summarizes **all saved songs**, distinct artists, and meaningful genre and mood categories, even when only 40 cards are mounted on screen.
+- Popular genre and mood chips act as accessible, touch-size quick filters. Activate or deactivate a chip to browse its entire set of songs; the existing search, sort, combined filters, paging and full-library exports remain intact.
+- The overview transparently counts saved song IDs lacking metadata instead of inventing titles or counting them as visible cards.
+- Buttons retain keyboard focus and reflect their active state with `aria-pressed`; no preference, Keep/Pass decision or saved data is written when browsing.
+- Pure Node tests and fictional 390px Chromium/Firefox browser cases cover global counts, mobile layout, keyboard toggles, escaping untrusted metadata and unchanged exports/history. Real-device and screen-reader checks remain open (#7).
+
 ## v0.12 development — More forgiving saved-song search and tags (November 27, 2026)
 
 - Collection merges genre and mood labels that differ only by capitalization, surrounding spaces or common accent marks. One genre now has one honest count and a filter works regardless of how its original source spelled the tag.

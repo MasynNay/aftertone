@@ -27,6 +27,7 @@ import { renderDuels } from './duels-view.js';
 import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
+import {collectionSearchKey} from '/src/collection-pagination.mjs';
 
 const main = document.querySelector('#main-content');
 const modalRoot = document.querySelector('#modal-root');
@@ -2546,6 +2547,27 @@ document.addEventListener('click', async (event) => {
       // Focus the result count near the new first tile, so keyboard users
       // do not remain at a removed button below the previous page.
       (main.querySelector('#collection-page-status') || main).focus();
+      return;
+    }
+    case 'collection-quick-filter': {
+      if(view!=='collection')return;
+      const kind=action.dataset.filterKind;
+      const value=action.dataset.filterValue;
+      if(!['genre','mood'].includes(kind) || !value)return;
+      // Quick filtering is view-only. The original saved library is untouched.
+      const wasFocused=document.activeElement===action;
+      const currentValue=kind==='genre'?collectionGenre:collectionMood;
+      const chosen=collectionSearchKey(currentValue)===collectionSearchKey(value)?'all':value;
+      if(kind==='genre')collectionGenre=chosen;
+      else collectionMood=chosen;
+      collectionPage=1;
+      render();
+      if(wasFocused) {
+        const replacement=[...main.querySelectorAll('[data-action="collection-quick-filter"]')]
+          .find(button=>button.dataset.filterKind===kind && button.dataset.filterValue===value);
+        (replacement||main.querySelector(kind==='genre'?'#collection-genre':'#collection-mood')||main)
+          .focus({preventScroll:true});
+      }
       return;
     }
     case 'clear-collection-filters': {

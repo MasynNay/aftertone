@@ -1,5 +1,6 @@
 import { computeTaste } from '../src/taste.mjs';
 import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
+import {collectionInsights} from '../src/collection-insights.mjs';
 import {eligibleChallengeTracks,challengeLibraryPage,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
 import { firstListenAction } from '../src/discovery/first-listen.mjs';
@@ -182,9 +183,38 @@ function renderQuizLab() {
   </section>`;
 }
 
+function renderCollectionInsights(insights,{genre='all',mood='all'}={}) {
+  if(!insights?.saved)return '';
+  const group=(kind,label,options,selected)=>options.length?`<div class="collection-insights-group">
+    <span>${label}</span><div class="collection-insights-chips" role="group" aria-label="${label}">
+      ${options.map(f=>{
+        const active=collectionSearchKey(selected)===collectionSearchKey(f.value);
+        return `<button type="button" data-action="collection-quick-filter"
+          data-filter-kind="${kind}" data-filter-value="${html(f.value)}"
+          aria-pressed="${active}" class="collection-insights-chip ${active?'is-selected':''}"
+          aria-label="${kind==='genre'?'Filter genre':'Filter mood'}: ${html(f.value)}, ${f.count} saved ${f.count===1?'song':'songs'}">${html(f.value)} <small>${f.count}</small></button>`;
+      }).join('')}
+    </div></div>`:'';
+  return `<section class="collection-insights" aria-label="Your Collection at a glance">
+    <div class="collection-insights-head"><strong>YOUR SOUND, AT A GLANCE</strong><span>Based on your full saved library</span></div>
+    <div class="collection-insights-metrics">
+      <div><strong>${insights.saved}</strong><span>Saved songs</span></div>
+      <div><strong>${insights.artists}</strong><span>Artists</span></div>
+      <div><strong>${insights.genres}</strong><span>Genres</span></div>
+      <div><strong>${insights.moods}</strong><span>Moods</span></div>
+    </div>
+    ${insights.missing?`<p class="collection-insights-note" role="status">${insights.missing} saved ${insights.missing===1?'song ID lacks':'song IDs lack'} track details in this browser. These IDs remain in your backups, but cannot appear as cards until metadata becomes available.</p>`:''}
+    <div class="collection-insights-shortcuts">
+      ${group('genre','Explore genres',insights.topGenres,genre)}
+      ${group('mood','Explore moods',insights.topMoods,mood)}
+    </div>
+  </section>`;
+}
+
 function renderCollection() {
   const items = state.favorites.map(lookup).filter(Boolean);
   const facets=collectionFacets(items,state.history);
+  const insights=collectionInsights(items,state.favorites,state.history,facets);
   // A deleted last song may remove a facet. Fall back visibly to "All" rather
   // than silently leaving a hidden filter applied to the remaining library.
   // Keep the chosen filter when removal changes which capitalization is shown.
@@ -206,6 +236,7 @@ function renderCollection() {
   </nav>`;
   return `<section><div class="eyebrow">KEEP WHAT MOVES YOU</div><div class="page-head"><div><h1>Your Collection<span style="color:var(--accent)">.</span></h1><p class="lead">No algorithms telling you what to love. Every track here earned its place.</p></div><div class="collection-header-actions"><button class="secondary-button" data-action="export-json" ${items.length ? '' : 'disabled'}>↧ Export Library</button><button class="secondary-button" data-action="backup-progress">↧ Backup Progress</button><button class="secondary-button" data-action="restore-progress" aria-describedby="collection-backup-note">↥ Restore Backup</button><input id="progress-backup-file" type="file" accept=".json,application/json" aria-label="Choose an AFTERTONE progress backup" hidden /></div></div>
   <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+  ${renderCollectionInsights(insights,{genre,mood})}
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
   ${items.length ? `<div class="collection-tools">
     <input id="collection-search" class="search-input" type="search" placeholder="Search songs, artists, moods…" aria-label="Search saved music" value="${html(collectionQuery)}" />

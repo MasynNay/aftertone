@@ -1828,6 +1828,28 @@ def check_collection_genre_mood_filters(browser, base):
         page.locator('#main-nav button[data-view="collection"]').click()
         grid=page.locator('.collection-grid .track-tile')
         require(grid.count()==40,'Initial Collection grid exceeded 40 songs')
+        require(page.locator('.collection-insights-metrics > div').count()==4,
+                'Missing saved-library overview metrics')
+        require('123' in page.locator('.collection-insights-metrics').inner_text(),
+                'Overview totals must include all 123 saved songs')
+        quick=page.locator('[data-action="collection-quick-filter"][data-filter-kind="genre"][data-filter-value="rock"]')
+        quick.focus()
+        quick.click()
+        require(page.locator('#collection-genre').input_value()=='rock',
+                'Quick genre shortcut failed to filter the full library')
+        require(page.locator('.collection-grid .track-tile').count()==40,
+                'Quick facet filter exceeded bounded Collection page size')
+        require(page.locator('[data-action="collection-quick-filter"][data-filter-kind="genre"][data-filter-value="rock"]').get_attribute('aria-pressed')=='true',
+                'Quick shortcut did not announce its active state')
+        require(page.evaluate("document.activeElement?.dataset?.filterValue==='rock'"),
+                'Keyboard focus was lost when the quick filter rebuilt')
+        quick.click()
+        require(page.locator('#collection-genre').input_value()=='all',
+                'Clicking the active quick shortcut did not clear its facet')
+        require(page.evaluate("document.activeElement?.dataset?.filterValue==='rock'"),
+                'Keyboard focus was lost when unselecting the quick filter')
+        require(page.locator('.collection-grid .track-tile').count()==40,
+                'Quick filter reset did not return to full-library browsing')
         genre=page.locator('#collection-genre')
         mood=page.locator('#collection-mood')
         # Firefox reports innerText for <select> differently from Chromium.
