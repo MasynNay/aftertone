@@ -183,7 +183,7 @@ function renderQuizLab() {
   </section>`;
 }
 
-export function renderCollectionInsights(insights,{genre='all',mood='all'}={}) {
+function renderCollectionInsights(insights,{genre='all',mood='all'}={}) {
   if(!insights?.saved)return '';
   const group=(kind,label,options,selected)=>options.length?`<div class="collection-insights-group">
     <span>${label}</span><div class="collection-insights-chips" role="group" aria-label="${label}">
