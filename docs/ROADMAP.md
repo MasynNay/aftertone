@@ -1,3 +1,5 @@
+**v0.12 discovery queue (November 27, 2026):** Accurate upcoming count, live provider/refill state, manual recovery, no interval candidate work outside active discovery. Preserve existing playback behavior and the soft background queue bound.
+
 **v0.12 taste accuracy (November 27, 2026):** Metadata-independent decision totals and durable saved-track moods, including no-history favorites. Preserve the current session/backup schema. Test reload and backup transfer without manufactured choices.
 
 **v0.12 Collection recovery (November 27, 2026):** Explicit bounded recovery for legacy favorite IDs, using local catalog or exact Deezer lookup, with cancellation and verified persistence. Unsupported identities remain intact; no claim of universal provider recovery.

@@ -5205,6 +5205,9 @@ def check_progressive_discovery_backoff(browser, base):
                 "Expected a real recoverable outage state")
         require("Automatic discovery retries slow down" in empty.inner_text(),
                 "Repeated provider failures should be explained in the UI")
+        require(page.locator(".compact-queue").get_attribute("data-queue-state")=="cooldown" and
+                "waiting before retrying" in page.locator("#queue-refill-status").inner_text(),
+                "Queue status did not expose automatic retry cooldown")
         require(page.get_by_role("button",name="Retry Discovery",exact=True).is_enabled(),
                 "Progressive backoff must never disable manual retry")
         initial=state["failures"]
@@ -5224,6 +5227,12 @@ def check_progressive_discovery_backoff(browser, base):
         page.evaluate("window.__aftertoneClockOffset=66000")
         page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
         require(state["successes"]>0,"No automatic recovery after the 40-second cooldown")
+        require(page.locator(".compact-queue").get_attribute("data-queue-state")!="cooldown",
+                "Recovered provider retained a stale cooldown label")
+        require(page.locator("#queue-refill-button").is_visible(),
+                "Listening queue had no explicit refill action")
+        require("loaded for this path" in page.locator(".queue-loaded").inner_text(),
+                "Queue did not identify the scope of loaded count")
         before=page.evaluate("""() => {
           const state=JSON.parse(localStorage.getItem('aftertone:session:v1')||'{}');
           return {history:state.history||[],favorites:state.favorites||[]};

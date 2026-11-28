@@ -1,3 +1,9 @@
+## v0.12 development — Honest discovery queue and refill controls (November 27, 2026)
+
+- Count distinct upcoming recordings rather than counting the active card as another song ahead. Distinguish active path/search loaded counts from the session catalog. Show loading, retry cooldown, exhausted pages, paused background checks and background queue limits, with explicit manual refill.
+- Update status text in place without replacing the active playback card. Skip interval candidate calculations in hidden tabs, non-discovery views, modal dialogs and shared challenges. Cancel unfinished discovery work on navigation away; returning can top up again. Existing auto-advance and immediate queue recovery remain available.
+- Added deterministic queue-state tests and expanded browser outage/recovery checks.
+
 ## v0.12 development — Accurate taste totals and durable moods (November 27, 2026)
 
 - Count every valid Keep/Pass even when song metadata is missing. Ignore malformed recognition booleans; use meaningful historical genre/mood values when provider metadata is unclassified. Taste Map explains genre coverage.
