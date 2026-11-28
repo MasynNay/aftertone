@@ -53,7 +53,7 @@ const modules=filesUnder(resolve(published,'demo')).filter(f=>['.js','.mjs'].inc
 let importsChecked=0;
 for(const source of modules){
   const code=readFileSync(source,'utf8');
-  const imports=[...code.matchAll(/\b(?:from\s*|import\s*\(\s*)['"]([^'"]+)['"]/g)].map(x=>x[1]);
+  const imports=[...code.matchAll(/\b(?:from\s*|import\s*(?:\(\s*)?)['"]([^'"]+)['"]/g)].map(x=>x[1]);
   for(const specifier of imports){
     if(!specifier.startsWith('.')&&!specifier.startsWith('/'))continue;
     const destination=specifier.startsWith('/')?resolve(published,'.'+specifier):resolve(dirname(source),specifier);

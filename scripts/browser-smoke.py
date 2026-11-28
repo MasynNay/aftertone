@@ -1160,6 +1160,35 @@ def check_choice_keyboard_focus(browser, base):
         require(history_len==0,"Fixture browser did not start with a clean listening history")
         page.evaluate("window.__choiceFocusDocument='no-reload'")
 
+        # Start a decision then leave its context in the same browser task.
+        # This is deterministic even on a fast CI machine: the animation
+        # callback has not had an opportunity to execute between these clicks.
+        page.evaluate("""() => {
+          document.querySelector('#listening-card [data-action="like"]').click();
+          document.querySelector('#main-nav [data-view="collection"]').click();
+          document.querySelector('#main-nav [data-view="discover"]').click();
+        }""")
+        page.wait_for_timeout(300)
+        require(page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return s.history.length===0 && s.favorites.length===0;
+        }"""),"A stale Keep callback voted after leaving and returning to discovery")
+        require(page.locator("#listening-card").get_attribute("aria-label")==old_id,
+                "An abandoned animation replaced the current song")
+        page.evaluate("""() => {
+          document.querySelector('#listening-card [data-action="pass"]').click();
+          document.querySelector('#help-button').click();
+        }""")
+        page.wait_for_timeout(300)
+        require(page.locator('#modal-root [role="dialog"]').count()==1,
+                "An interrupted decision displaced the Help dialog")
+        require(page.evaluate("""() => JSON.parse(
+            localStorage.getItem('aftertone:session:v1')).history.length===0"""),
+                "A stale Pass callback voted behind a modal")
+        page.keyboard.press("Escape")
+        require(page.locator("#listening-card").get_attribute("aria-label")==old_id,
+                "Help interruption failed to keep the same song")
+
         pass_button=page.locator('#listening-card [data-action="pass"]')
         pass_button.focus()
         page.keyboard.press("Enter")
