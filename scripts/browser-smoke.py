@@ -4495,6 +4495,33 @@ def check_collection_preview_a11y_and_timeupdate(browser, base):
             ?.getAttribute('aria-label')==='Listen to Fixture Melody 01'
         """,timeout=TIMEOUT)
 
+        # The saved queue shares the same media element but never rates tracks.
+        page.locator('[data-action="saved-playback-start"][data-kind="collection"]:not([data-shuffle])').click()
+        page.wait_for_function("""() => document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        require(page.locator('#saved-playback-title').inner_text()=='Fixture Melody 01',
+                'Saved queue did not start in saved order')
+        page.evaluate("""() => {
+          const audio=document.querySelector('#player');
+          audio.currentTime=22;audio.dispatchEvent(new Event('timeupdate'));
+        }""")
+        page.wait_for_function("""() => document.querySelector('#saved-playback-title')?.textContent==='Fixture Melody 02' &&
+          document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        page.locator('#saved-playback-toggle').click()
+        require(page.locator('#saved-playback-toggle').inner_text()=='Play','Queue pause failed')
+        page.locator('#saved-playback-prev').click()
+        page.wait_for_function("""() => document.querySelector('#saved-playback-title')?.textContent==='Fixture Melody 01' &&
+          document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        page.locator('[data-action="saved-playback-stop"]').click()
+        require(not page.locator('#saved-playback-panel').is_visible(),'Queue stop failed')
+        page.locator('#smart-playlist-select').select_option('genre:pop')
+        page.locator('[data-action="saved-playback-start"][data-kind="smart"]:not([data-shuffle])').click()
+        page.wait_for_function("""() => document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        require('pop' in page.locator('#saved-playback-status').inner_text().lower(),
+                'Smart Mix did not start its selected queue')
+        page.locator('[data-action="saved-playback-stop"]').click()
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==snapshot,
+                'Saved playback or Smart Mix changed progress')
+        
         # Pending browser playback should announce Cancel, then restore Listen
         # after a second activation without affecting saved history.
         page.evaluate("""() => {

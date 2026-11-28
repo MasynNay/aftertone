@@ -1,3 +1,9 @@
+## v0.12 development — Smart Mixes (November 28, 2026)
+
+- Dynamic local mixes for recently saved songs, explicitly recognized and unfamiliar songs, and top recorded genres and moods. No guessed recognition or audio traits.
+- Play or shuffle a selected mix through the saved preview player. Mixes recalculate as Collection changes; no duplicated storage or new provider requests until Play.
+- Restored established cancellation and session-write boundaries after integrated CI reported five regressions. Added a browser playback queue flow and deterministic mix tests.
+
 ## v0.12 development — Saved preview playback (November 28, 2026)
 
 - Play saved Collection or personal playlist previews in order or shuffled, with previous/next, pause/resume, repeat, stop, progress and volume controls.

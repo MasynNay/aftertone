@@ -1,5 +1,6 @@
 import { computeTaste } from '../src/taste.mjs';
 import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
+import {smartPlaylists} from '../src/smart-playlists.mjs';
 import {personalPlaylists,playlistAvailability,MAX_PERSONAL_PLAYLISTS,MAX_PLAYLIST_MEMBERS} from '../src/personal-playlists.mjs';
 import {collectionInsights} from '../src/collection-insights.mjs';
 import {listeningRecap} from '../src/listening-recap.mjs';
@@ -15,7 +16,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', personalPlaylistId='',personalPlaylistPage=1, journalFilter='all',journalPage=1,journalPath='all',journalQuery='',recapPeriod='all',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', personalPlaylistId='',personalPlaylistPage=1,smartPlaylistId='recent', journalFilter='all',journalPage=1,journalPath='all',journalQuery='',recapPeriod='all',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   // One index per render avoids searching the full catalog for every saved
   // song. Keep the FIRST matching entry, matching the previous .find behavior.
   const byId=new Map();
@@ -235,6 +236,15 @@ function renderCollectionRecovery() {
 }
 
 
+function renderSmartPlaylists(){
+  const mixes=smartPlaylists(state.favorites,catalog,state.history);
+  const selected=mixes.find(p=>p.id===smartPlaylistId)||mixes[0];
+  return `<section class="panel smart-playlists" aria-labelledby="smart-playlists-heading"><div class="panel-heading"><div><span class="eyebrow">ALWAYS EVOLVING</span><h2 id="smart-playlists-heading">Smart Mixes.</h2></div><span class="panel-accent" aria-hidden="true">✳</span></div>
+  <p class="journal-copy">Automatically organized from your saved songs, actual genre and mood information, and recognition choices. Mixes update as your Collection changes.</p>
+  ${selected?`<label for="smart-playlist-select">Choose a mix</label><select class="select-input" id="smart-playlist-select">${mixes.map(p=>`<option value="${html(p.id)}" ${p.id===selected.id?'selected':''}>${html(p.name)} (${p.trackIds.length})</option>`).join('')}</select>
+  <div class="smart-mix-detail"><strong>${html(selected.name)}</strong><p>${html(selected.description)} · ${selected.trackIds.length} saved songs</p><div class="saved-playback-controls"><button type="button" class="accent-button" data-action="saved-playback-start" data-kind="smart">Play Mix</button><button type="button" class="secondary-button" data-action="saved-playback-start" data-kind="smart" data-shuffle="true">Shuffle Mix</button></div>
+  <ol class="smart-mix-tracks">${selected.trackIds.slice(0,6).map(id=>{const t=lookup(id);return `<li><strong>${html(t?.title||'Saved song')}</strong><span>${html(t?.artist||'')}</span></li>`;}).join('')}</ol>${selected.trackIds.length>6?`<p class="journal-copy">And ${selected.trackIds.length-6} more saved songs.</p>`:''}</div>`:'<p class="empty-micro">Save music to unlock your first Smart Mix.</p>'}</section>`;
+}
 function renderSavedPlayback(){
   return `<section class="panel saved-playback" aria-label="Saved preview player">
   <h2>Listen to your Collection.</h2><p class="journal-copy">Play short audio previews in saved order or shuffle. Unavailable metadata and video-only entries are excluded. Playback stops on failure or when leaving Collection; it never records votes.</p>
@@ -298,6 +308,7 @@ function renderCollection() {
   ${renderCollectionInsights(insights,{genre,mood})}
   ${renderCollectionRecovery()}
   ${renderSavedPlayback()}
+  ${renderSmartPlaylists()}
   ${renderPersonalPlaylists(items)}
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
   ${items.length ? `<div class="collection-tools">

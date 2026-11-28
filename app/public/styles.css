@@ -3247,3 +3247,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .saved-playback-meter span{display:block;background:var(--accent);height:100%;width:0;}
 .saved-playback-volume{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
 .saved-playback-volume input{min-width:0;flex:1 1 100px;}
+
+/* Smart Mixes: a bounded preview of a live, local collection grouping. */
+.smart-playlists{display:grid;gap:12px;margin:20px 0;min-width:0;}
+.smart-playlists h2{font-size:clamp(18px,2vw,24px);margin:5px 0 0;}
+.smart-playlists select{min-width:0;max-width:100%;min-height:44px;}
+.smart-mix-detail{display:grid;gap:10px;min-width:0;overflow-wrap:anywhere;}
+.smart-mix-detail>p{margin:0;color:var(--muted);font-size:13px;}
+.smart-mix-tracks{margin:0;padding:0;list-style:none;display:grid;gap:8px;}
+.smart-mix-tracks li{display:grid;gap:4px;padding:8px 0;border-bottom:1px solid var(--border);}
+.smart-mix-tracks li span{font-size:12px;color:var(--muted);}
