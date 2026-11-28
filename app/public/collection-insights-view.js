@@ -1,7 +1,7 @@
 /** Read-only overview of the entire saved library, with browse-only
  * quick filters that remain a fast path to the existing Collection selects.
  */
-import {collectionSearchKey} from '../src/collection-pagination.mjs';
+import {collectionSearchKey} from '/src/collection-pagination.mjs';
 import {html} from './view-utils.js';
 
 export function renderCollectionInsights(insights,{genre='all',mood='all'}={}) {
