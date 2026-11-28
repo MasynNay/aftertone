@@ -1892,6 +1892,54 @@ def check_collection_genre_mood_filters(browser, base):
         require(grid.count()==40,'Search-only Clear action regressed after adding facets')
         require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==before,
                 'Browse-only facets or exports unexpectedly rewrote saved progress')
+        # Metadata from sources can vary only by case, whitespace or accents.
+        # This second fixture checks cross-browser search/facets after a reload.
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const session=JSON.parse(localStorage.getItem(key));
+          const tracks=[
+            {id:'deezer:9700001',source:'deezer',title:'Fjörd Song',
+              artist:'Björk',genre:' Rock ',mood:' Dreamy '},
+            {id:'deezer:9700002',source:'deezer',title:'Second Song',
+              artist:'Bjork',genre:'rock',mood:'dreamy'},
+            {id:'deezer:9700003',source:'deezer',title:'Third Song',
+              artist:'Other',genre:'ROCK',mood:'DREAMY'},
+            {id:'deezer:9700004',source:'deezer',title:'Fourth Song',
+              artist:'Other',genre:'pop',mood:'Fresh'},
+            {id:'deezer:9700005',source:'deezer',title:'Fifth Song',
+              artist:'Other',genre:'unknown',mood:'Warm'},
+          ];
+          session.favorites=tracks.map(t=>t.id);
+          session.savedTracks=tracks;
+          session.history=[
+            {id:tracks[1].id,action:'like',mood:'  '},
+            {id:tracks[2].id,action:'like',mood:'Fresh'},
+          ];
+          localStorage.setItem(key,JSON.stringify(session));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        genre=page.locator('#collection-genre')
+        mood=page.locator('#collection-mood')
+        require('Rock (3)' in genre.locator('option').all_text_contents(),
+                'Case and whitespace variants split the same genre')
+        require('Dreamy (3)' in mood.locator('option').all_text_contents(),
+                'Mismatched saved moods did not fall back to known catalog moods')
+        snapshot=page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        genre.select_option('Rock')
+        mood.select_option('Dreamy')
+        require(page.locator('.collection-grid .track-tile').count()==3,
+                'Case-insensitive genre/mood intersection lost saved songs')
+        page.locator('#collection-search').fill('bjork')
+        require(page.locator('.collection-grid .track-tile').count()==2,
+                'Unaccented artist search failed to match accented spelling')
+        page.locator('#collection-search').fill('FJORD')
+        require(page.locator('.collection-grid .track-tile').count()==1,
+                'Unaccented title search did not match an accented title')
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==snapshot,
+                'Normalized browsing unexpectedly changed saved data')
         require(not errors,'Collection facet browser errors: '+'; '.join(errors))
         print(f"PASS {label}: full-library facets, mood overrides, responsive keyboard recovery and full CSV")
     except Exception:
