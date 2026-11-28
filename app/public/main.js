@@ -3,6 +3,7 @@ import {readChallengeDraft,saveChallengeDraft,clearChallengeDraft} from '../src/
 import {apiFetch} from './api-browser.js';
 import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
+import {loadQuizStats,saveQuizStats,nextQuizStats} from '/src/quiz-progress.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
 import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, compareProgressSummaries, restoreProgressBackup } from '/src/progress-backup.mjs';
 import { encodeChallenge, decodeChallenge, isPublicDeezerChallengeId } from '/src/challenge.mjs';
@@ -140,6 +141,7 @@ function cancelStaleDiscovery(activeFeed=getFeed()) {
   }
 }
 let animatingChoice = false;
+let pendingChoice = null;
 let allGenres = [];
 let view = 'discover';
 let duelTournaments = loadDuelStore(localStorage);
@@ -147,8 +149,7 @@ let selectedDuelId = loadDuelSelection(localStorage,duelTournaments); // Active 
 let hallSeason = 'all'; // Season filter only affects the leaderboard, not stored results.
 let sidebarFiltersCollapsed = false;
 let quizSession = null;
-const quizStorageKey = 'aftertone:tune-lab:v1';
-let quizStats = (() => { try { const data=JSON.parse(localStorage.getItem(quizStorageKey)||'null'); return {answered:Math.max(0,Number(data?.answered)||0),correct:Math.max(0,Number(data?.correct)||0)}; } catch { return {answered:0,correct:0}; } })();
+let quizStats = loadQuizStats(localStorage);
 let current = null;
 let renderedListeningTrackId = null; // private: never expose blind-mode identity in card HTML
 // Per-timeupdate progress may change, but hundreds of Collection buttons do
@@ -735,6 +736,7 @@ function prewarm(track) {
 }
 
 function stopContinuous() {
+  cancelPendingChoice();
   continuousListening = false;
   consecutivePlaybackFailures = 0;
   stopAudio();
@@ -788,7 +790,7 @@ function skipUnavailablePreview() {
   if (!challengeIds.length) maybeTopUp();
 }
 function advancePreview() {
-  if (advancingPreview || !current || view !== 'discover' || modal || !continuousListening) return;
+  if (animatingChoice || advancingPreview || !current || view !== 'discover' || modal || !continuousListening) return;
   advancingPreview = true;
   // Reaching 22 seconds is a neutral skip, NOT an implicit dislike.
   unvotedPreviews.add(current.id);
@@ -800,7 +802,7 @@ function advancePreview() {
   maybeResumeContinuous();
 }
 async function togglePlayback(track, automatic = false) {
-  if (!track) return;
+  if (!track || (view==='discover' && animatingChoice)) return;
   if (isLoadingAudio && activeAudioId === track.id) {
     // A second *manual* Play is an explicit cancel, not a dead button.
     // Automatic resume checks must still avoid interrupting their own lookup.
@@ -1165,6 +1167,7 @@ audio.addEventListener('error', async () => {
 });
 
 function chooseNext() {
+  cancelPendingChoice();
   if (challengeIds.length && challengeRecovery?.waiting) {
     current=null; // An incomplete link needs a decision before any blind votes.
     return;
@@ -1760,6 +1763,7 @@ async function importPlaylistLinkFromDialog() {
 }
 
 function openModal(kind, extra = {}) {
+  cancelPendingChoice();
   cancelPlaylistLinkFlight();
   setThemeMenuOpen(false);
   const focusedBefore=document.activeElement;
@@ -1828,26 +1832,55 @@ function restoreDecisionFocus(action) {
   (button && !button.disabled ? button : main).focus({preventScroll:true});
 }
 
+/** Cancel an unfinished visual decision when leaving its listening context.
+ * A delayed callback must never rate a different song or a new challenge. */
+function cancelPendingChoice() {
+  const choice=pendingChoice;
+  if(!choice)return;
+  pendingChoice=null;
+  animatingChoice=false;
+  clearTimeout(choice.timer);
+  choice.card?.classList.remove('swipe-like','swipe-pass');
+  const stamp=choice.card?.querySelector('#decision-stamp');
+  if(stamp){stamp.textContent='';delete stamp.dataset.feedback;}
+}
+
 function acceptChoice(action) {
-  if (view !== 'discover' || !current || modal || animatingChoice) return;
+  if (view !== 'discover' || !current || modal || animatingChoice ||
+      !['like','pass'].includes(action)) return;
   animatingChoice = true;
   const selected = current.id;
   const card = $('#listening-card');
-  const returnFocus = document.activeElement === card?.querySelector('[data-action="' + action + '"]');
+  const origin = card?.querySelector('[data-action="' + action + '"]');
+  const returnFocus = document.activeElement === origin;
+  // Bind to the exact listening context, even if an obsolete callback runs
+  // after clearTimeout or the same track ID reappears in a different queue.
+  const choice={card,selected,action,timer:null,challenge:challengeIds,
+    feed:getFeed(),origin,returnFocus};
+  pendingChoice=choice;
   if (card) {
     const stamp = $('#decision-stamp', card);
     if (stamp) { stamp.textContent = action === 'like' ? '♥' : 'NOPE'; stamp.dataset.feedback = action; }
     card.classList.add(action === 'like' ? 'swipe-like' : 'swipe-pass');
   }
-  audio.pause();
+  // A pending metadata request must not restart audio during the animation.
+  if(isLoadingAudio)stopAudio();else audio.pause();
   const finish = () => {
-    animatingChoice = false;
-    if (action === 'pass') recordDecision(selected, 'pass');
-    else recordDecision(selected, 'like');
-    if (returnFocus) restoreDecisionFocus(action);
+    if(pendingChoice!==choice)return;
+    if(view!=='discover' || modal || current?.id!==selected ||
+        challengeIds!==choice.challenge || getFeed()!==choice.feed) {
+      cancelPendingChoice();
+      return;
+    }
+    const restoreFocus=choice.returnFocus &&
+      (document.activeElement===choice.origin || document.activeElement===document.body);
+    pendingChoice=null;
+    animatingChoice=false;
+    recordDecision(selected,action);
+    if (restoreFocus) restoreDecisionFocus(action);
   };
   // One bounded timer per gesture; honor the reduced-motion preference.
-  setTimeout(finish, matchMedia('(prefers-reduced-motion: reduce)').matches ? 15 : 190);
+  choice.timer=setTimeout(finish, matchMedia('(prefers-reduced-motion: reduce)').matches ? 15 : 190);
 }
 
 function handleModalAction(action) {
@@ -2419,10 +2452,16 @@ document.addEventListener('click', async (event) => {
     const returnFocus=document.activeElement===quizAnswer;
     const answer=Number(quizAnswer.dataset.quizAnswer);
     if (!Number.isInteger(answer) || answer<0 || answer>=quizSession.quiz.options.length) return;
+    const nextStats=nextQuizStats(quizStats,quizSession.quiz.options[answer]===quizSession.quiz.correct);
+    if(!nextStats || !saveQuizStats(localStorage,nextStats)) {
+      quizSession.saveError=true;
+      render();
+      if(returnFocus)main.querySelector('[data-quiz-answer="'+answer+'"]')?.focus({preventScroll:true});
+      return;
+    }
+    quizStats=nextStats;
     quizSession.answer=answer;
-    quizStats.answered++;
-    if(quizSession.quiz.options[answer] === quizSession.quiz.correct) quizStats.correct++;
-    try {localStorage.setItem(quizStorageKey,JSON.stringify(quizStats));} catch {}
+    quizSession.saveError=false;
     render();
     // Answer buttons are disabled after selection. Move focus to the result
     // instead of leaving it on a detached/disabled element.
@@ -2543,6 +2582,7 @@ document.addEventListener('click', async (event) => {
     case 'like': return acceptChoice('like');
     case 'undo': {
       if (challengeIds.length || !state.history.length) return;
+      cancelPendingChoice();
       const returnFocus = document.activeElement === action;
       const lastId = state.history.at(-1).id;
       if(!commitSessionChange(restoreLastChoice(state)))return;

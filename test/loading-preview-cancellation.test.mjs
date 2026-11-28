@@ -7,7 +7,7 @@ const main=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8')
 test('manual second Play cancels same-track loading; automatic resume stays idempotent',()=>{
   const toggle=main.slice(main.indexOf('async function togglePlayback('),
     main.indexOf('function updatePlaybackView()'));
-  assert.match(toggle,/if \(!track\) return;/);
+  assert.match(toggle,/if \(!track \|\| \(view==='discover' && animatingChoice\)\) return;/);
   assert.match(toggle,/if \(isLoadingAudio && activeAudioId === track\.id\) \{\s*\/\/[\s\S]*?if \(!automatic\) stopContinuous\(\);\s*return;\s*\}/);
   assert.match(toggle,/const generation = audioGeneration/);
   assert.match(toggle,/if \(activeAudioId !== track\.id \|\| generation !== audioGeneration\) return/);

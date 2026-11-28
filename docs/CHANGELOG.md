@@ -1,3 +1,10 @@
+## v0.12 development — Discovery transition safety, durable Tune Lab scores and static packaging (November 27, 2026)
+
+- Keep/Pass animation callbacks are bound to the original song, feed and challenge. Navigation, new tracks, modal opening or Undo cancel unfinished choices. Delayed media events cannot auto-advance while a decision is pending. Focus is restored only if the listener did not move to another control.
+- Tune Lab scores use bounded, verified writes before the answer is revealed or the count advances. A storage failure leaves the same question retryable with a persistent status message.
+- Static builds discover all public JavaScript modules, including future nested view modules, rather than maintaining a fragile list. Import and re-export paths are rewritten relative to the demo's source directory, and asset checks include side-effect imports.
+- Added Node regressions and expanded Chromium/Firefox keyboard journeys with rapid navigation and modal interruption. Tests use fictional metadata; physical-device, live-provider and media-permission checks remain open (#2, #3, #5, #7).
+
 ## v0.12 development — Safer restore preview with current-versus-backup counts (November 27, 2026)
 
 - Restore Backup now displays an explicit **current → incoming backup** comparison of saved songs, listening history, Music Duels, favorite artists, Tune Lab answers, imported playlist songs and lyric timing adjustments *before* asking for destructive confirmation.

@@ -120,9 +120,11 @@ test('Keep, Pass and Undo restore focus after replacing the decision controls',(
   assert.match(helper,/\(button && !button\.disabled \? button : main\)\.focus\(\{preventScroll:true\}\)/);
   const choice=main.match(/function acceptChoice\(action\) \{([\s\S]*?)\n\}/)?.[1];
   assert.ok(choice);
-  assert.match(choice,/document\.activeElement === card\?\.querySelector/);
-  assert.match(choice,/recordDecision\(selected, 'pass'\)/);
-  assert.match(choice,/if \(returnFocus\) restoreDecisionFocus\(action\)/);
+  assert.match(choice,/const origin = card\?\.querySelector/);
+  assert.match(choice,/document\.activeElement === origin/);
+  assert.match(choice,/recordDecision\(selected,action\)/);
+  assert.match(choice,/if \(restoreFocus\) restoreDecisionFocus\(action\)/);
+  assert.match(choice,/if\(pendingChoice!==choice\)return/);
   const undo=main.slice(main.indexOf("case 'undo':"),main.indexOf("case 'remove-favorite':"));
   assert.match(undo,/if \(returnFocus\) restoreDecisionFocus\('undo'\)/);
 });
