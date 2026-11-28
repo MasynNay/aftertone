@@ -3257,3 +3257,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .smart-mix-tracks{margin:0;padding:0;list-style:none;display:grid;gap:8px;}
 .smart-mix-tracks li{display:grid;gap:4px;padding:8px 0;border-bottom:1px solid var(--border);}
 .smart-mix-tracks li span{font-size:12px;color:var(--muted);}
+
+/* League standings use the existing responsive, scrollable tournament table. */
+.duel-league-table{margin-top:22px;min-width:0;display:grid;gap:10px;}
+.duel-league-table h3{margin:0;font-size:clamp(18px,2vw,24px);}
+.duel-league-table .duel-hall-table-wrap{max-width:100%;overflow-x:auto;}
+.duel-league-table .duel-hall-table{min-width:540px;}
+.duel-league-table .duel-hall-table th,.duel-league-table .duel-hall-table td{white-space:nowrap;}

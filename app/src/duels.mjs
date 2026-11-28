@@ -10,6 +10,7 @@
  */
 import { tournamentTheme, songYear } from './tournament-themes.mjs';
 import { csvRows } from './csv.mjs';
+import {leagueSchedule,leaguePodium,consistentLeague} from './duel-league.mjs';
 
 export const DUEL_STORAGE_KEY = 'aftertone:duels:v1';
 export const DUEL_SELECTION_KEY = 'aftertone:duels:selection:v1';
@@ -35,8 +36,9 @@ const pairRound = (ids, roundNumber) => Array.from({length: ids.length/2}, (_,i)
   id:`r${roundNumber}m${i}`, a:ids[2*i], b:ids[2*i+1], winner:null,
 }));
 
-export function createTournament({ id, name, tracks, kind='open', themeId='open', createdAt=Date.now() }) {
+export function createTournament({ id, name, tracks, kind='open', themeId='open', format='knockout', createdAt=Date.now() }) {
   if (!['open','champions'].includes(kind)) throw new Error('Unknown tournament type');
+  if(!['knockout','league'].includes(format)||(format==='league'&&kind!=='open'))throw new Error('Unknown or unsupported tournament format');
   const entries = (tracks || []).map(trackSnapshot);
   if (entries.some(t=>!t) || ![2,4,8,16].includes(entries.length) || (kind==='open' && entries.length<4))
     throw new Error('Select 4, 8 or 16 playable songs for a tournament');
@@ -45,7 +47,8 @@ export function createTournament({ id, name, tracks, kind='open', themeId='open'
   const title=String(name || (kind==='champions'?'Champions Cup':'Music Duels')).trim().slice(0,65) || 'Music Duels';
   return {
     version:1,id,name:title,kind,themeId:kind==='champions' ? 'champions' : tournamentTheme(themeId).id,createdAt,finishedAt:null,status:'active',
-    entries,rounds:[pairRound(entries.map(t=>t.id),0)],thirdPlace:null,podium:null,
+    ...(format==='league'?{format}:{}),
+    entries,rounds:format==='league'?leagueSchedule(entries.map(t=>t.id)):[pairRound(entries.map(t=>t.id),0)],thirdPlace:null,podium:null,
   };
 }
 
@@ -55,6 +58,13 @@ const losing = match => match.winner === match.a ? match.b : match.a;
 /** Third-place playoff precedes the grand final, so the final ends the event. */
 export function nextDuelMatch(tournament) {
   if (!tournament || tournament.status==='complete') return null;
+  if(tournament.format==='league'){
+    for(let r=0;r<tournament.rounds.length;r++){
+      const match=tournament.rounds[r].find(m=>m.winner===null);
+      if(match)return {...match,stage:'league',round:r};
+    }
+    return null;
+  }
   const last=lastOf(tournament);
   for (let r=0;r<tournament.rounds.length;r++) {
     const match=tournament.rounds[r].find(m=>!m.winner);
@@ -72,6 +82,14 @@ export function voteDuel(tournament, matchId, winnerId, decidedAt=Date.now()) {
   if (!expected || expected.id!==matchId || (winnerId!==expected.a && winnerId!==expected.b))
     throw new Error('This matchup is no longer active');
   const next=JSON.parse(JSON.stringify(tournament));
+  if(expected.stage==='league'){
+    const match=next.rounds[expected.round].find(m=>m.id===matchId);
+    match.winner=winnerId;match.decidedAt=decidedAt;
+    if(next.rounds.every(round=>round.every(m=>m.winner))){
+      next.status='complete';next.finishedAt=decidedAt;next.podium=leaguePodium(next);
+    }
+    return next;
+  }
   if (expected.stage==='third') {
     next.thirdPlace.winner=winnerId;
     next.thirdPlace.decidedAt=decidedAt;
@@ -99,7 +117,8 @@ export function voteDuel(tournament, matchId, winnerId, decidedAt=Date.now()) {
 }
 
 export function duelProgress(tournament) {
-  const total=tournament.entries.length-1+(tournament.entries.length>=4 ? 1:0);
+  const n=tournament.entries.length;
+  const total=tournament.format==='league'?n*(n-1)/2:n-1+(n>=4 ? 1:0);
   const done=tournament.rounds.flat().filter(m=>Boolean(m.winner)).length+(tournament.thirdPlace?.winner?1:0);
   return {done,total,remaining:Math.max(0,total-done)};
 }
@@ -188,6 +207,8 @@ export function loadDuelStore(storage) {
       if (!/^duel_[a-zA-Z0-9_-]{4,64}$/.test(t?.id||'') || !['open','champions'].includes(t.kind) || !['active','complete'].includes(t.status)) return false;
       if (!Array.isArray(t.entries) || ![2,4,8,16].includes(t.entries.length) || (t.kind==='open' && t.entries.length<4)) return false;
       if (t.entries.some(e=>!trackSnapshot(e)) || new Set(t.entries.map(e=>e.id)).size!==t.entries.length) return false;
+      if(t.format==='league')return consistentLeague(t);
+      if(t.format!==undefined&&t.format!=='knockout')return false;
       if (!Array.isArray(t.rounds) || !t.rounds.length || !Array.isArray(t.rounds[0]) || t.rounds[0].length!==t.entries.length/2) return false;
       const ids=new Set(t.entries.map(e=>e.id));
       if (t.rounds.some((round,i)=>!Array.isArray(round) || round.length!==t.entries.length / (2**(i+1)) || round.some(m=>!m || !ids.has(m.a) || !ids.has(m.b) || m.a===m.b || (m.winner && ![m.a,m.b].includes(m.winner))))) return false;

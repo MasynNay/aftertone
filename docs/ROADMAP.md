@@ -1,3 +1,5 @@
+**v0.12 Music Duels League (November 28, 2026):** Added round-robin competitions, matchday schedules, standings, tie rules, and archive/backup integration alongside unchanged knockout and Champions Cup formats. Full CI and live-device/provider checks remain required.
+
 **v0.12 Smart Mixes (November 28, 2026):** Dynamic, local saved-song groupings by recent order, recognition, genre and mood with shared saved-preview playback. No new persistence schema or inferred listening signals. Integrated CI and actual provider/device testing remain required.
 
 **v0.12 saved preview playback (November 28, 2026):** Collection and personal playlist preview queues, shuffle, repeat, transport controls and explicit failure recovery. Integrated with the existing shared audio element, not a full-song service. Physical-device and live-provider verification remain open.
