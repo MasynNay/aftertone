@@ -1,3 +1,10 @@
+## v0.12 development — Safer restore preview with current-versus-backup counts (November 27, 2026)
+
+- Restore Backup now displays an explicit **current → incoming backup** comparison of saved songs, listening history, Music Duels, favorite artists, Tune Lab answers, imported playlist songs and lyric timing adjustments *before* asking for destructive confirmation.
+- Reductions are called out clearly; restoring is never described as a merge. Older v1 backups explicitly identify optional playlist and lyric data that will remain unchanged.
+- If current local data is damaged and cannot be inspected, the dialog says the comparison is unavailable rather than presenting misleading zero counts. Validation, cancel, storage verification, rollback and reload protections are unchanged.
+- Added pure read-only comparison tests for reductions, v1 preservation and invalid input, plus fictional Chromium/Firefox browser confirmation and cancellation checks. Real cross-device backup acceptance (#5/#7) remains open.
+
 ## v0.12 development — Saved Collection overview and quick filters (November 27, 2026)
 
 - The Collection page now summarizes **all saved songs**, distinct artists, and meaningful genre and mood categories, even when only 40 cards are mounted on screen.

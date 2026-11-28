@@ -237,6 +237,42 @@ export function inspectProgressBackup(text) {
   };
 }
 
+/** Build an honest, read-only restore comparison for the confirmation dialog.
+ * Restores replace the complete supported profile rather than merging it.
+ * A v1 backup deliberately leaves newer playlist/lyric keys unchanged.
+ */
+export function compareProgressSummaries(current,incoming) {
+  if(!current || !incoming)throw new Error('Both progress summaries are required.');
+  const fields=[
+    ['favorites','Saved songs'],
+    ['decisions','Listening choices'],
+    ['tournaments','Music Duels tournaments'],
+    ['artists','Favorite artists'],
+    ['quizAnswered','Tune Lab answers'],
+    ['quizCorrect','Correct Tune Lab answers'],
+    ['playlistTracks','Imported playlist songs'],
+    ['lyricOffsets','Lyric timing adjustments'],
+  ];
+  const lines=[],reductions=[];
+  for(const [key,label] of fields) {
+    const before=current[key],after=incoming[key];
+    if(after===null) {
+      lines.push(label+': unchanged (not included in this older backup)');
+      continue;
+    }
+    if(!Number.isSafeInteger(after) || after<0)
+      throw new Error('Invalid incoming '+label+' count.');
+    if(!Number.isSafeInteger(before) || before<0) {
+      lines.push(label+': '+after+' in backup (current count unavailable)');
+      continue;
+    }
+    const delta=after-before;
+    lines.push(label+': '+before+' → '+after+' ('+(delta>0?'+':'')+delta+')');
+    if(delta<0)reductions.push(label);
+  }
+  return {lines,reductions};
+}
+
 /** Verify writes: some storage wrappers can silently drop a write rather than
  * throwing. A restore must never tell the listener it succeeded in that case.
  */

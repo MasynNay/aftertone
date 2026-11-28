@@ -742,7 +742,9 @@ def check_backup_restore_cross_browser(browser, base):
         # and return focus to the visible Restore Backup action.
         before_cancel=page.evaluate(
             "(keys) => keys.map(k => localStorage.getItem(k))", keys)
-        page.once("dialog", lambda dialog: dialog.dismiss())
+        dialog_messages=[]
+        page.once("dialog", lambda dialog: (
+            dialog_messages.append(dialog.message), dialog.dismiss()))
         page.locator("#progress-backup-file").set_input_files({
             "name":download.suggested_filename,
             "mimeType":"application/json",
@@ -751,6 +753,12 @@ def check_backup_restore_cross_browser(browser, base):
         page.wait_for_function("""() => document.querySelector('#progress-backup-status')?.textContent?.includes(
             'Restore canceled. Your existing progress was not changed.')""",
             timeout=TIMEOUT)
+        require(dialog_messages and 'Saved songs: 0 → 1 (+1)' in dialog_messages[0],
+                'Restore dialog omitted current-to-backup saved song comparison')
+        require('Listening choices: 0 → 1 (+1)' in dialog_messages[0],
+                'Restore dialog omitted listening-history comparison')
+        require('not a merge' in dialog_messages[0],
+                'Restore dialog did not explain replacement semantics')
         require(page.evaluate(
             "document.activeElement?.dataset?.action === 'restore-progress'"),
             "Canceled restore did not return focus to the restore button")

@@ -4,7 +4,7 @@ import {apiFetch} from './api-browser.js';
 import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
-import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, restoreProgressBackup } from '/src/progress-backup.mjs';
+import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, compareProgressSummaries, restoreProgressBackup } from '/src/progress-backup.mjs';
 import { encodeChallenge, decodeChallenge, isPublicDeezerChallengeId } from '/src/challenge.mjs';
 import { createViews } from './views.js';
 import { html, urlSafe, tag, setTextIfChanged } from './view-utils.js';
@@ -2312,10 +2312,24 @@ async function importProgressBackupFile(file) {
       ? '\n\nImportant: '+missing+' saved favorite '+(missing===1?'ID has':'IDs have')+
         ' no song title or artist metadata in this file. The favorite IDs and listening decisions can be restored, but those songs may not appear in Collection until their details are found again. No titles will be invented.'
       : '';
+    // The incoming file was validated without writes. If current browser
+    // progress is readable, compare every category before asking permission
+    // to replace it; corrupted local data must not be shown as empty.
+    let comparisonText='Current browser progress could not be verified. The backup may replace existing data.';
+    try {
+      const current=inspectProgressBackup(createProgressBackup(localStorage)).summary;
+      const comparison=compareProgressSummaries(current,preview);
+      comparisonText='Current → backup (not a merge):\n'+comparison.lines.join('\n');
+      if(comparison.reductions.length)
+        comparisonText+='\n\nWARNING: Restoring would reduce: '+comparison.reductions.join(', ')+'.';
+    } catch {
+      comparisonText+=' Export a current backup if possible before continuing.';
+    }
     const message='Restore '+preview.favorites+' saved favorites, '+preview.decisions+
       ' listening choices, '+preview.tournaments+' tournaments, '+
       preview.artists+' favorite artist'+(preview.artists===1?'':'s')+' and Tune Lab '+preview.quizCorrect+
-      '/'+preview.quizAnswered+' correct?\n\n'+optional+metadataNotice+'\n\n'+
+      '/'+preview.quizAnswered+' correct?\n\n'+comparisonText+'\n\n'+
+      optional+metadataNotice+'\n\n'+
       'This replaces your current AFTERTONE progress. Export a backup of your current progress first.';
     if(!window.confirm(message)) {
       announceProgressBackup('Restore canceled. Your existing progress was not changed.');
