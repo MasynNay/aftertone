@@ -2700,6 +2700,74 @@ def check_playlist_dialog_cancellation(browser, base):
                 "Fresh playlist was overwritten or mixed with stale metadata")
         require(page.locator('#modal-root [role="dialog"]').count()==0,
                 "Successful import should close its own dialog")
+        # A silently dropped replacement or deletion must not report success,
+        # close the dialog, or change the previously saved playlist.
+        page.locator('[data-action="import-playlist"]').click()
+        page.evaluate("""() => {
+          const set=Storage.prototype.setItem,remove=Storage.prototype.removeItem;
+          window.__restorePersonalizationStorage=()=>{Storage.prototype.setItem=set;Storage.prototype.removeItem=remove;};
+          Storage.prototype.setItem=function(key,value){
+            if(['aftertone:optional-playlist:v1','aftertone:favorite-artists:v1'].includes(key))return;
+            return set.call(this,key,value);
+          };
+          Storage.prototype.removeItem=function(key){
+            if(key==='aftertone:optional-playlist:v1')return;
+            return remove.call(this,key);
+          };
+        }""")
+        page.locator('#playlist-paste').fill('Other Fixture Artist - Replacement Song')
+        page.locator('[data-modal="playlist-import"]').click()
+        require(page.locator('#playlist-file-status').is_visible() and
+                'could not be confirmed as saved' in page.locator('#playlist-file-status').inner_text(),
+                "Dropped playlist write falsely reported success")
+        require(page.locator('#playlist-paste').input_value()=='Other Fixture Artist - Replacement Song',
+                "Failed import discarded retry inputs")
+        require(page.evaluate("""() => JSON.parse(localStorage.getItem(
+            'aftertone:optional-playlist:v1'))""")==saved,
+                "Failed replacement changed the saved playlist")
+        page.locator('[data-modal="playlist-clear"]').click()
+        require('deletion could not be confirmed' in page.locator('#playlist-file-status').inner_text(),
+                "Dropped playlist removal falsely reported success")
+        require(page.evaluate("""() => JSON.parse(localStorage.getItem(
+            'aftertone:optional-playlist:v1'))""")==saved,
+                "Failed deletion changed the saved playlist")
+        page.evaluate("window.__restorePersonalizationStorage()")
+        page.locator('[data-modal="playlist-import"]').click()
+        page.locator('#modal-root [role="dialog"]').wait_for(state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("""() => JSON.parse(localStorage.getItem(
+            'aftertone:optional-playlist:v1')).tracks[0].title==='Replacement Song'"""),
+                "Retry did not persist replacement")
+        page.locator('[data-action="open-intro"]').click()
+        page.locator('#intro-artist-0').fill('Fixture Saved Artist')
+        page.evaluate("""() => {
+          const set=Storage.prototype.setItem;
+          window.__restoreArtistStorage=()=>{Storage.prototype.setItem=set;};
+          Storage.prototype.setItem=function(key,value){
+            if(key==='aftertone:favorite-artists:v1')return;
+            return set.call(this,key,value);
+          };
+        }""")
+        page.locator('[data-modal="onboarding-artists"]').click()
+        require(page.locator('#intro-save-status').is_visible() and
+                'could not be confirmed as saved' in page.locator('#intro-save-status').inner_text(),
+                "Failed artist preference write closed the dialog or hid error")
+        require(page.locator('#intro-artist-0').input_value()=='Fixture Saved Artist',
+                "Failed artist preference write discarded the entered artist")
+        page.evaluate("window.__restoreArtistStorage()")
+        page.locator('[data-modal="onboarding-artists"]').click()
+        page.locator('#modal-root [role="dialog"]').wait_for(state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("""() => JSON.parse(localStorage.getItem(
+            'aftertone:favorite-artists:v1'))[0]==='Fixture Saved Artist'"""),
+                "Artist retry did not persist choices")
+        page.locator('[data-action="import-playlist"]').click()
+        require('Not active until you choose it' in page.locator('.playlist-loaded-note').inner_text(),
+                "Artist discovery was incorrectly labeled as playlist tailoring")
+        page.locator('[data-modal="playlist-clear"]').click()
+        page.locator('#modal-root [role="dialog"]').wait_for(state="hidden",timeout=TIMEOUT)
+        require(page.evaluate("""() => localStorage.getItem('aftertone:optional-playlist:v1')===null"""),
+                "Verified deletion did not remove saved playlist")
+        require(page.locator('[data-action="fresh-discovery"]').count()>0,
+                "Deleting an inactive playlist stopped active artist personalization")
         require(not errors,"Playlist cancellation caused browser errors: "+"; ".join(errors))
         print("PASS playlist dialog cancellation, stale JSONP isolation and reimport")
     except Exception:

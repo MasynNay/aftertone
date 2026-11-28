@@ -4,6 +4,7 @@ const canonical = value => String(value || '').normalize('NFKD').replace(/[\u030
 export function parseFavoriteArtists(value, max=5) {
   const output=[]; const seen=new Set();
   for (const raw of (Array.isArray(value) ? value : String(value || '').split(/[\n,;]+/))) {
+    if(typeof raw!=='string')continue;
     const artist=raw.replace(/[<>]/g,'').replace(/\s+/g,' ').trim().slice(0,75);
     const key=canonical(artist);
     if (!artist || artist.length < 2 || /^https?:\/\//i.test(artist) || seen.has(key)) continue;

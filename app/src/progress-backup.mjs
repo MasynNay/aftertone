@@ -6,15 +6,13 @@ import {STORAGE_KEY,loadState,sanitizeState} from './persistence.mjs';
 import {DUEL_STORAGE_KEY,loadDuelStore,DUEL_MAX_ARCHIVES} from './duels.mjs';
 import {parseFavoriteArtists} from './discovery-personalization.mjs';
 import {parsePlaylist} from './playlist-import.mjs';
+import {PLAYLIST_STORAGE_KEY as PLAYLIST_KEY,ARTISTS_STORAGE_KEY as ARTISTS_KEY,MAX_SAVED_PLAYLIST_TRACKS as MAX_PLAYLIST_TRACKS} from './personalization-store.mjs';
 
 export const BACKUP_FORMAT='aftertone-progress';
 export const BACKUP_VERSION=2;
 export const BACKUP_MAX_BYTES=4_000_000;
 const QUIZ_KEY='aftertone:tune-lab:v1';
-const ARTISTS_KEY='aftertone:favorite-artists:v1';
-const PLAYLIST_KEY='aftertone:optional-playlist:v1';
 const LYRIC_OFFSETS_KEY='aftertone:lyric-offsets:v1';
-const MAX_PLAYLIST_TRACKS=3000;
 const MAX_LYRIC_OFFSETS=200;
 const MAX_HISTORY=5000;
 const MAX_TRACKS=1500;

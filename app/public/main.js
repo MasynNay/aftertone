@@ -13,6 +13,7 @@ import { THEMES, THEME_IDS } from '/src/themes.mjs';
 import { matchesLanguage, likelyMusicRecording } from '/src/recording-quality.mjs';
 import { parsePlaylist, buildSeedProfile, buildSeedLanes, trackIdentity } from '/src/playlist-import.mjs';
 import { parseFavoriteArtists, artistSeedProfile, likedArtistLanes } from '/src/discovery-personalization.mjs';
+import {readSavedPlaylist,readSavedArtists,preparePlaylistImport,savePlaylist,saveFavoriteArtists} from '/src/personalization-store.mjs';
 import { artistKey, laneKey, splitSeedLanes } from '/src/discovery/rotation.mjs';
 import { planDiscoveryRequest, explainDiscovery, PATH_DESCRIPTIONS } from '/src/discovery/mode-engine.mjs';
 import { belongsToDiscoveryFeed } from '/src/discovery/queue.mjs';
@@ -43,21 +44,14 @@ audio.volume = normalizeVolume(state.volume) / 100;
 audio.muted = !state.sound || normalizeVolume(state.volume) === 0;
 // Optional personalization is OFF on every launch. Importing never becomes
 // mandatory and never silently replaces the normal fresh-discovery experience.
-const PLAYLIST_STORAGE_KEY = 'aftertone:optional-playlist:v1';
-function readPlaylist() {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(PLAYLIST_STORAGE_KEY) || 'null');
-    return Array.isArray(parsed?.tracks) ? { tracks: parsed.tracks.slice(0,3000) } : null;
-  } catch { return null; }
-}
+function readPlaylist() {return readSavedPlaylist(localStorage);}
 let importedPlaylist = readPlaylist();
 let playlistProfile = importedPlaylist ? buildSeedProfile(importedPlaylist) : null;
 let seedActive = false;
 let seedKind = 'playlist';
-const ARTISTS_STORAGE_KEY = 'aftertone:favorite-artists:v1';
 const FAVORITE_ARTIST_LIMIT = 5;
 const INTRO_STORAGE_KEY = 'aftertone:intro-shown:v054';
-let chosenArtists = (() => {try {return parseFavoriteArtists(JSON.parse(localStorage.getItem(ARTISTS_STORAGE_KEY)||'[]'));}catch{return [];}})();
+let chosenArtists = readSavedArtists(localStorage);
 let seedRelated = [];
 let seedVersion = 0;
 const relatedRequestScope=createRelatedRequestScope();
@@ -103,12 +97,13 @@ function getSeedLanes() {
     .filter(l=>!disliked.has(artistKey(l.artist)));
   return seedKind === 'artists' ? lanes.map(l => l.reason === 'In your playlist' ? {...l, reason:'One of your chosen artists'} : l) : lanes;
 }
-function saveImportedPlaylist(playlist) {
-  try {
-    if (playlist) localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify({ tracks: playlist.tracks.slice(0,3000) }));
-    else localStorage.removeItem(PLAYLIST_STORAGE_KEY);
-    return true;
-  } catch { toast('The imported playlist could not be saved; this browser may have limited storage.'); return false; }
+function showPersonalizationStatus(id,message,error=true) {
+  const status=$('#'+id,modalRoot);
+  if(status) {
+    status.textContent=message;
+    status.classList.toggle('is-error',error);
+    status.hidden=false;
+  } else toast(message);
 }
 
 let catalog = [];
@@ -157,9 +152,11 @@ let renderedListeningTrackId = null; // private: never expose blind-mode identit
 let previewButtonStateKey = null;
 let modal = null;
 let playlistLinkFlight = null;
+let playlistFileFlight = null;
 // Closing or replacing a playlist dialog must stop its in-flight provider
 // request before it can import stale data into a later dialog.
 function cancelPlaylistLinkFlight() {
+  playlistFileFlight=null; // File.text() cannot be aborted; invalidate its token.
   const flight=playlistLinkFlight;
   if(!flight) return;
   playlistLinkFlight=null;
@@ -1500,19 +1497,20 @@ function renderModal() {
       <p class="modal-copy">Tell us <strong>five artists you love</strong>. They're just starting clues, not your whole feed. Balanced discovery focuses on related performers and broader music. You can also skip this or import a playlist.</p>
       <div class="intro-choice intro-choice-primary"><div class="intro-choice-title"><strong>01 · Pick your five favorites</strong><span>Any genre, any language. Add up to five unique artists. One is enough to start, but five gives us a better mix.</span></div>
         <div class="intro-artist-grid">${Array.from({length:FAVORITE_ARTIST_LIMIT},(_,i)=>`<label class="intro-artist-field" for="intro-artist-${i}"><span>ARTIST ${String(i+1).padStart(2,'0')}</span><input type="text" id="intro-artist-${i}" data-intro-artist="${i}" maxlength="75" autocomplete="off" placeholder="${['e.g. Harry Styles','e.g. Kacey Musgraves','e.g. Paramore','e.g. Bruno Mars','e.g. Billie Eilish'][i]}" value="${html(chosenArtists[i]||'')}" /></label>`).join('')}</div>
-        <div class="intro-artist-actions"><span id="intro-artist-count" role="status" aria-live="polite">${chosenArtists.length} of ${FAVORITE_ARTIST_LIMIT} selected</span><button class="accent-button" data-modal="onboarding-artists">Find my music →</button></div>
+        <div class="intro-artist-actions"><span id="intro-artist-count" role="status" aria-live="polite">${chosenArtists.length} of ${FAVORITE_ARTIST_LIMIT} selected</span><button class="accent-button" data-modal="onboarding-artists">Find my music →</button></div><p id="intro-save-status" class="playlist-link-status" role="status" aria-live="polite" hidden></p>
       </div>
       <div class="intro-alternatives"><div class="intro-choice"><div class="intro-choice-title"><strong>02 · Start without favorites</strong><span>Build your taste from scratch through your swipes.</span></div><button class="secondary-button" data-modal="onboarding-fresh">Just discover →</button></div>
       <div class="intro-choice"><div class="intro-choice-title"><strong>03 · Import a playlist</strong><span>Use a Deezer link, CSV/JSON export, or paste songs you already love.</span></div><button class="secondary-button" data-modal="onboarding-playlist">Import playlist →</button></div></div>
       <p class="playlist-import-hint">The artists are stored locally. You can change your choice later under Personalization. Fresh discovery is the default each time you reopen AFTERTONE.</p>`;
   } else if (modal.kind === 'playlist') {
-    const existing = playlistInfo();
+    const existing = {ready:Boolean(playlistProfile?.totalSongs),count:playlistProfile?.totalSongs||0,
+      artists:playlistProfile?.artistCount||0,active:seedActive&&seedKind==='playlist'};
     body = `<div class="eyebrow">OPTIONAL · YOUR MUSIC, YOUR RULES</div><h2>Teach AFTERTONE your taste.</h2><p class="modal-copy">Fresh discovery always comes first. Importing is optional and local to this browser. The songs you bring are used as clues to find <strong>different songs and related artists</strong>—not added automatically to your favorites.</p>
       <div class="playlist-import-panel"><label for="playlist-link">Import a playlist link</label>
       <div class="playlist-link-row"><input id="playlist-link" type="url" inputmode="url" autocomplete="url" placeholder="https://www.deezer.com/playlist/… or Spotify playlist URL" maxlength="2048" /><button class="secondary-button" type="button" data-modal="playlist-link-import">Import link</button></div>
       <p id="playlist-link-status" class="playlist-link-status" role="status" aria-live="polite">Public Deezer links import songs directly, with no account setup. Spotify URLs are recognized, but importing their track list requires authorization Spotify does not offer to this music game.</p>
       <label for="playlist-file">Choose a playlist CSV or JSON export</label><input id="playlist-file" type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain"/><p class="playlist-import-hint">For Spotify, export your own playlist as a CSV/JSON, or paste its artist–song list below. Spotify links alone cannot provide track details under the current platform rules.</p>
-      <label for="playlist-paste">Or paste a list of songs</label><textarea id="playlist-paste" rows="6" placeholder="Paramore - Still Into You&#10;Charlie Puth - How Long&#10;The Weeknd - Blinding Lights"></textarea><p class="playlist-import-hint">One <strong>Artist - Song</strong> per line; CSVs with Track Name / Artist Name columns also work. Maximum 5,000 songs per import.</p></div>
+      <label for="playlist-paste">Or paste a list of songs</label><textarea id="playlist-paste" rows="6" placeholder="Paramore - Still Into You&#10;Charlie Puth - How Long&#10;The Weeknd - Blinding Lights"></textarea><p class="playlist-import-hint">One <strong>Artist - Song</strong> per line; CSVs with Track Name / Artist Name columns also work. Up to 5,000 input rows are read, and up to 3,000 unique songs can be saved. Larger playlists must be reduced before replacing your import.</p><p id="playlist-file-status" class="playlist-link-status" role="status" aria-live="polite" hidden></p></div>
       ${existing.ready ? `<p class="playlist-loaded-note">Saved in this browser: ${existing.count.toLocaleString()} songs from ${existing.artists.toLocaleString()} artists · ${existing.active ? 'Tailoring is active' : 'Not active until you choose it'}</p><div class="modal-actions"><button class="secondary-button" data-modal="playlist-clear">Delete saved import</button><button class="secondary-button" data-modal="playlist-use-saved">Use saved playlist</button></div>` : ''}
       <div class="modal-actions"><button class="secondary-button" data-modal="close">Maybe later · keep it fresh</button><button class="accent-button" data-modal="playlist-import">Import & tailor discovery ↗</button></div><p class="playlist-import-hint">Song names stay in your browser; when tailoring is active, selected artist names are sent to the locally running server for Deezer discovery and public related-artist lookups. You can switch back to fresh mode any time.</p>`;
   } else if (modal.kind === 'help') {
@@ -1691,9 +1689,11 @@ function updateArtistCount() {
   counter.textContent=`${picked.length} of ${FAVORITE_ARTIST_LIMIT} selected`;
 }
 function startArtistDiscovery(artists=chosenArtists) {
-  chosenArtists=parseFavoriteArtists(artists);
-  if (!chosenArtists.length) return toast('Add at least one artist you love to begin.');
-  try { localStorage.setItem(ARTISTS_STORAGE_KEY,JSON.stringify(chosenArtists)); } catch {}
+  const nextArtists=parseFavoriteArtists(artists);
+  if (!nextArtists.length) return showPersonalizationStatus('intro-save-status','Add at least one artist you love to begin.');
+  if (!saveFavoriteArtists(localStorage,nextArtists))
+    return showPersonalizationStatus('intro-save-status','Artist preferences could not be confirmed as saved. Check browser storage and try again. Your active profile has not changed.');
+  chosenArtists=nextArtists;
   seedActive=true; seedKind='artists'; advanceSeedVersion(); seedRelated=[]; relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
   state.source='deezer'; state.genre='all'; state.language='all';
   searchQuery='';searchDraft='';stopContinuous();current=null;
@@ -1708,30 +1708,49 @@ function startFreshDiscovery() {
   toast('Fresh discovery is on. No artist or playlist seeds are active.');
 }
 function finishPlaylistImport(data) {
-  // All import paths converge here; no favorites/history are modified.
-  importedPlaylist = { tracks: data.tracks.slice(0, 3000) };
-  playlistProfile = buildSeedProfile(importedPlaylist);
-  saveImportedPlaylist(importedPlaylist);
+  // Validate and verify the replacement before changing the active profile.
+  // The file/link dialog remains open on failure, with all inputs intact.
+  const next=preparePlaylistImport(data);
+  const profile=buildSeedProfile(next);
+  if(!profile.totalSongs)throw new Error('No valid playlist songs were found.');
+  if(!savePlaylist(localStorage,next))
+    throw new Error('Playlist could not be confirmed as saved. Check browser storage and try again. Your active profile has not changed.');
+  importedPlaylist=next;
+  playlistProfile=profile;
   startPlaylistDiscovery();
+  return next.tracks.length;
 }
 
 async function importPlaylistFromDialog() {
   const dialog=modal;
+  if(dialog?.kind!=='playlist' || playlistFileFlight || playlistLinkFlight)return;
   const file = $('#playlist-file', modalRoot)?.files?.[0];
   const pasted = $('#playlist-paste', modalRoot)?.value?.trim();
-  if (file && file.size > 3_000_000) return toast('The file must be under 3 MB.');
+  if (file && file.size > 3_000_000) return showPersonalizationStatus('playlist-file-status','The file must be under 3 MB.');
+  const flight={dialog};
+  playlistFileFlight=flight;
+  const button=$('[data-modal="playlist-import"]',modalRoot);
+  if(button)button.disabled=true;
+  showPersonalizationStatus('playlist-file-status','Checking playlist…',false);
   try {
     const content=file ? await file.text() : pasted;
     // File reads can finish after Escape or after a different dialog opens.
     if(modal!==dialog || dialog?.kind!=='playlist') return;
+    if(playlistFileFlight!==flight)return;
     finishPlaylistImport(parsePlaylist(content));
-  } catch(error) { if(modal===dialog) toast(error.message); }
+  } catch(error) {
+    if(modal===dialog && playlistFileFlight===flight)
+      showPersonalizationStatus('playlist-file-status',error.message);
+  } finally {
+    if(playlistFileFlight===flight)playlistFileFlight=null;
+    if(modal===dialog && button?.isConnected)button.disabled=false;
+  }
 }
 
 /** A link is resolved by our same-origin server, never fetched from a visitor URL directly. */
 async function importPlaylistLinkFromDialog() {
   const dialog=modal;
-  if(dialog?.kind!=='playlist' || playlistLinkFlight) return;
+  if(dialog?.kind!=='playlist' || playlistLinkFlight || playlistFileFlight) return;
   const link = $('#playlist-link', modalRoot)?.value?.trim();
   const status = $('#playlist-link-status', modalRoot);
   const button = $('[data-modal="playlist-link-import"]',modalRoot);
@@ -1748,8 +1767,8 @@ async function importPlaylistLinkFromDialog() {
     // data. Ignore late results even if a provider disregards cancellation.
     if(controller.signal.aborted || modal!==dialog || playlistLinkFlight!==flight) return;
     if (!response.ok || !Array.isArray(result.tracks) || !result.tracks.length) throw new Error(result.error || 'No songs available from this link.');
-    finishPlaylistImport(result);
-    toast(`Imported ${result.tracks.length.toLocaleString()} tracks from ${result.playlistTitle || 'Deezer'}${result.truncated ? ' (first 2,000)' : ''}.`);
+    const savedCount=finishPlaylistImport(result);
+    toast(`Imported ${savedCount.toLocaleString()} tracks from ${result.playlistTitle || 'Deezer'}${result.truncated ? ' (first 2,000 provider entries)' : ''}.`);
   } catch(error) {
     if(!controller.signal.aborted && modal===dialog && playlistLinkFlight===flight && status?.isConnected) {
       status.textContent=error.message;status.classList.add('is-error');
@@ -1904,10 +1923,20 @@ function handleModalAction(action) {
   if (modal.kind === 'playlist') {
     if (action === 'playlist-import') { void importPlaylistFromDialog(); return; }
     if (action === 'playlist-link-import') { void importPlaylistLinkFromDialog(); return; }
-    if (action === 'playlist-use-saved') return startPlaylistDiscovery();
+    if (action === 'playlist-use-saved' && !playlistFileFlight && !playlistLinkFlight) return startPlaylistDiscovery();
     if (action === 'playlist-clear') {
-      importedPlaylist = null; playlistProfile = null; seedRelated = []; seedActive = false; advanceSeedVersion(); relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
-      saveImportedPlaylist(null); closeModal(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp(); toast('Saved playlist deleted. Fresh mode is active.'); return;
+      if(playlistFileFlight || playlistLinkFlight)return;
+      if(!savePlaylist(localStorage,null))
+        return showPersonalizationStatus('playlist-file-status','Playlist deletion could not be confirmed. Your active profile has not changed. Check browser storage and try again.');
+      const wasActive=seedActive && seedKind==='playlist';
+      importedPlaylist=null; playlistProfile=null;
+      closeModal();
+      if(wasActive) {
+        seedRelated=[]; seedActive=false; advanceSeedVersion(); relatedLookupStatus='idle'; expandedArtists.clear(); resetArtistRotation();
+        stopContinuous(); current=null; chooseNext(); render(); maybeTopUp();
+      } else render();
+      toast(wasActive?'Saved playlist deleted. Fresh mode is active.':'Saved playlist deleted. Your current discovery mode is unchanged.');
+      return;
     }
     return;
   }

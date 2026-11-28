@@ -1,3 +1,11 @@
+## v0.12 development — Verified personalization imports (November 27, 2026)
+
+- Playlist replacement/deletion and favorite artist saves verify browser storage before changing the current personalization. Failed writes keep the dialog open with persistent retry messages and intact inputs.
+- File and link imports cannot compete within a dialog; canceled file reads cannot update a later dialog.
+- Imported playlists share the existing 3,000-song backup limit; oversized unique playlists are rejected rather than silently truncated. Input scanning remains bounded at 5,000 rows.
+- Deleting an inactive saved playlist no longer disables artist personalization, and the import dialog accurately labels its saved playlist and activation state.
+- Node and mocked-browser regression coverage exercises failure, retry, deletion, backup compatibility and active-profile preservation. Live provider and physical-device verification remain open.
+
 ## v0.12 development — Discovery transition safety, durable Tune Lab scores and static packaging (November 27, 2026)
 
 - Keep/Pass animation callbacks are bound to the original song, feed and challenge. Navigation, new tracks, modal opening or Undo cancel unfinished choices. Delayed media events cannot auto-advance while a decision is pending. Focus is restored only if the listener did not move to another control.
