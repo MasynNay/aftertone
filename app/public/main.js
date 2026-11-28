@@ -33,7 +33,7 @@ import { csvRows } from '/src/csv.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
 import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
 import {collectionRecoveryPlan,prepareRecoveredFavorites} from '/src/collection-recovery.mjs';
-import {JOURNAL_FILTERS} from '/src/listening-journal.mjs';
+import {JOURNAL_FILTERS,JOURNAL_PATHS} from '/src/listening-journal.mjs';
 
 const main = document.querySelector('#main-content');
 const modalRoot = document.querySelector('#modal-root');
@@ -278,7 +278,7 @@ let collectionMood = 'all';
 let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
 let collectionRecoveryFlight=null,collectionRecoveryMessage='';
 const collectionRecoveryAttempted=new Set();
-let journalFilter='all',journalPage=1; // Read-only Taste Map browsing.
+let journalFilter='all',journalPage=1,journalPath='all',journalQuery=''; // Read-only Taste Map browsing.
 // Undo for the most recent removal remains visible while this tab is open.
 let lastRemovedFavorite = null;
 let pointerStart = null;
@@ -1463,7 +1463,7 @@ function render() {
   updateChrome();
   const activeFeed=view==='discover'?getFeed():null;
   const queue=view==='discover'&&!challengeIds.length?discoveryQueueSnapshot(activeFeed):null;
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,journalPath,journalQuery,removedFavorite: lastRemovedFavorite,
     collectionRecovery:view==='collection'?{...collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted),busy:Boolean(collectionRecoveryFlight),message:collectionRecoveryMessage}:null,
     feed: activeFeed?{ ...activeFeed, loading: activeFeed.loading || (!activeFeed.primed && !current), available:queue?.ready??0,queue,autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }:{}, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
@@ -2805,9 +2805,23 @@ document.addEventListener('click', async (event) => {
     case 'journal-filter': {
       if(view!=='taste'||!JOURNAL_FILTERS.includes(action.dataset.filter))return;
       const focused=document.activeElement===action;
+      journalQuery=($('#journal-search')?.value||'').trim().slice(0,120);
       journalFilter=action.dataset.filter;journalPage=1;render();
       if(focused)main.querySelector('[data-action="journal-filter"][data-filter="'+journalFilter+'"]')?.focus({preventScroll:true});
       return;
+    }
+    case 'journal-path': {
+      if(view!=='taste'||!JOURNAL_PATHS.includes(action.dataset.path))return;
+      const focused=document.activeElement===action;
+      journalQuery=($('#journal-search')?.value||'').trim().slice(0,120);
+      journalPath=action.dataset.path;journalPage=1;render();
+      if(focused)main.querySelector('[data-action="journal-path"][data-path="'+journalPath+'"]')?.focus({preventScroll:true});
+      return;
+    }
+    case 'journal-clear': {
+      if(view!=='taste')return;
+      journalFilter='all';journalPath='all';journalQuery='';journalPage=1;render();
+      $('#journal-search')?.focus({preventScroll:true});return;
     }
     case 'journal-page': {
       if(view!=='taste'||action.disabled)return;
@@ -3076,6 +3090,10 @@ document.addEventListener('change', (event) => {
   }
 });
 document.addEventListener('submit', (event) => {
+  if(event.target.id==='journal-search-form'&&view==='taste'){
+    event.preventDefault();journalQuery=($('#journal-search')?.value||'').trim().slice(0,120);
+    journalPage=1;render();$('#journal-page-status')?.focus();return;
+  }
   if (event.target.id !== 'music-search-form') return;
   event.preventDefault();
   searchQuery = ($('#music-search')?.value || '').trim().slice(0, 90);

@@ -47,3 +47,31 @@ test('new shared challenge votes are not attributed to a discovery path or Wild 
   assert.deepEqual(listeningJournal(history,[]).paths.map(p=>p.id),['challenge']);
   assert.equal(getPassportProgress(history).quests.find(q=>q.id==='orbit').progress,0);
 });
+
+test('journal combines accent-insensitive search, path and action across all pages without changing history',()=>{
+  const history=Array.from({length:65},(_,i)=>({id:'deezer:'+i,title:'Café '+i,artist:'Beyoncé',action:i%2?'pass':'like',route:i%3?'balanced':'explore',...(i===64?{context:'challenge'}:{})}));
+  const before=JSON.stringify(history);
+  const result=listeningJournal(history,[],{query:'beyonce',filter:'like',path:'balanced',page:99});
+  assert.equal(result.total,21);assert.equal(result.page,2);assert.equal(result.entries.length,1);
+  assert.equal(result.counts.all,65);assert.equal(result.path,'balanced');
+  assert.equal(listeningJournal(history,[],{path:'challenge',query:'cafe 64'}).total,1);
+  assert.equal(listeningJournal(history,[],{query:'absent'}).total,0);
+  assert.equal(listeningJournal(history,[],{path:'invalid'}).path,'all');
+  assert.equal(JSON.stringify(history),before);
+});
+test('journal search uses actual historical or recovered names, never missing metadata placeholders',()=>{
+  const history=[{id:'a',action:'like',title:'Original'},{id:'b',action:'pass'},{id:'c',action:'pass'}];
+  const catalog=[{id:'a',title:'Replacement'},{id:'b',artist:'José'}];
+  assert.equal(listeningJournal(history,catalog,{query:'jose'}).total,1);
+  assert.equal(listeningJournal(history,catalog,{query:'replacement'}).total,0);
+  assert.equal(listeningJournal(history,catalog,{query:'unavailable'}).total,0);
+});
+test('Taste Map renders real genre coverage and accessible journal controls',()=>{
+  const state={...createInitialState(),history:[{id:'a',action:'like',genre:'rock',title:'<unsafe>'},{id:'b',action:'pass'}]};
+  const html=createViews({state,catalog:[],current:null,allGenres:['all'],challengeIds:[],challengeResponses:[],journalQuery:'<unsafe>',journalPath:'legacy'}).renderTaste();
+  assert.match(html,/1 of 2 choices have known genre information/);
+  assert.doesNotMatch(html,/undefined of undefined/);
+  assert.match(html,/id="journal-search"/);assert.match(html,/value="&lt;unsafe&gt;"/);
+  assert.match(html,/data-path="legacy" aria-pressed="true"/);
+  assert.match(html,/data-action="journal-clear"/);
+});
