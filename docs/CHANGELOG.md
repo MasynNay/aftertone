@@ -1,3 +1,20 @@
+## v0.12 development — Smart Mixes (November 28, 2026)
+
+- Dynamic local mixes for recently saved songs, explicitly recognized and unfamiliar songs, and top recorded genres and moods. No guessed recognition or audio traits.
+- Play or shuffle a selected mix through the saved preview player. Mixes recalculate as Collection changes; no duplicated storage or new provider requests until Play.
+- Restored established cancellation and session-write boundaries after integrated CI reported five regressions. Added a browser playback queue flow and deterministic mix tests.
+
+## v0.12 development — Saved preview playback (November 28, 2026)
+
+- Play saved Collection or personal playlist previews in order or shuffled, with previous/next, pause/resume, repeat, stop, progress and volume controls.
+- Queue snapshots include only saved identities with metadata and exclude video-only entries. On failure, playback holds for explicit retry or skip; navigation, dialogs and edits interrupt the session. No votes, audio downloads or persisted queue state.
+
+## v0.12 development — Listening Recap and journal interaction (November 28, 2026)
+
+- Added a local listening recap with 7-day, 30-day and all-history metrics, daily Keep/Pass activity, top artists and genres, and a keyboard-accessible data table.
+- Artist insight cards open the existing searchable journal; fixed journal path controls being intercepted by discovery-mode switching. Neither recap nor journal browsing writes listening data or preferences.
+- UTC calendar-day labels and undated-history disclosure prevent invented listening statistics. All-history means retained decisions, not lifetime analytics.
+
 ## v0.12 development — Personal playlists (November 28, 2026)
 
 - Create, rename, delete, reorder and curate named local playlists directly from Collection. Up to 30 playlists, 500 song references per playlist and 5,000 memberships across the library.

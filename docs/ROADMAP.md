@@ -1,3 +1,9 @@
+**v0.12 Smart Mixes (November 28, 2026):** Dynamic, local saved-song groupings by recent order, recognition, genre and mood with shared saved-preview playback. No new persistence schema or inferred listening signals. Integrated CI and actual provider/device testing remain required.
+
+**v0.12 saved preview playback (November 28, 2026):** Collection and personal playlist preview queues, shuffle, repeat, transport controls and explicit failure recovery. Integrated with the existing shared audio element, not a full-song service. Physical-device and live-provider verification remain open.
+
+**v0.12 Listening Recap (November 28, 2026):** Expanded Taste Map with local-only date ranges, activity visualization and accessible data table, ranked artists/genres, and artist-to-journal drilldown. Scoped discovery-path click handling to actual discovery controls. Node and synthetic browser regression coverage added; physical-device and real-provider verification remain open.
+
 **v0.12 personal playlists (November 28, 2026):** Named ordered saved-song playlists, membership management, bounded editing and existing progress backup integration. No autoplay or new provider contracts. Playlist playback queues remain a separate future milestone. Full verification and physical-device acceptance remain open.
 
 **v0.12 discovery fairness (November 28, 2026):** Lane-specific request rotation prevents systematic artist starvation. Wild Card prioritizes unfamiliar genre cursors, falls back to remaining eligible genres, and never requests related artists in its fallback. Comfort honors its broad quota. No new provider or persistence schema; live-provider validation remains open.

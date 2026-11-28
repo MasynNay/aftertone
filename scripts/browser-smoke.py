@@ -1269,6 +1269,30 @@ def check_choice_keyboard_focus(browser, base):
         page.locator('[data-action="journal-filter"][data-filter="all"]').click()
         require(page.locator('.journal-entries li').count()==1,
                 "Clearing journal filter lost recorded history")
+        before = page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        journal_path = page.locator('[data-action="journal-path"]:not([data-path="all"])').first
+        journal_path.focus()
+        page.keyboard.press("Enter")
+        require(page.locator('[data-action="journal-path"][aria-pressed="true"]').get_attribute("data-path") != "all",
+                "Journal path did not change its own filter")
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')") == before,
+                "Journal path changed discovery preferences or history")
+        week=page.locator('[data-action="recap-period"][data-period="7"]')
+        week.focus()
+        page.keyboard.press("Enter")
+        require(page.locator('[data-action="recap-period"][data-period="7"]').get_attribute("aria-pressed")=="true",
+                "Recap range did not switch")
+        require(page.locator('.recap-day').count()==7 and page.locator('.recap-data tbody tr').count()==7,
+                "Recap activity chart/table did not change together")
+        require(page.evaluate("document.activeElement?.dataset?.period")=="7",
+                "Recap date selection lost keyboard focus")
+        page.locator('[data-action="recap-period"][data-period="all"]').click()
+        page.locator('[data-action="recap-artist"]').first.click()
+        require(page.locator('#journal-search').input_value() != "" and
+                page.locator('.journal-entries li').count()==1,
+                "Recap artist drill-down did not find the journal decision")
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')") == before,
+                "Recap interactions changed saved progress")
         require(page.evaluate("""() => {
             const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
             return s.history.length===1 && s.favorites.length===1 && !!s.history[0].title;
@@ -4471,6 +4495,33 @@ def check_collection_preview_a11y_and_timeupdate(browser, base):
             ?.getAttribute('aria-label')==='Listen to Fixture Melody 01'
         """,timeout=TIMEOUT)
 
+        # The saved queue shares the same media element but never rates tracks.
+        page.locator('[data-action="saved-playback-start"][data-kind="collection"]:not([data-shuffle])').click()
+        page.wait_for_function("""() => document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        require(page.locator('#saved-playback-title').inner_text()=='Fixture Melody 01',
+                'Saved queue did not start in saved order')
+        page.evaluate("""() => {
+          const audio=document.querySelector('#player');
+          audio.currentTime=22;audio.dispatchEvent(new Event('timeupdate'));
+        }""")
+        page.wait_for_function("""() => document.querySelector('#saved-playback-title')?.textContent==='Fixture Melody 02' &&
+          document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        page.locator('#saved-playback-toggle').click()
+        require(page.locator('#saved-playback-toggle').inner_text()=='Play','Queue pause failed')
+        page.locator('#saved-playback-prev').click()
+        page.wait_for_function("""() => document.querySelector('#saved-playback-title')?.textContent==='Fixture Melody 01' &&
+          document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        page.locator('[data-action="saved-playback-stop"]').click()
+        require(not page.locator('#saved-playback-panel').is_visible(),'Queue stop failed')
+        page.locator('#smart-playlist-select').select_option('genre:pop')
+        page.locator('[data-action="saved-playback-start"][data-kind="smart"]:not([data-shuffle])').click()
+        page.wait_for_function("""() => document.querySelector('#saved-playback-toggle')?.textContent==='Pause'""",timeout=TIMEOUT)
+        require('pop' in page.locator('#saved-playback-status').inner_text().lower(),
+                'Smart Mix did not start its selected queue')
+        page.locator('[data-action="saved-playback-stop"]').click()
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==snapshot,
+                'Saved playback or Smart Mix changed progress')
+        
         # Pending browser playback should announce Cancel, then restore Listen
         # after a second activation without affecting saved history.
         page.evaluate("""() => {

@@ -1,7 +1,9 @@
 import { computeTaste } from '../src/taste.mjs';
 import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
+import {smartPlaylists} from '../src/smart-playlists.mjs';
 import {personalPlaylists,playlistAvailability,MAX_PERSONAL_PLAYLISTS,MAX_PLAYLIST_MEMBERS} from '../src/personal-playlists.mjs';
 import {collectionInsights} from '../src/collection-insights.mjs';
+import {listeningRecap} from '../src/listening-recap.mjs';
 import {listeningJournal} from '../src/listening-journal.mjs';
 import {eligibleChallengeTracks,challengeLibraryPage,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
@@ -14,7 +16,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', personalPlaylistId='',personalPlaylistPage=1, journalFilter='all',journalPage=1,journalPath='all',journalQuery='',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', personalPlaylistId='',personalPlaylistPage=1,smartPlaylistId='recent', journalFilter='all',journalPage=1,journalPath='all',journalQuery='',recapPeriod='all',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   // One index per render avoids searching the full catalog for every saved
   // song. Keep the FIRST matching entry, matching the previous .find behavior.
   const byId=new Map();
@@ -234,6 +236,25 @@ function renderCollectionRecovery() {
 }
 
 
+function renderSmartPlaylists(){
+  const mixes=smartPlaylists(state.favorites,catalog,state.history);
+  const selected=mixes.find(p=>p.id===smartPlaylistId)||mixes[0];
+  return `<section class="panel smart-playlists" aria-labelledby="smart-playlists-heading"><div class="panel-heading"><div><span class="eyebrow">ALWAYS EVOLVING</span><h2 id="smart-playlists-heading">Smart Mixes.</h2></div><span class="panel-accent" aria-hidden="true">✳</span></div>
+  <p class="journal-copy">Automatically organized from your saved songs, actual genre and mood information, and recognition choices. Mixes update as your Collection changes.</p>
+  ${selected?`<label for="smart-playlist-select">Choose a mix</label><select class="select-input" id="smart-playlist-select">${mixes.map(p=>`<option value="${html(p.id)}" ${p.id===selected.id?'selected':''}>${html(p.name)} (${p.trackIds.length})</option>`).join('')}</select>
+  <div class="smart-mix-detail"><strong>${html(selected.name)}</strong><p>${html(selected.description)} · ${selected.trackIds.length} saved songs</p><div class="saved-playback-controls"><button type="button" class="accent-button" data-action="saved-playback-start" data-kind="smart">Play Mix</button><button type="button" class="secondary-button" data-action="saved-playback-start" data-kind="smart" data-shuffle="true">Shuffle Mix</button></div>
+  <ol class="smart-mix-tracks">${selected.trackIds.slice(0,6).map(id=>{const t=lookup(id);return `<li><strong>${html(t?.title||'Saved song')}</strong><span>${html(t?.artist||'')}</span></li>`;}).join('')}</ol>${selected.trackIds.length>6?`<p class="journal-copy">And ${selected.trackIds.length-6} more saved songs.</p>`:''}</div>`:'<p class="empty-micro">Save music to unlock your first Smart Mix.</p>'}</section>`;
+}
+function renderSavedPlayback(){
+  return `<section class="panel saved-playback" aria-label="Saved preview player">
+  <h2>Listen to your Collection.</h2><p class="journal-copy">Play short audio previews in saved order or shuffle. Unavailable metadata and video-only entries are excluded. Playback stops on failure or when leaving Collection; it never records votes.</p>
+  <div class="saved-playback-controls"><button type="button" class="accent-button" data-action="saved-playback-start" data-kind="collection" ${state.favorites.length?'':'disabled'}>Play Collection</button><button type="button" class="secondary-button" data-action="saved-playback-start" data-kind="collection" data-shuffle="true" ${state.favorites.length?'':'disabled'}>Shuffle Collection</button></div>
+  <div id="saved-playback-panel" hidden><strong id="saved-playback-title"></strong><span id="saved-playback-artist"></span><p id="saved-playback-status" role="status" aria-live="polite"></p>
+    <div class="saved-playback-meter" aria-hidden="true"><span id="saved-playback-progress"></span></div><span id="saved-playback-time"></span>
+    <div class="saved-playback-controls"><button type="button" id="saved-playback-prev" class="secondary-button" data-action="saved-playback-prev">Previous</button><button type="button" id="saved-playback-toggle" class="accent-button" data-action="saved-playback-toggle">Play</button><button type="button" id="saved-playback-next" class="secondary-button" data-action="saved-playback-next">Next</button><button type="button" id="saved-playback-repeat" class="secondary-button" data-action="saved-playback-repeat" aria-pressed="false">Repeat: Off</button><button type="button" class="secondary-button" data-action="saved-playback-stop">Stop</button></div>
+    <label class="saved-playback-volume">Volume <input type="range" min="0" max="100" value="${state.volume}" data-volume-slider aria-label="Saved preview volume"><span data-volume-value>${state.volume}%</span></label>
+  </div></section>`;
+}
 function renderPersonalPlaylists(items) {
   const lists=personalPlaylists(state);
   const selected=lists.find(p=>p.id===personalPlaylistId);
@@ -249,6 +270,7 @@ function renderPersonalPlaylists(items) {
     ${lists.length?`<label for="personal-playlist-select">Edit playlist</label><select id="personal-playlist-select" class="select-input"><option value="">Choose a playlist</option>${lists.map(p=>`<option value="${html(p.id)}" ${selected?.id===p.id?'selected':''}>${html(p.name)} (${p.trackIds.length})</option>`).join('')}</select>`:''}
     ${selected?`<div class="personal-playlist-editor">
       <form id="personal-playlist-rename" class="personal-playlist-form"><label for="personal-playlist-rename-name">Playlist name</label><div><input id="personal-playlist-rename-name" class="search-input" maxlength="60" value="${html(selected.name)}" required><button type="submit" class="secondary-button">Rename</button><button type="button" class="secondary-button" data-action="personal-playlist-delete">Delete Playlist</button></div></form>
+      <div class="saved-playback-controls"><button type="button" class="accent-button" data-action="saved-playback-start" data-kind="playlist" ${available?'':'disabled'}>Play Playlist</button><button type="button" class="secondary-button" data-action="saved-playback-start" data-kind="playlist" data-shuffle="true" ${available?'':'disabled'}>Shuffle Playlist</button></div>
       <p id="personal-playlist-status" role="status" tabindex="-1" data-page="${page}">${available} of ${rows.length} songs available · ${rows.length-available} unavailable</p>
       ${rows.length?`<ol class="personal-playlist-rows" start="${(page-1)*20+1}">${rows.slice((page-1)*20,page*20).map((row,i)=>`<li><div><strong>${html(row.track?.title||'Song details unavailable')}</strong><span>${html(row.track?.artist||row.id)}${row.available?'':row.saved?' · Missing details':' · Not currently saved'}</span></div><div class="personal-playlist-row-actions"><button type="button" class="secondary-button" data-action="personal-playlist-move" data-id="${html(row.id)}" data-direction="-1" aria-label="Move song earlier" ${(page-1)*20+i===0?'disabled':''}>↑</button><button type="button" class="secondary-button" data-action="personal-playlist-move" data-id="${html(row.id)}" data-direction="1" aria-label="Move song later" ${(page-1)*20+i===rows.length-1?'disabled':''}>↓</button><button type="button" class="secondary-button" data-action="personal-playlist-remove" data-id="${html(row.id)}" aria-label="Remove song from playlist">Remove</button></div></li>`).join('')}</ol>`:'<p class="empty-micro">This playlist is empty. Add saved songs below.</p>'}
       ${pages>1?`<div class="personal-playlist-row-actions"><button type="button" class="secondary-button" data-action="personal-playlist-page" data-page="${page-1}" ${page===1?'disabled':''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" class="secondary-button" data-action="personal-playlist-page" data-page="${page+1}" ${page===pages?'disabled':''}>Next</button></div>`:''}
@@ -285,6 +307,8 @@ function renderCollection() {
   <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets and personal playlists, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
   ${renderCollectionInsights(insights,{genre,mood})}
   ${renderCollectionRecovery()}
+  ${renderSavedPlayback()}
+  ${renderSmartPlaylists()}
   ${renderPersonalPlaylists(items)}
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
   ${items.length ? `<div class="collection-tools">
@@ -344,6 +368,25 @@ function renderListeningJournal() {
     </section>`;
 }
 
+function renderListeningRecap() {
+  const recap=listeningRecap(state.history,catalog,{period:recapPeriod});
+  const peak=Math.max(1,...recap.activity.map(day=>day.total));
+  const ranking=(label,rows,artists=false)=>`<div class="recap-ranking"><h3>${label}</h3>${rows.length?rows.map(row=>`<div class="recap-rank-row"><div><strong>${html(row.label)}</strong><span>${row.kept} kept · ${row.passed} passed</span></div><div class="recap-rank-meter" aria-hidden="true"><span style="width:${row.total?100*row.kept/row.total:0}%"></span></div>${artists?`<button type="button" class="secondary-button" data-action="recap-artist" data-artist="${html(row.label)}" aria-label="Find decisions for ${html(row.label)}">View</button>`:''}</div>`).join(''):'<p class="empty-micro">Not enough identified music in this period.</p>'}</div>`;
+  return `<section class="panel listening-recap" aria-labelledby="recap-heading">
+    <div class="panel-heading"><div><span class="eyebrow">YOUR SOUND IN NUMBERS</span><h2 id="recap-heading">Listening Recap.</h2></div><span class="panel-accent" aria-hidden="true">↗</span></div>
+    <div class="recap-periods" role="group" aria-label="Listening recap period">${[['7','7 days'],['30','30 days'],['all','All history']].map(([id,label])=>`<button type="button" class="secondary-button" data-action="recap-period" data-period="${id}" aria-pressed="${recap.period===id}">${label}</button>`).join('')}</div>
+    <p id="recap-status" role="status" aria-live="polite">${recap.total?recap.total+' recorded '+(recap.total===1?'decision':'decisions')+' in this period.':'No recorded decisions in this period.'} ${recap.undated?recap.undated+' decisions have no reliable date and appear only in All history.':''}</p>
+    <div class="recap-metrics"><div><strong>${recap.total}</strong><span>Decisions</span></div><div><strong>${recap.kept}</strong><span>Kept</span></div><div><strong>${recap.keepRate===null?'—':recap.keepRate+'%'}</strong><span>Keep rate</span></div><div><strong>${recap.artists}</strong><span>Identified artists</span></div></div>
+    <div class="recap-activity"><div><h3>Daily activity</h3><span>Last ${recap.chartDays} calendar days · UTC · ${recap.activeDays} active days</span></div>
+    <div class="recap-legend"><span><i></i> Kept</span><span><i></i> Passed</span></div>
+    <div class="recap-chart" aria-hidden="true">${recap.activity.map(day=>`<div class="recap-day" title="${day.date}: ${day.kept} kept, ${day.passed} passed"><span class="recap-day-bar" style="height:${100*day.total/peak}%"><i style="flex:${day.passed}"></i><i style="flex:${day.kept}"></i></span></div>`).join('')}</div>
+    <div class="recap-axis"><span>${recap.activity[0].date.slice(5)}</span><span>${recap.activity.at(-1).date.slice(5)}</span></div>
+    <details class="recap-data"><summary>Daily activity data</summary><div class="recap-table-scroll"><table><thead><tr><th scope="col">UTC date</th><th scope="col">Kept</th><th scope="col">Passed</th></tr></thead><tbody>${recap.activity.map(day=>`<tr><th scope="row">${day.date}</th><td>${day.kept}</td><td>${day.passed}</td></tr>`).join('')}</tbody></table></div></details></div>
+    <div class="recap-rankings">${ranking('Artist signals',recap.topArtists,true)}${ranking('Genre signals',recap.topGenres)}</div>
+    <p class="journal-copy">Ranked by Keeps, then total decisions. ${recap.unknownArtist?recap.unknownArtist+' decisions lack artist details. ':''}Only deliberate Keep/Pass choices are counted; preview time is not tracked. All history covers the retained local journal, not lifetime activity.</p>
+  </section>`;
+}
+
 function renderTaste() {
   const taste = computeTaste(state.history, catalog);
   const genres = taste.genres.filter(([, n]) => n > 0);
@@ -353,6 +396,7 @@ function renderTaste() {
   <div class="taste-overview"><div class="panel map-panel"><div class="panel-heading map-head"><div><span class="panel-title">The constellation</span><p style="font-size:11px;color:var(--muted);margin:6px 0 0">Each node is a genre you've connected with. ${taste.identifiedGenres} of ${taste.total} choices have known genre information; unclassified songs still count in your totals.</p></div><span class="panel-accent">✳</span></div>${createMapSvg(taste)}</div>
   <div class="right-column"><div class="panel"><div class="panel-heading"><span class="panel-title">Favorite frequencies</span><span class="panel-accent">≋</span></div>${genres.length ? `<div class="taste-bars">${genres.slice(0, 6).map(([genre, score]) => `<div><div class="bar-label"><strong style="text-transform:capitalize">${html(genre)}</strong><span>${score} pts</span></div><div class="meter"><span style="width:${score / genres[0][1] * 100}%"></span></div></div>`).join('')}</div>` : '<p class="empty-micro">Nothing mapped yet. Let the music find you.</p>'}</div>
   <div class="panel"><div class="panel-heading"><span class="panel-title">Your listening moods</span><span class="panel-accent">♡</span></div>${moods.length ? `<div class="tag-row">${moods.slice(0, 7).map(([mood]) => tag(mood)).join('')}</div>` : '<p class="empty-micro">Mood signals appear when you save tracks.</p>'}</div></div></div>
+  ${renderListeningRecap()}
   ${renderListeningJournal()}
   <div class="panel" style="margin-top:22px"><div class="panel-heading"><span class="panel-title">How it gets smarter</span><span class="panel-accent">↗</span></div><div class="insight-list"><div class="insight"><strong>Preference isn't recognition</strong><p>Liking a new sound counts just as much as liking a familiar one. Trivia accuracy is tracked separately so obscure artists still get a fair shot.</p></div><div class="insight"><strong>A little unpredictability is a feature</strong><p>Suggestions balance your genre preferences with new styles and avoid repeatedly playing the same artist. You can still steer your session using a genre filter.</p></div><div class="insight"><strong>Your data belongs to you</strong><p>Your likes, passes and guesses stay in local browser storage. Export them whenever you want. There is no user account or analytics collection.</p></div></div></div></section>`;
 }
