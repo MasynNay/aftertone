@@ -1,3 +1,9 @@
+## v0.12 development — Personal playlists (November 28, 2026)
+
+- Create, rename, delete, reorder and curate named local playlists directly from Collection. Up to 30 playlists, 500 song references per playlist and 5,000 memberships across the library.
+- Playlist membership is independent of favorite removal: unavailable entries remain visible and can be removed explicitly or reactivated by saving the song again. No audio copied.
+- Existing progress backups include optional personal playlists, with strict validation and replacement-loss warnings. Legacy files remain readable; restoring a file without playlists replaces the current playlist set with none after confirmation.
+
 ## v0.12 development — Fair discovery request rotation (November 28, 2026)
 
 - Rotate related and liked artist requests by their actual scheduled lane occurrence rather than absolute request index; deduplicate normalized performer aliases.

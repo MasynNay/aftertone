@@ -9,6 +9,8 @@ import {parsePlaylist,trackIdentity} from './playlist-import.mjs';
 import {MAX_HISTORY,MAX_FAVORITE_IDS,MAX_SAVED_TRACKS as MAX_TRACKS} from './collection-capacity.mjs';
 import {PLAYLIST_STORAGE_KEY as PLAYLIST_KEY,ARTISTS_STORAGE_KEY as ARTISTS_KEY,MAX_SAVED_PLAYLIST_TRACKS as MAX_PLAYLIST_TRACKS} from './personalization-store.mjs';
 
+import {validatePersonalPlaylists} from './personal-playlists.mjs';
+
 export const BACKUP_FORMAT='aftertone-progress';
 export const BACKUP_VERSION=2;
 export const BACKUP_MAX_BYTES=4_000_000;
@@ -54,6 +56,7 @@ function safeSession(raw) {
      !Array.isArray(raw.favorites) || raw.favorites.length>MAX_FAVORITE_IDS ||
      !Array.isArray(raw.savedTracks) || raw.savedTracks.length>MAX_TRACKS)
     throw new Error('Backup has an unsupported or malformed listening session.');
+  if(Object.hasOwn(raw,'personalPlaylists'))validatePersonalPlaylists(raw.personalPlaylists);
   const normalized=sanitizeState(raw);
   if(normalized.history.length!==raw.history.length ||
      normalized.favorites.length!==raw.favorites.length ||
@@ -230,6 +233,7 @@ export function inspectProgressBackup(text) {
       playlistTracks:isV2?(playlist?.tracks.length??0):null,
       lyricOffsets:isV2?Object.keys(lyricOffsets).length:null,
       version:input.version,
+      ...(session.personalPlaylists?.length?{personalPlaylists:session.personalPlaylists.length,personalPlaylistSongs:session.personalPlaylists.reduce((n,p)=>n+p.trackIds.length,0)}:{}),
       // Legacy files may preserve favorite identities without track titles;
       // communicate this rather than promising visible restored song cards.
       ...(missingFavoriteMetadata ? {missingFavoriteMetadata} : {}),
@@ -253,6 +257,11 @@ export function compareProgressSummaries(current,incoming) {
     ['playlistTracks','Imported playlist songs'],
     ['lyricOffsets','Lyric timing adjustments'],
   ];
+  if(current.personalPlaylists||incoming.personalPlaylists){
+    fields.push(['personalPlaylists','Personal playlists'],['personalPlaylistSongs','Personal playlist memberships']);
+    current={personalPlaylists:0,personalPlaylistSongs:0,...current};
+    incoming={personalPlaylists:0,personalPlaylistSongs:0,...incoming};
+  }
   const lines=[],reductions=[];
   for(const [key,label] of fields) {
     const before=current[key],after=incoming[key];
@@ -287,6 +296,11 @@ export function compareProgressContents(current,incoming) {
   const changes=[];
   const add=(label,count)=>{if(count>0)changes.push({label,count});};
   const missing=(a,b)=>{const other=new Set(b);return new Set(a.filter(id=>!other.has(id))).size;};
+  const oldLists=old.personalPlaylists||[],nextLists=next.personalPlaylists||[];
+  const nextById=new Map(nextLists.map(p=>[p.id,p]));
+  add('Personal playlists absent from backup',missing(oldLists.map(p=>p.id),nextLists.map(p=>p.id)));
+  add('Personal playlist memberships absent from backup',oldLists.reduce((n,p)=>n+missing(p.trackIds,nextById.get(p.id)?.trackIds||[]),0));
+  add('Personal playlists renamed in backup',oldLists.filter(p=>nextById.has(p.id)&&nextById.get(p.id).name!==p.name).length);
   const nextFavorites=new Set(next.favorites);
   add('Saved songs absent from backup',missing(old.favorites,next.favorites));
   const oldMetadata=new Set(old.savedTracks.map(t=>t.id)),nextMetadata=new Set(next.savedTracks.map(t=>t.id));

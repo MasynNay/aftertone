@@ -30,6 +30,7 @@ import { renderDuels } from './duels-view.js';
 import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
+import {editPersonalPlaylist,personalPlaylists} from '/src/personal-playlists.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
 import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
 import {collectionRecoveryPlan,prepareRecoveredFavorites} from '/src/collection-recovery.mjs';
@@ -271,6 +272,7 @@ let catalogWarning = '';
 const rememberSource = () => { try { localStorage.setItem('aftertone:source-choice:v038','1'); } catch {} };
 const sourceRemembered = () => { try { return Boolean(localStorage.getItem('aftertone:source-choice:v038')); } catch { return true; } };
 let catalogLive = false;
+let personalPlaylistId='',personalPlaylistPage=1;
 let collectionQuery = '';
 let collectionSort = 'recent';
 let collectionGenre = 'all'; // Browse-only facet; never persisted or included in backups.
@@ -1463,7 +1465,7 @@ function render() {
   updateChrome();
   const activeFeed=view==='discover'?getFeed():null;
   const queue=view==='discover'&&!challengeIds.length?discoveryQueueSnapshot(activeFeed):null;
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,journalPath,journalQuery,removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, personalPlaylistId,personalPlaylistPage, journalFilter,journalPage,journalPath,journalQuery,removedFavorite: lastRemovedFavorite,
     collectionRecovery:view==='collection'?{...collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted),busy:Boolean(collectionRecoveryFlight),message:collectionRecoveryMessage}:null,
     feed: activeFeed?{ ...activeFeed, loading: activeFeed.loading || (!activeFeed.primed && !current), available:queue?.ready??0,queue,autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }:{}, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
@@ -1490,6 +1492,8 @@ function render() {
       collectionPage=Number(main.querySelector('#collection-page-select')?.value||1);
       collectionGenre=main.querySelector('#collection-genre')?.value||'all';
       collectionMood=main.querySelector('#collection-mood')?.value||'all';
+      personalPlaylistId=main.querySelector('#personal-playlist-select')?.value||'';
+      personalPlaylistPage=Number(main.querySelector('#personal-playlist-status')?.dataset.page||1);
       break;
     case 'taste':
       main.innerHTML=pages.renderTaste();
@@ -2831,6 +2835,36 @@ document.addEventListener('click', async (event) => {
       main.querySelector('#journal-page-status')?.focus();
       return;
     }
+    case 'personal-playlist-toggle':
+    case 'personal-playlist-remove':
+    case 'personal-playlist-move':
+    case 'personal-playlist-delete': {
+      if(view!=='collection'||progressRestoreBusy)return;
+      const p=personalPlaylists(state).find(p=>p.id===personalPlaylistId);
+      if(!p)return;
+      const kind=action.dataset.action;
+      const type=kind==='personal-playlist-delete'?'delete':kind==='personal-playlist-move'?'move':
+        kind==='personal-playlist-remove'?'remove':p.trackIds.includes(id)?'remove':'add';
+      if(type==='delete'&&!window.confirm('Delete “'+p.name+'”? Saved songs and listening history will not be removed.'))return;
+      try{
+        const next=editPersonalPlaylist(state,{type,id:p.id,trackId:id,direction:Number(action.dataset.direction)});
+        if(next===state||!commitSessionChange(next))return;
+        if(type==='delete'){personalPlaylistId='';personalPlaylistPage=1;}
+        render();
+        if(kind==='personal-playlist-toggle'){
+          [...main.querySelectorAll('[data-action="personal-playlist-toggle"]')].find(b=>b.dataset.id===id)?.focus({preventScroll:true});
+        }else if(type==='delete')$('#personal-playlist-name')?.focus({preventScroll:true});
+        else $('#personal-playlist-status')?.focus({preventScroll:true});
+        toast(type==='delete'?'Playlist deleted.':type==='add'?'Added to playlist.':type==='remove'?'Removed from playlist.':'Playlist order saved.');
+      }catch(error){toast(error.message);}
+      return;
+    }
+    case 'personal-playlist-page': {
+      if(view!=='collection'||action.disabled)return;
+      const page=Number(action.dataset.page);
+      if(!Number.isSafeInteger(page)||page<1)return;
+      personalPlaylistPage=page;render();$('#personal-playlist-status')?.focus();return;
+    }
     case 'collection-page': {
       if(view!=='collection' || action.disabled) return;
       const targetPage=Number(action.dataset.page);
@@ -3061,6 +3095,10 @@ document.addEventListener('change', (event) => {
     state.discovery = ['hits','variety'].includes(event.target.value) ? event.target.value : 'hits';
     persist(); stopContinuous(); current = null; chooseNext(); render(); maybeTopUp();
   }
+  if(event.target.id==='personal-playlist-select'&&view==='collection'){
+    personalPlaylistId=event.target.value;personalPlaylistPage=1;render();
+    $('#personal-playlist-select')?.focus({preventScroll:true});return;
+  }
   if (event.target.id === 'collection-page-select') {
     if(view!=='collection')return;
     const next=Number(event.target.value);
@@ -3090,6 +3128,19 @@ document.addEventListener('change', (event) => {
   }
 });
 document.addEventListener('submit', (event) => {
+  if(view==='collection'&&['personal-playlist-create','personal-playlist-rename'].includes(event.target.id)){
+    event.preventDefault();if(progressRestoreBusy)return;
+    const create=event.target.id==='personal-playlist-create';
+    const name=$(create?'#personal-playlist-name':'#personal-playlist-rename-name')?.value||'';
+    try{
+      const id=create?'pl-'+crypto.randomUUID():personalPlaylistId;
+      const next=editPersonalPlaylist(state,{type:create?'create':'rename',id,name});
+      if(!commitSessionChange(next))return;
+      personalPlaylistId=id;personalPlaylistPage=1;render();$('#personal-playlist-select')?.focus({preventScroll:true});
+      toast(create?'Playlist created.':'Playlist renamed.');
+    }catch(error){toast(error.message);}
+    return;
+  }
   if(event.target.id==='journal-search-form'&&view==='taste'){
     event.preventDefault();journalQuery=($('#journal-search')?.value||'').trim().slice(0,120);
     journalPage=1;render();$('#journal-page-status')?.focus();return;
