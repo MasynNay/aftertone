@@ -723,6 +723,30 @@ def check_backup_restore_cross_browser(browser, base):
             "(keys) => keys.map(k => localStorage.getItem(k))", keys)
         require(after_invalid==before,
                 "Invalid backup changed saved data before user confirmation")
+        # Same totals, different identities: a count-only preview would hide
+        # the existing song and playlist entry being replaced.
+        swapped=json.loads(json.dumps(backup))
+        swapped["session"]["favorites"]=["deezer:9100002"]
+        swapped["session"]["savedTracks"][0]["id"]="deezer:9100002"
+        swapped["session"]["history"][0]["action"]="pass"
+        swapped["playlist"]["tracks"][0]["title"]="Different Fixture Melody"
+        identity_dialog=[]
+        page.once("dialog", lambda dialog: (
+            identity_dialog.append(dialog.message), dialog.dismiss()))
+        page.locator("#progress-backup-file").set_input_files({
+            "name":"same-count-different-songs.json",
+            "mimeType":"application/json",
+            "buffer":json.dumps(swapped).encode("utf-8"),
+        })
+        page.wait_for_function("""() => document.querySelector('#progress-backup-status')?.textContent?.includes(
+            'Restore canceled. Your existing progress was not changed.')""",timeout=TIMEOUT)
+        require(identity_dialog and 'Saved songs: 1 → 1 (0)' in identity_dialog[0] and
+                'Saved songs absent from backup: 1' in identity_dialog[0] and
+                'Listening choices changing Keep/Pass: 1' in identity_dialog[0] and
+                'Imported playlist songs absent from backup: 1' in identity_dialog[0],
+                "Same-size backup did not disclose identity-level changes")
+        require(page.evaluate("(keys) => keys.map(k => localStorage.getItem(k))",keys)==before,
+                "Canceling same-size replacement changed saved progress")
         # Replace the storage with valid but empty data. Then restore through
         # the actual HTML file input and its destructive confirmation dialog.
         page.evaluate("""() => {

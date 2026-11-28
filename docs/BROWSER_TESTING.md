@@ -127,3 +127,8 @@ These checks must be performed on the real website to validate providers. No aut
 ## Single-preview and neutral navigation
 
 The dual-browser synthetic autoplay quota fixture now also disables auto-advance, drives the 22-second media event, checks the same recording remains selected, uses Next without rating and Previous unrated with keyboard focus, verifies no votes or automatic audio on return, and re-enables default continuous listening before its existing quota tests.
+
+
+### Same-count backup replacements
+
+The dual-browser backup journey now checks a validated replacement with identical totals but different saved-song identity, Keep/Pass and playlist title. The confirmation must disclose each identity-level change; cancel must retain all original stored keys. Existing full round-trip and legacy optional-key tests remain intact.

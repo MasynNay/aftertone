@@ -5,7 +5,7 @@ import { createInitialState, computeTaste, selectNext, recordChoice, removeFavor
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import {loadQuizStats,saveQuizStats,nextQuizStats} from '/src/quiz-progress.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
-import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, compareProgressSummaries, restoreProgressBackup } from '/src/progress-backup.mjs';
+import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, compareProgressSummaries, compareProgressContents, restoreProgressBackup } from '/src/progress-backup.mjs';
 import { encodeChallenge, decodeChallenge, isPublicDeezerChallengeId } from '/src/challenge.mjs';
 import { createViews } from './views.js';
 import { html, urlSafe, tag, setTextIfChanged } from './view-utils.js';
@@ -2426,7 +2426,8 @@ async function importProgressBackupFile(file) {
     announceProgressBackup('Checking backup file…');
     if(file.size>BACKUP_MAX_BYTES)throw new Error('Backup must be smaller than 4 MB.');
     const content=await file.text();
-    const preview=inspectProgressBackup(content).summary;
+    const incomingPlan=inspectProgressBackup(content);
+    const preview=incomingPlan.summary;
     const optional=preview.version===1
       ? 'This older backup does not contain imported playlists or lyric timing adjustments. Those existing settings will stay unchanged.'
       : 'Also restore '+preview.playlistTracks+' imported playlist tracks and '+
@@ -2441,11 +2442,15 @@ async function importProgressBackupFile(file) {
     // to replace it; corrupted local data must not be shown as empty.
     let comparisonText='Current browser progress could not be verified. The backup may replace existing data.';
     try {
-      const current=inspectProgressBackup(createProgressBackup(localStorage)).summary;
+      const currentPlan=inspectProgressBackup(createProgressBackup(localStorage));
+      const current=currentPlan.summary;
       const comparison=compareProgressSummaries(current,preview);
+      const identityChanges=compareProgressContents(currentPlan,incomingPlan);
       comparisonText='Current → backup (not a merge):\n'+comparison.lines.join('\n');
       if(comparison.reductions.length)
         comparisonText+='\n\nWARNING: Restoring would reduce: '+comparison.reductions.join(', ')+'.';
+      if(identityChanges.length)
+        comparisonText+='\n\nWARNING: Existing items would be removed or changed, even if the totals stay the same:\n'+identityChanges.map(item=>item.label+': '+item.count).join('\n');
     } catch {
       comparisonText+=' Export a current backup if possible before continuing.';
     }
