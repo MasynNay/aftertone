@@ -1,3 +1,8 @@
+## v0.12 development — Saved-song metadata recovery (November 27, 2026)
+
+- Collection can explicitly recover missing durable favorite metadata in batches of five. Local catalog matches are reused first; exact numeric Deezer IDs use the existing bounded metadata lookup. Unavailable or unsupported IDs remain saved, and no audio or new votes are created.
+- Recovery is cancelable, rejects stale results, preserves favorites and history, and confirms storage before presenting repaired cards. Unit tests and both browser legacy-backup journeys exercise the new flow.
+
 ## v0.12 development — Restore identity comparison (November 27, 2026)
 
 - Restore confirmation now identifies missing existing favorite IDs, history choices, tournament IDs, favorite artists and imported playlist entries even when total counts are unchanged. It also warns about changed Keep/Pass decisions, changed lyric timing, and retained favorites losing metadata. Older v1 optional keys remain unchanged. No individual song names or private data are transmitted.

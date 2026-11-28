@@ -3164,3 +3164,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .preview-session-tools [aria-pressed="true"]{border-color:var(--accent);color:var(--accent);}
 .preview-session-tools button:disabled{opacity:.45;cursor:not-allowed;}
 @media(max-width:480px){.preview-session-tools button{flex:1 1 40%;}.preview-session-tools #preview-mode{flex-basis:100%;}}
+
+/* Explicit metadata recovery for legacy and incomplete Collections. */
+.collection-recovery-panel{display:grid;gap:10px;margin:16px 0;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);}
+.collection-recovery-panel h2{font-size:16px;margin:0 0 8px;}.collection-recovery-panel p{font-size:12px;line-height:1.6;color:var(--muted);margin:5px 0;overflow-wrap:anywhere;}
+.collection-recovery-actions{display:flex;flex-wrap:wrap;gap:8px;}.collection-recovery-actions button{min-height:44px;white-space:normal;}.collection-recovery-panel #collection-recovery-status:focus{outline:2px solid var(--accent);outline-offset:4px;}
