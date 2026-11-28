@@ -22,6 +22,7 @@ import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/gr
 import { createRelatedRequestScope } from '/src/discovery/related-request-scope.mjs';
 import { createPreviewRequestScope } from '/src/discovery/preview-request-scope.mjs';
 import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
+import {rememberUnratedPreview,previousUnratedPreview,removeUnratedPreview} from '/src/discovery/preview-history.mjs';
 import { nextDiscoveryRetry } from '/src/discovery/retry-policy.mjs';
 import { eligibleProviders } from '/src/discovery/provider-availability.mjs';
 import { createTournament, voteDuel, nextDuelMatch, availableChampions, podiumTracks, podiumCsv, hallOfFame, hallOfFameCsv, loadDuelStore, saveDuelStore, loadDuelSelection, saveDuelSelection } from '/src/duels.mjs';
@@ -166,6 +167,7 @@ function cancelPlaylistLinkFlight() {
 let modalReturnFocus = null; // Original opener survives nested dialogs.
 let activeAudioId = null;
 let continuousListening = false; // Starts only on a user-initiated Play in Discover.
+let autoAdvanceEnabled=true; // Optional single-preview mode; session-only, default unchanged.
 const unvotedPreviews = new Set(); // Auto-advanced previews aren't falsely recorded as dislikes.
 let advancingPreview = false;
 let consecutivePlaybackFailures = 0;
@@ -800,6 +802,59 @@ function advancePreview() {
   advancingPreview = false;
   maybeResumeContinuous();
 }
+/** Explicit navigation and completed previews are neutral, not rating actions.
+ * Only successful/intentional skips can be revisited; broken media is excluded. */
+function rememberCurrentUnrated() {
+  if(!current||challengeIds.length||failedSources.has(current.id)||failedAudioId===current.id)return;
+  const feed=getFeed();
+  feed.recentUnrated=rememberUnratedPreview(feed.recentUnrated,current.id);
+}
+function revisitablePreview() {
+  if(view!=='discover'||challengeIds.length)return null;
+  const feed=getFeed();
+  if(!feed.recentUnrated?.length)return null;
+  const heard=new Set(state.history.map(event=>event.id));
+  const id=previousUnratedPreview(feed.recentUnrated,id=>{
+    const track=lookup(id);
+    return id!==current?.id && unvotedPreviews.has(id) && !heard.has(id) &&
+      !failedSources.has(id) && track && matchesFeed(track,state.genre);
+  });
+  return id?lookup(id):null;
+}
+function nextUnratedPreview(returnFocus=false) {
+  if(view!=='discover'||modal||challengeIds.length||!current||animatingChoice)return;
+  rememberCurrentUnrated();
+  unvotedPreviews.add(current.id);
+  stopContinuous();
+  chooseNext();render();
+  if(returnFocus) ($('#stage-play') || main).focus({preventScroll:true});
+  maybeTopUp(returnFocus);
+}
+function revisitUnratedPreview(returnFocus=false) {
+  if(modal||animatingChoice)return;
+  const track=revisitablePreview();
+  if(!track)return;
+  const feed=getFeed();
+  feed.recentUnrated=removeUnratedPreview(feed.recentUnrated,track.id);
+  unvotedPreviews.delete(track.id);
+  stopContinuous();
+  current={...track,seedReason:'Returning to an unrated preview · no decision was recorded'};
+  render();
+  if(returnFocus)$('#stage-play')?.focus({preventScroll:true});
+}
+function completePreview() {
+  if(animatingChoice||advancingPreview||!continuousListening||!current||view!=='discover'||modal||challengeIds.length)return;
+  rememberCurrentUnrated();
+  advancePreview();
+}
+function togglePreviewMode() {
+  if(view!=='discover'||challengeIds.length||modal||animatingChoice)return;
+  autoAdvanceEnabled=!autoAdvanceEnabled;
+  // Turning off automatic advancement does not interrupt the current clip.
+  // Turning it on never starts sound; the next explicit Play enables radio.
+  if(!autoAdvanceEnabled)continuousListening=false;
+  updatePlaybackView();
+}
 async function togglePlayback(track, automatic = false) {
   if (!track || (view==='discover' && animatingChoice)) return;
   if (isLoadingAudio && activeAudioId === track.id) {
@@ -834,7 +889,7 @@ async function togglePlayback(track, automatic = false) {
     // previews just THIS song. Do not immediately restart a continuous session
     // that the browser refused: otherwise a delayed old media event can skip
     // another unheard track before the user has a chance to listen.
-    continuousListening = !challengeIds.length && permissionBlockedTrackId !== track.id;
+    continuousListening = !challengeIds.length && autoAdvanceEnabled && permissionBlockedTrackId !== track.id;
   } else if (!automatic) continuousListening = false; // Collection playback is manual.
   const sameTrack = activeAudioId === track.id;
   if (!sameTrack) stopAudio();
@@ -852,7 +907,7 @@ async function togglePlayback(track, automatic = false) {
     if (!sameTrack || !audio.src) {
       audio.src = source.url;
       audio.currentTime = 0;
-    } else if (audio.currentTime >= previewLength - 0.1) {
+    } else if (audio.ended || audio.currentTime >= previewLength - 0.1) {
       audio.currentTime = 0; // Replay a finished clip from the beginning.
     }
     applySavedVolume();
@@ -928,6 +983,13 @@ async function togglePlayback(track, automatic = false) {
 }
 
 function updatePlaybackView() {
+  const mode=$('#preview-mode');
+  if(mode) {
+    const pressed=String(autoAdvanceEnabled);
+    if(mode.getAttribute('aria-pressed')!==pressed)mode.setAttribute('aria-pressed',pressed);
+    setTextIfChanged(mode,autoAdvanceEnabled?'Auto-advance: On':'Auto-advance: Off');
+    setTextIfChanged($('#first-listen-playback-mode'),autoAdvanceEnabled?'Continuous listening begins after your first Play. You control the volume and can stop at any time.':'Single-preview mode waits for your decision. You control the volume and can stop at any time.');
+  }
   const stop = $('#stop-session');
   if (stop) stop.hidden = !continuousListening;
   const hint = $('#continuity-hint');
@@ -937,7 +999,7 @@ function updatePlaybackView() {
       : 'Browser blocked playback · Check media permissions, then press Play')
     : challengeIds.length
       ? 'Listen, then Keep or Pass. Failed clips can be skipped without a vote.'
-      : continuousListening ? '● Auto-playing · Stop to end' : '▶ Play once for continuous listening';
+      : continuousListening ? '● Auto-playing · Stop to end' : autoAdvanceEnabled ? (activeAudioId===current?.id && !audio.paused ? 'Auto-advance enabled · starts on your next Play' : '▶ Play once for continuous listening') : 'Single preview · stays on this song until you decide';
   const button = $('#stage-play');
   if (button && current) {
     if (current.source === 'youtube') {
@@ -1077,7 +1139,7 @@ audio.addEventListener('timeupdate', () => {
     // its own play() has completed and it is actively playing.
     if (isLoadingAudio) return;
     if (continuousListening && !audio.paused && view === 'discover' &&
-        current?.id === activeAudioId && !modal) { advancePreview(); return; }
+        current?.id === activeAudioId && !modal) { completePreview(); return; }
     audio.pause();
     try { audio.currentTime = previewLength; } catch { /* media unloaded */ }
   }
@@ -1089,7 +1151,8 @@ audio.addEventListener('ended', () => {
   // short clips (under 22 seconds) still advance when the current audio ends.
   if (continuousListening && !isLoadingAudio && audio.ended &&
       view === 'discover' && !modal && current?.id === activeAudioId)
-    advancePreview();
+    completePreview();
+  else updatePlaybackView();
 });
 audio.addEventListener('play', updatePlaybackView);
 audio.addEventListener('pause', updatePlaybackView);
@@ -1326,7 +1389,7 @@ function render() {
   const sameListeningTrack=view==='discover' && current &&
     Boolean(previousCard) && renderedListeningTrackId===String(current.id);
   const focusedListeningControl=sameListeningTrack && (
-    ['stage-play','preview-volume','lyrics-offset'].includes(focusedOldControl.id) ||
+    ['stage-play','preview-volume','lyrics-offset','preview-mode','next-unrated','previous-unrated'].includes(focusedOldControl.id) ||
     focusedOldControl.matches?.('[data-action="lyrics-toggle"],[data-action="toggle-blind"]')
   ) ? (focusedOldControl.matches?.('[data-action="toggle-blind"]')
     ? 'blind-toggle' : (focusedOldControl.id || 'lyrics-toggle')) : null;
@@ -1369,7 +1432,7 @@ function render() {
   challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
   const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,removedFavorite: lastRemovedFavorite,
-    feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
+    feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre),autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
   if (focusedMobileFilterAction && side && document.body.classList.contains('mobile-filters-open')) {
@@ -2533,6 +2596,9 @@ document.addEventListener('click', async (event) => {
       return togglePlayback(current,false);
     }
     case 'play-current': return togglePlayback(current);
+    case 'toggle-preview-mode': return togglePreviewMode();
+    case 'next-unrated': return nextUnratedPreview(document.activeElement===action);
+    case 'previous-unrated': return revisitUnratedPreview(document.activeElement===action);
     case 'retry-preview': return retryFailedPreview();
     case 'skip-unavailable': return skipUnavailablePreview();
     case 'close-mobile-filters': return setMobileFiltersOpen(false,'toggle');
