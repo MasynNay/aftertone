@@ -28,15 +28,43 @@ export const PATH_DESCRIPTIONS = Object.freeze({
 });
 const modes = new Set(Object.keys(SCHEDULES));
 const safeMode = value => modes.has(value) ? value : 'balanced';
-const cleanIndex = value => Math.max(0,Math.floor(Number(value)||0));
-const available = (list,exhausted,kind) => (list||[]).filter(x=>x?.artist && !exhausted.has(`${kind}:${laneKey(x)}`));
+const cleanIndex = value => Number.isSafeInteger(Number(value))&&Number(value)>=0?Number(value):0;
+const available = (list,exhausted,kind) => {
+  const seen=new Set();
+  return (list||[]).filter(x=>{
+    const key=artistKey(x?.artist);
+    if(!key||seen.has(key)||exhausted.has(`${kind}:${laneKey(x)}`))return false;
+    seen.add(key);return true;
+  });
+};
+// Count occurrences of a lane, not absolute request positions. With two
+// neighbors and related slots at 0,2,4,... absolute modulo starves one.
+function laneOrdinal(schedule,kind,index) {
+  const cycles=Math.floor(index/schedule.length);
+  const perCycle=schedule.filter(slot=>slot===kind).length;
+  return cycles*perCycle+schedule.slice(0,index%schedule.length).filter(slot=>slot===kind).length;
+}
+const genreKey=value=>typeof value==='string'?value.trim().toLowerCase():'';
+function wildcardGroups(history=[]) {
+  const liked=new Set(history.filter(x=>x?.action==='like').map(x=>genreKey(x.genre)));
+  return [WILDCARD_GENRES.filter(g=>!liked.has(g)),WILDCARD_GENRES.filter(g=>liked.has(g))];
+}
+function nextWildcard(index,history,selectedGenre,exhausted) {
+  const groups=selectedGenre==='all'?wildcardGroups(history):[[selectedGenre]];
+  for(const group of groups) {
+    for(let step=0;step<group.length;step++){
+      const genre=group[(index+step)%group.length];
+      if(!exhausted.has(`wild:${genre}`))return {kind:'wild',lane:null,genre};
+    }
+  }
+  return null;
+}
 
 /** Exclude your usual recorded genres before picking a cross-genre wildcard. */
 export function chooseWildcardGenre(position=0, history=[], selectedGenre='all') {
   if(selectedGenre !== 'all') return selectedGenre; // Respect an explicit genre choice.
-  const liked = new Set((history||[]).filter(x=>x.action==='like' && x.genre && x.genre!=='unknown').map(x=>x.genre));
-  const unseen=WILDCARD_GENRES.filter(g=>!liked.has(g));
-  const sequence=unseen.length ? unseen : WILDCARD_GENRES;
+  const [unseen,known]=wildcardGroups(history||[]);
+  const sequence=unseen.length ? unseen : known;
   // Different positions get different catalog lanes instead of all showing Pop.
   return sequence[cleanIndex(position)%sequence.length];
 }
@@ -51,36 +79,31 @@ export function planDiscoveryRequest({mode='balanced',requestNumber=0,seeds=[],r
   const schedule=SCHEDULES[mode];
   const desired=schedule[index%schedule.length];
   const candidates={liked:available(liked,exhausted,'liked'),related:available(related,exhausted,'related'),favorite:available(seeds,exhausted,'favorite')};
-  if(desired==='wild') {
-    // A genre lane can be exhausted without exhausting the whole Wild Card.
-    // Probe the next genres (or just the explicitly selected genre) before
-    // declaring the provider empty.
-    const choices=selectedGenre==='all' ? WILDCARD_GENRES.length : 1;
-    for(let step=0;step<choices;step++) {
-      const genre=chooseWildcardGenre(index+step,history,selectedGenre);
-      if(!exhausted.has(`wild:${genre}`)) return {kind:'wild',lane:null,genre};
-    }
-    return exhausted.has('broad') ? {kind:'none',lane:null,genre:selectedGenre} : {kind:'broad',lane:null,genre:selectedGenre};
+  const broad=()=>exhausted.has('broad')?null:{kind:'broad',lane:null,genre:selectedGenre};
+  const wildcard=()=>nextWildcard(laneOrdinal(schedule,'wild',index),history||[],selectedGenre,exhausted);
+  const artistLane=kind=>{
+    const options=candidates[kind];
+    if(!options?.length)return null;
+    const ordinal=desired===kind?laneOrdinal(schedule,kind,index):index;
+    return {kind,lane:options[ordinal%options.length],genre:selectedGenre};
+  };
+  // Honor a scheduled broad slot. Comfort must not replace every chart slot
+  // with another familiar performer while there are usable broad results.
+  const planned=desired==='wild'?wildcard():desired==='broad'?broad():artistLane(desired);
+  if(planned)return planned;
+  if(mode==='explore') {
+    // Wild Card never fetches a known graph neighbor as a fallback. Explore
+    // every permitted genre cursor before reporting complete exhaustion.
+    return broad()||wildcard()||{kind:'none',lane:null,genre:selectedGenre};
   }
-  if(candidates[desired]?.length) {
-    const options=candidates[desired];
-    const lane=options[Math.floor(index/schedule.length + index) % options.length];
-    return {kind:desired,lane,genre:selectedGenre};
-  }
-  // Comfort may use a related artist when the listener has no Keep history.
-  if(mode==='familiar') {
-    const fallback=['liked','related','favorite'].find(k=>candidates[k].length);
-    if(fallback) {
-      const options=candidates[fallback];
-      return {kind:fallback,lane:options[index%options.length],genre:selectedGenre};
+  if(mode==='familiar'&&desired!=='broad') {
+    for(const kind of ['liked','related','favorite']){
+      const next=artistLane(kind);if(next)return next;
     }
   }
-  if(!exhausted.has('broad')) return {kind:'broad',lane:null,genre:selectedGenre};
-  // A three-page chart lane may finish before related/liked lanes do.
-  // Keep those remaining pages reachable without re-requesting an exhausted
-  // chart cursor forever.
-  for(const kind of (mode==='familiar'?['liked','related','favorite']:['related'])) {
-    if(candidates[kind].length) return {kind,lane:candidates[kind][index%candidates[kind].length],genre:selectedGenre};
+  const wider=broad();if(wider)return wider;
+  for(const kind of (mode==='familiar'?['liked','related','favorite']:['related'])){
+    const next=artistLane(kind);if(next)return next;
   }
   return {kind:'none',lane:null,genre:selectedGenre};
 }
