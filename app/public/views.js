@@ -1,5 +1,5 @@
 import { computeTaste } from '../src/taste.mjs';
-import {collectionFacets,collectionPageModel} from '../src/collection-pagination.mjs';
+import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
 import {eligibleChallengeTracks,challengeLibraryPage,defaultChallengeDraft,reconcileChallengeDraft,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import { getPassportProgress } from '../src/discovery/passport.mjs';
 import { firstListenAction } from '../src/discovery/first-listen.mjs';
@@ -187,8 +187,9 @@ function renderCollection() {
   const facets=collectionFacets(items,state.history);
   // A deleted last song may remove a facet. Fall back visibly to "All" rather
   // than silently leaving a hidden filter applied to the remaining library.
-  const genre=facets.genres.some(f=>f.value===collectionGenre)?collectionGenre:'all';
-  const mood=facets.moods.some(f=>f.value===collectionMood)?collectionMood:'all';
+  // Keep the chosen filter when removal changes which capitalization is shown.
+  const genre=facets.genres.find(f=>collectionSearchKey(f.value)===collectionSearchKey(collectionGenre))?.value||'all';
+  const mood=facets.moods.find(f=>collectionSearchKey(f.value)===collectionSearchKey(collectionMood))?.value||'all';
   const filtered=Boolean(collectionQuery.trim() || genre!=='all' || mood!=='all');
   const paged=collectionPageModel(items,state.favorites,{
     query:collectionQuery,sort:collectionSort,page:collectionPage,

@@ -113,3 +113,39 @@ test('filter selection resets paging and keeps keyboard focus; clear is browse-o
   assert.match(source,/collectionQuery='';collectionGenre='all';collectionMood='all';collectionPage=1;/);
   assert.doesNotMatch(source,/localStorage\.setItem\('collection-genre'/);
 });
+
+test('mixed-case, padded and accented tags collapse without changing original metadata',()=>{
+  const sample=[
+    {id:'deezer:9700001',title:'Fjörd Song',artist:'Björk',genre:' Rock ',mood:' Dreamy '},
+    {id:'deezer:9700002',title:'Second Song',artist:'Bjork',genre:'rock',mood:'dreamy'},
+    {id:'deezer:9700003',title:'Third Song',artist:'Other',genre:'ROCK',mood:'DREAMY'},
+    {id:'deezer:9700004',title:'Fourth Song',artist:'Other',genre:'pop',mood:'Fresh'},
+    {id:'deezer:9700005',title:'Fifth Song',artist:'Other',genre:'unknown',mood:'Warm'},
+  ];
+  const history=[
+    {id:sample[1].id,action:'like',mood:'  '},
+    {id:sample[2].id,action:'like',mood:'Fresh'},
+  ];
+  const ids=sample.map(t=>t.id);
+  const untouched=JSON.stringify({sample,history});
+  const facets=collectionFacets(sample,history);
+  assert.deepEqual(facets.genres,[{value:'Rock',count:3},{value:'pop',count:1}]);
+  assert.deepEqual(facets.moods,[{value:'Dreamy',count:3},{value:'Warm',count:1}]);
+  assert.equal(facets.moodById.get(sample[1].id),'dreamy');
+  assert.equal(facets.moodById.get(sample[2].id),'DREAMY');
+  const filtered=collectionPageModel(sample,ids,{
+    genre:'rOcK',mood:'dReAmY',moodById:facets.moodById,
+  });
+  assert.equal(filtered.total,3);
+  assert.equal(collectionPageModel(sample,ids,{genre:'Rock',mood:'Dreamy',
+    query:'bjork',moodById:facets.moodById}).total,2);
+  assert.equal(collectionPageModel(sample,ids,{query:'fjord'}).visible[0].id,sample[0].id);
+  assert.equal(collectionPageModel(sample,ids,{query:'  FJÖRD  '}).total,1);
+  const state={...createInitialState(),favorites:ids,savedTracks:sample,history};
+  const ui=createViews({state,catalog:sample,current:null,allGenres:[],
+    collectionGenre:'ROCK',collectionMood:'dreamy'}).renderCollection();
+  assert.match(ui,/<option value="Rock" selected>Rock \(3\)<\/option>/);
+  assert.match(ui,/<option value="Dreamy" selected>Dreamy \(3\)<\/option>/);
+  assert.match(ui,/Showing 3 of 5 saved songs/);
+  assert.equal(JSON.stringify({sample,history}),untouched,'faceting is browse-only');
+});

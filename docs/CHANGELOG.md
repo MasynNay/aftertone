@@ -1,3 +1,11 @@
+## v0.12 development — More forgiving saved-song search and tags (November 27, 2026)
+
+- Collection merges genre and mood labels that differ only by capitalization, surrounding spaces or common accent marks. One genre now has one honest count and a filter works regardless of how its original source spelled the tag.
+- Saved-song search finds names with or without accents (for example, "Bjork" finds "Björk") while leaving original titles, artists, and provider tags unchanged.
+- A blank, unknown or generic "Fresh" saved-history mood no longer conceals meaningful catalog mood metadata. An explicit Tune Lab mood still takes priority.
+- Keep the selected filter if removing a saved song changes which capitalization represents that tag. No favorites, preferences, history, exports or backup schema are rewritten.
+- Added pure Node coverage and a second fictional cross-browser fixture for mixed-case genre/mood metadata, accent-insensitive search and storage non-mutation. Real mobile/screen-reader checks and external-provider permission review remain open (#7, #3).
+
 ## v0.12 development — Full-library genre and mood Collection filters (November 23, 2026)
 
 - Collection now has **Genre** and **Mood** filters, with actual saved-song counts in each option. They combine with existing text search and title/artist/recent sorting before selecting the visible 40-song page, so results reflect the **whole** library rather than just currently rendered cards.
