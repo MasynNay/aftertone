@@ -1,6 +1,6 @@
 /** Pure recommendation and taste-modeling functions. No access to DOM or storage. */
 import { artistKey, chooseListeningLane } from './discovery/rotation.mjs';
-import {MAX_HISTORY} from './collection-capacity.mjs';
+import {MAX_HISTORY,addCollectionTracks} from './collection-capacity.mjs';
 
 export const MOODS = ['Bright', 'Warm', 'Dreamy', 'Intense', 'Reflective', 'Hopeful', 'Bold', 'Focused', 'Mysterious'];
 
@@ -15,28 +15,35 @@ export function computeTaste(history, catalog) {
   let recognized = 0;
   let correct = 0;
   let answered = 0;
-  let liked = 0;
+  let liked = 0, total = 0, identifiedGenres=0, identifiedMoods=0;
+  const known=value=>typeof value==='string'&&value.trim()&&!['unknown','all','fresh'].includes(value.trim().toLowerCase())?value.trim():null;
   for (const event of history) {
+    if(!event?.id||!['like','pass'].includes(event.action))continue;
+    total++;
     const track = lookup.get(event.id);
-    if (!track && !event.genre) continue;
     const rating = (event.action === 'like' ? 3 : -1) * (event.context === 'search' ? .5 : 1);
     if (event.action === 'like') liked++;
     if (event.recognized === true) recognized++;
-    if (event.correct !== null && event.correct !== undefined) {
+    if (typeof event.correct==='boolean') {
       answered++;
       if (event.correct) correct++;
     }
-    const selectedGenre = track?.genre || event.genre;
-    if (selectedGenre && selectedGenre !== 'unknown' && selectedGenre !== 'all')
+    // Provider defaults must never mask a real historic classification.
+    const selectedGenre = known(track?.genre) || known(event.genre);
+    if (selectedGenre) {
+      identifiedGenres++;
       genres.set(selectedGenre, (genres.get(selectedGenre) ?? 0) + rating);
-    const mood = event.mood || track?.mood || 'Fresh';
-    if (mood && mood !== 'Fresh' && mood !== 'unknown')
+    }
+    const mood = known(event.mood) || known(track?.mood);
+    if (mood) {
+      identifiedMoods++;
       moods.set(mood, (moods.get(mood) ?? 0) + rating);
+    }
   }
   return {
     genres: [...genres].sort((a, b) => b[1] - a[1]),
     moods: [...moods].sort((a, b) => b[1] - a[1]),
-    total: history.length, liked, recognized, correct, answered,
+    total, liked, recognized, correct, answered, identifiedGenres, identifiedMoods,
     accuracy: answered ? Math.round(correct / answered * 100) : null,
   };
 }
@@ -130,6 +137,17 @@ export function recordChoice(state, { id, action, recognized = null, correct = n
     history: [...state.history, event].slice(-MAX_HISTORY),
     favorites: action === 'like' && !alreadySaved ? [...state.favorites, id] : state.favorites,
   };
+}
+
+/** Tune Lab is independent from discovery votes. Persist its mood on the
+ * saved track itself (including podium/legacy saves without history).
+ * Keep an existing decision in sync without manufacturing a new one. */
+export function setSavedTrackMood(state,track,mood) {
+  if(!track?.id||!state.favorites.includes(track.id)||!MOODS.includes(mood))return state;
+  const next=addCollectionTracks(state,[track]);
+  return {...next,
+    savedTracks:next.savedTracks.map(item=>item.id===track.id?{...item,mood}:item),
+    history:next.history.map(event=>event.id===track.id?{...event,mood}:event)};
 }
 
 export function removeFavorite(state, id) {

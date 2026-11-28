@@ -1,3 +1,5 @@
+**v0.12 taste accuracy (November 27, 2026):** Metadata-independent decision totals and durable saved-track moods, including no-history favorites. Preserve the current session/backup schema. Test reload and backup transfer without manufactured choices.
+
 **v0.12 Collection recovery (November 27, 2026):** Explicit bounded recovery for legacy favorite IDs, using local catalog or exact Deezer lookup, with cancellation and verified persistence. Unsupported identities remain intact; no claim of universal provider recovery.
 
 **v0.12 Collection capacity protection (November 27, 2026):** Shared existing session/backup limits, atomic additions, no silent favorite metadata eviction, and provenance-aware Undo. Preserve legacy favorites and test backup round trips. Physical-device storage limits still vary by browser.
