@@ -1,3 +1,7 @@
+## Verified personalization imports (v0.12 development)
+
+The playlist dialog cancellation fixture also simulates silently dropped playlist replacement, deletion and artist-preference storage writes. It requires the corresponding status message, preserved retry inputs, unchanged old playlist, successful retry and independent active artist personalization after removing an inactive playlist. All provider metadata is fictional; these are browser regressions, not live licensing or physical device validation.
+
 ## Restore comparison and non-destructive cancellation (v0.12 development)
 
 Chromium and Firefox tests import a valid fictional progress backup into a profile with a different saved-song and listening-history count. Before storage can change, the native confirmation must show explicit **current → backup** counts, signed differences, and replacement-not-merge wording. Canceling the prompt must preserve the current browser's stored data byte-for-byte; confirming uses the existing validated and rollback-protected restore path. Pure Node tests additionally exercise reductions (including playlist data), malformed summaries, and legacy v1 backups that do not overwrite optional playlist or lyric information. These tests use local, fictional metadata and do not establish real-device storage durability or third-party media rights.
