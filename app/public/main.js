@@ -30,6 +30,7 @@ import { renderDuels } from './duels-view.js';
 import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTournament, tournamentStatusLabel } from '/src/tournament-themes.mjs';
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
+import {buildSavedQueue,nextSavedIndex} from '/src/saved-playback.mjs';
 import {editPersonalPlaylist,personalPlaylists} from '/src/personal-playlists.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
 import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
@@ -170,6 +171,8 @@ function cancelPlaylistLinkFlight() {
 }
 let modalReturnFocus = null; // Original opener survives nested dialogs.
 let activeAudioId = null;
+let savedPlayback=null;
+let savedPlaybackRepeat=false;
 let continuousListening = false; // Starts only on a user-initiated Play in Discover.
 let autoAdvanceEnabled=true; // Optional single-preview mode; session-only, default unchanged.
 const unvotedPreviews = new Set(); // Auto-advanced previews aren't falsely recorded as dislikes.
@@ -339,7 +342,11 @@ function commitSessionChange(next) {
     toast('Your change was NOT saved. Check browser storage, then try again.');
     return false;
   }
+  const previous=state;
   state=next;
+  if(savedPlayback&&(previous.favorites!==next.favorites||previous.personalPlaylists!==next.personalPlaylists)){
+    savedPlayback=null;stopAudio();updatePlaybackView();
+  }
   return true;
 }
 const currentTheme = () => THEMES.find((t) => t.id === state.theme) || THEMES[0];
@@ -767,6 +774,7 @@ function prewarm(track) {
 }
 
 function stopContinuous() {
+  savedPlayback=null;
   cancelPendingChoice();
   continuousListening = false;
   consecutivePlaybackFailures = 0;
@@ -885,12 +893,69 @@ function togglePreviewMode() {
   if(!autoAdvanceEnabled)continuousListening=false;
   updatePlaybackView();
 }
+function startSavedPlayback(kind,shuffle=false){
+  if(view!=='collection'||modal)return;
+  const selected=personalPlaylists(state).find(p=>p.id===personalPlaylistId);
+  if(kind==='playlist'&&!selected)return;
+  const ids=kind==='playlist'?selected.trackIds:state.favorites;
+  const queue=buildSavedQueue(ids,state.favorites,catalog,{shuffle});
+  if(!queue.length)return toast('No saved audio previews are available in this selection.');
+  stopContinuous();
+  savedPlayback={ids:queue,index:0,name:kind==='playlist'?selected.name:'Your Collection',running:true,done:false};
+  void togglePlayback(lookup(queue[0]));
+}
+function moveSavedPlayback(direction,automatic=false){
+  const session=savedPlayback;
+  if(!session||view!=='collection'||modal)return;
+  const next=nextSavedIndex(session.ids,session.index,{direction,repeat:savedPlaybackRepeat});
+  if(next===null){
+    if(automatic){session.running=false;session.done=true;stopAudio();updatePlaybackView();}
+    return;
+  }
+  const track=lookup(session.ids[next]);
+  if(!track||!state.favorites.includes(track.id)){stopContinuous();return toast('Saved queue changed. Start listening again.');}
+  stopAudio();session.index=next;session.running=true;session.done=false;
+  void togglePlayback(track,automatic);
+}
+function completeSavedPreview(){
+  const session=savedPlayback;
+  if(!session||!session.running||view!=='collection'||modal||isLoadingAudio||session.ids[session.index]!==activeAudioId)return false;
+  session.running=false;
+  moveSavedPlayback(1,true);return true;
+}
+function updateSavedPlayback(){
+  const panel=$('#saved-playback-panel');
+  if(!panel)return;
+  const session=savedPlayback;
+  panel.hidden=!session;
+  if(!session)return;
+  const id=session.ids[session.index],track=lookup(id);
+  const playing=activeAudioId===id&&!audio.paused&&!isLoadingAudio;
+  const loading=activeAudioId===id&&isLoadingAudio;
+  const failed=failedAudioId===id||permissionBlockedTrackId===id;
+  setTextIfChanged($('#saved-playback-title'),track?.title||'Saved preview');
+  setTextIfChanged($('#saved-playback-artist'),track?.artist||'');
+  setTextIfChanged($('#saved-playback-status'),session.done?'Queue finished · '+session.ids.length+' previews':session.name+' · '+(session.index+1)+' of '+session.ids.length+' · '+(loading?'Loading':playing?'Playing':failed?(failedAudioQuota?'Provider limited — retry later':'Preview unavailable or blocked — retry or skip'):'Paused'));
+  const toggle=$('#saved-playback-toggle');
+  if(toggle)setTextIfChanged(toggle,loading?'Cancel loading':playing?'Pause':session.done?'Replay last':failed?'Retry preview':'Play');
+  const prev=$('#saved-playback-prev'),next=$('#saved-playback-next');
+  if(prev)prev.disabled=!savedPlaybackRepeat&&session.index===0;
+  if(next)next.disabled=!savedPlaybackRepeat&&session.index===session.ids.length-1;
+  const repeat=$('#saved-playback-repeat');
+  if(repeat){if(repeat.getAttribute('aria-pressed')!==String(savedPlaybackRepeat))repeat.setAttribute('aria-pressed',String(savedPlaybackRepeat));setTextIfChanged(repeat,savedPlaybackRepeat?'Repeat: On':'Repeat: Off');}
+  const seconds=activeAudioId===id?Math.min(previewLength,audio.currentTime||0):0;
+  const fill=$('#saved-playback-progress');if(fill)fill.style.width=(seconds/previewLength*100)+'%';
+  setTextIfChanged($('#saved-playback-time'),'0:'+String(Math.floor(seconds)).padStart(2,'0')+' / 0:'+previewLength);
+}
 async function togglePlayback(track, automatic = false) {
   if (!track || (view==='discover' && animatingChoice)) return;
   if (isLoadingAudio && activeAudioId === track.id) {
     // A second *manual* Play is an explicit cancel, not a dead button.
     // Automatic resume checks must still avoid interrupting their own lookup.
-    if (!automatic) stopContinuous();
+    if (!automatic) {
+      if(savedPlayback){savedPlayback.running=false;stopAudio();updatePlaybackView();}
+      else stopContinuous();
+    }
     return;
   }
   // Switching contestants while a prior preview is resolving cancels the stale
@@ -968,7 +1033,8 @@ async function togglePlayback(track, automatic = false) {
       continuousListening = false;
       consecutivePlaybackFailures = 0;
       stopAudio();
-      if ((view === 'discover' && current?.id === track.id) || view === 'duels') {
+      if(savedPlayback)savedPlayback.running=false;
+      if ((view === 'discover' && current?.id === track.id) || view === 'duels' || savedPlayback) {
         // Bracket previews also need a persistent, non-voting explanation.
         permissionBlockedTrackId = track.id;
         permissionBlockedWasAutomatic = automatic;
@@ -993,6 +1059,7 @@ async function togglePlayback(track, automatic = false) {
       failedSources.add(track.id);
     }
     failedAudioId = track.id;
+    if(savedPlayback)savedPlayback.running=false;
     failedAudioQuota = rateLimited;
     toast(failedAudioQuota
       ? 'Deezer is temporarily limiting requests. Wait a moment before Retry Preview, or skip without voting.'
@@ -1013,6 +1080,7 @@ async function togglePlayback(track, automatic = false) {
 }
 
 function updatePlaybackView() {
+  updateSavedPlayback();
   const mode=$('#preview-mode');
   if(mode) {
     const pressed=String(autoAdvanceEnabled);
@@ -1168,6 +1236,7 @@ audio.addEventListener('timeupdate', () => {
     // the OLD clip's 22-second position. Never advance the NEW song until
     // its own play() has completed and it is actively playing.
     if (isLoadingAudio) return;
+    if(!audio.paused&&completeSavedPreview())return;
     if (continuousListening && !audio.paused && view === 'discover' &&
         current?.id === activeAudioId && !modal) { completePreview(); return; }
     audio.pause();
@@ -1179,6 +1248,7 @@ audio.addEventListener('ended', () => {
   // A canceled/old media source may deliver a delayed ended event after
   // the next track has started. Never skip that unheard recording. Genuine
   // short clips (under 22 seconds) still advance when the current audio ends.
+  if(audio.ended&&completeSavedPreview())return;
   if (continuousListening && !isLoadingAudio && audio.ended &&
       view === 'discover' && !modal && current?.id === activeAudioId)
     completePreview();
@@ -1239,6 +1309,7 @@ audio.addEventListener('error', async () => {
   if (isCurrent() && !isLoadingAudio) {
     if(failedAudioId===activeId) return; // A failed media element can emit more than one error.
     failedAudioId = activeId;
+    if(savedPlayback)savedPlayback.running=false;
     // A terminal error should never leave a previous source playing while
     // announcing that the same recording is unavailable.
     audio.pause();
@@ -1889,6 +1960,7 @@ async function importPlaylistLinkFromDialog() {
 }
 
 function openModal(kind, extra = {}) {
+  savedPlayback=null;
   cancelPendingChoice();
   cancelPlaylistLinkFlight();
   setThemeMenuOpen(false);
@@ -2692,7 +2764,7 @@ document.addEventListener('click', async (event) => {
     return render();
   }
   const preview = event.target.closest('[data-preview]');
-  if (preview) return togglePlayback(lookup(preview.dataset.preview));
+  if (preview) {savedPlayback=null;updateSavedPlayback();return togglePlayback(lookup(preview.dataset.preview));}
   const path=event.target.closest('[data-path]:not([data-action="journal-path"])');
   if(view==='discover' && path && ['familiar','balanced','explore'].includes(path.dataset.path)) {
     changeDiscoveryPath(path.dataset.path); // Distinct request and presentation pools.
@@ -2848,6 +2920,20 @@ document.addEventListener('click', async (event) => {
       journalPage=next;render();
       main.querySelector('#journal-page-status')?.focus();
       return;
+    }
+    case 'saved-playback-start': return startSavedPlayback(action.dataset.kind,action.dataset.shuffle==='true');
+    case 'saved-playback-toggle': {
+      if(view!=='collection'||!savedPlayback)return;
+      const s=savedPlayback,id=s.ids[s.index];
+      if(isLoadingAudio&&activeAudioId===id){s.running=false;stopAudio();updatePlaybackView();return;}
+      if(activeAudioId===id&&!audio.paused){s.running=false;audio.pause();updatePlaybackView();return;}
+      s.running=true;s.done=false;return togglePlayback(lookup(id));
+    }
+    case 'saved-playback-prev': return moveSavedPlayback(-1);
+    case 'saved-playback-next': return moveSavedPlayback(1);
+    case 'saved-playback-repeat': savedPlaybackRepeat=!savedPlaybackRepeat;return updatePlaybackView();
+    case 'saved-playback-stop': {
+      stopContinuous();main.querySelector('[data-action="saved-playback-start"]')?.focus({preventScroll:true});return;
     }
     case 'personal-playlist-toggle':
     case 'personal-playlist-remove':

@@ -1,3 +1,8 @@
+## v0.12 development — Saved preview playback (November 28, 2026)
+
+- Play saved Collection or personal playlist previews in order or shuffled, with previous/next, pause/resume, repeat, stop, progress and volume controls.
+- Queue snapshots include only saved identities with metadata and exclude video-only entries. On failure, playback holds for explicit retry or skip; navigation, dialogs and edits interrupt the session. No votes, audio downloads or persisted queue state.
+
 ## v0.12 development — Listening Recap and journal interaction (November 28, 2026)
 
 - Added a local listening recap with 7-day, 30-day and all-history metrics, daily Keep/Pass activity, top artists and genres, and a keyboard-accessible data table.

@@ -235,6 +235,16 @@ function renderCollectionRecovery() {
 }
 
 
+function renderSavedPlayback(){
+  return `<section class="panel saved-playback" aria-label="Saved preview player">
+  <h2>Listen to your Collection.</h2><p class="journal-copy">Play short audio previews in saved order or shuffle. Unavailable metadata and video-only entries are excluded. Playback stops on failure or when leaving Collection; it never records votes.</p>
+  <div class="saved-playback-controls"><button type="button" class="accent-button" data-action="saved-playback-start" data-kind="collection" ${state.favorites.length?'':'disabled'}>Play Collection</button><button type="button" class="secondary-button" data-action="saved-playback-start" data-kind="collection" data-shuffle="true" ${state.favorites.length?'':'disabled'}>Shuffle Collection</button></div>
+  <div id="saved-playback-panel" hidden><strong id="saved-playback-title"></strong><span id="saved-playback-artist"></span><p id="saved-playback-status" role="status" aria-live="polite"></p>
+    <div class="saved-playback-meter" aria-hidden="true"><span id="saved-playback-progress"></span></div><span id="saved-playback-time"></span>
+    <div class="saved-playback-controls"><button type="button" id="saved-playback-prev" class="secondary-button" data-action="saved-playback-prev">Previous</button><button type="button" id="saved-playback-toggle" class="accent-button" data-action="saved-playback-toggle">Play</button><button type="button" id="saved-playback-next" class="secondary-button" data-action="saved-playback-next">Next</button><button type="button" id="saved-playback-repeat" class="secondary-button" data-action="saved-playback-repeat" aria-pressed="false">Repeat: Off</button><button type="button" class="secondary-button" data-action="saved-playback-stop">Stop</button></div>
+    <label class="saved-playback-volume">Volume <input type="range" min="0" max="100" value="${state.volume}" data-volume-slider aria-label="Saved preview volume"><span data-volume-value>${state.volume}%</span></label>
+  </div></section>`;
+}
 function renderPersonalPlaylists(items) {
   const lists=personalPlaylists(state);
   const selected=lists.find(p=>p.id===personalPlaylistId);
@@ -250,6 +260,7 @@ function renderPersonalPlaylists(items) {
     ${lists.length?`<label for="personal-playlist-select">Edit playlist</label><select id="personal-playlist-select" class="select-input"><option value="">Choose a playlist</option>${lists.map(p=>`<option value="${html(p.id)}" ${selected?.id===p.id?'selected':''}>${html(p.name)} (${p.trackIds.length})</option>`).join('')}</select>`:''}
     ${selected?`<div class="personal-playlist-editor">
       <form id="personal-playlist-rename" class="personal-playlist-form"><label for="personal-playlist-rename-name">Playlist name</label><div><input id="personal-playlist-rename-name" class="search-input" maxlength="60" value="${html(selected.name)}" required><button type="submit" class="secondary-button">Rename</button><button type="button" class="secondary-button" data-action="personal-playlist-delete">Delete Playlist</button></div></form>
+      <div class="saved-playback-controls"><button type="button" class="accent-button" data-action="saved-playback-start" data-kind="playlist" ${available?'':'disabled'}>Play Playlist</button><button type="button" class="secondary-button" data-action="saved-playback-start" data-kind="playlist" data-shuffle="true" ${available?'':'disabled'}>Shuffle Playlist</button></div>
       <p id="personal-playlist-status" role="status" tabindex="-1" data-page="${page}">${available} of ${rows.length} songs available · ${rows.length-available} unavailable</p>
       ${rows.length?`<ol class="personal-playlist-rows" start="${(page-1)*20+1}">${rows.slice((page-1)*20,page*20).map((row,i)=>`<li><div><strong>${html(row.track?.title||'Song details unavailable')}</strong><span>${html(row.track?.artist||row.id)}${row.available?'':row.saved?' · Missing details':' · Not currently saved'}</span></div><div class="personal-playlist-row-actions"><button type="button" class="secondary-button" data-action="personal-playlist-move" data-id="${html(row.id)}" data-direction="-1" aria-label="Move song earlier" ${(page-1)*20+i===0?'disabled':''}>↑</button><button type="button" class="secondary-button" data-action="personal-playlist-move" data-id="${html(row.id)}" data-direction="1" aria-label="Move song later" ${(page-1)*20+i===rows.length-1?'disabled':''}>↓</button><button type="button" class="secondary-button" data-action="personal-playlist-remove" data-id="${html(row.id)}" aria-label="Remove song from playlist">Remove</button></div></li>`).join('')}</ol>`:'<p class="empty-micro">This playlist is empty. Add saved songs below.</p>'}
       ${pages>1?`<div class="personal-playlist-row-actions"><button type="button" class="secondary-button" data-action="personal-playlist-page" data-page="${page-1}" ${page===1?'disabled':''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" class="secondary-button" data-action="personal-playlist-page" data-page="${page+1}" ${page===pages?'disabled':''}>Next</button></div>`:''}
@@ -286,6 +297,7 @@ function renderCollection() {
   <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets and personal playlists, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
   ${renderCollectionInsights(insights,{genre,mood})}
   ${renderCollectionRecovery()}
+  ${renderSavedPlayback()}
   ${renderPersonalPlaylists(items)}
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
   ${items.length ? `<div class="collection-tools">

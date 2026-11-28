@@ -1,3 +1,5 @@
+**v0.12 saved preview playback (November 28, 2026):** Collection and personal playlist preview queues, shuffle, repeat, transport controls and explicit failure recovery. Integrated with the existing shared audio element, not a full-song service. Physical-device and live-provider verification remain open.
+
 **v0.12 Listening Recap (November 28, 2026):** Expanded Taste Map with local-only date ranges, activity visualization and accessible data table, ranked artists/genres, and artist-to-journal drilldown. Scoped discovery-path click handling to actual discovery controls. Node and synthetic browser regression coverage added; physical-device and real-provider verification remain open.
 
 **v0.12 personal playlists (November 28, 2026):** Named ordered saved-song playlists, membership management, bounded editing and existing progress backup integration. No autoplay or new provider contracts. Playlist playback queues remain a separate future milestone. Full verification and physical-device acceptance remain open.
