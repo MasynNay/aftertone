@@ -21,7 +21,7 @@ import { selectRouteQueue, isActiveRequest } from '/src/discovery/route-session.
 import { mergeRelatedArtists, interleaveArtistBranches } from '/src/discovery/graph.mjs';
 import { createRelatedRequestScope } from '/src/discovery/related-request-scope.mjs';
 import { createPreviewRequestScope } from '/src/discovery/preview-request-scope.mjs';
-import { REFILL_INTERVAL_MS, shouldRefill } from '/src/discovery/auto-refill.mjs';
+import { REFILL_INTERVAL_MS, shouldRefill,countUpcoming,queueStatus } from '/src/discovery/auto-refill.mjs';
 import {rememberUnratedPreview,previousUnratedPreview,removeUnratedPreview} from '/src/discovery/preview-history.mjs';
 import { nextDiscoveryRetry } from '/src/discovery/retry-policy.mjs';
 import { eligibleProviders } from '/src/discovery/provider-availability.mjs';
@@ -402,6 +402,25 @@ function routeCandidates(genre=state.genre) {
       seeds:(profile?.artists || []).map(x=>x.artist),related:seedRelated,position:sessionPosition}});
 }
 function availableCount(genre=state.genre) {return routeCandidates(genre).tracks.length;}
+function upcomingCount(genre=state.genre) {return countUpcoming(routeCandidates(genre).tracks,current?.id);}
+function discoveryQueueSnapshot(feed=getFeed(),ready=upcomingCount()) {
+  return queueStatus({ready,loaded:feed.ids.size,loading:feed.loading,hasMore:feed.hasMore,retryAt:feed.retryAt,
+    searching:Boolean(searchQuery),visible:!document.hidden,active:view==='discover'&&!modal,
+    sourceLabel:SOURCE_LABEL[state.source]||'Music provider'});
+}
+/** Refill status updates must never replace the playing card or steal focus. */
+function updateQueueView(snapshot=null) {
+  const counter=$('#queue-count');
+  if(view!=='discover'||challengeIds.length||!counter)return;
+  const status=snapshot||discoveryQueueSnapshot();
+  setTextIfChanged(counter,String(status.ready));
+  setTextIfChanged($('#queue-refill-status'),status.message);
+  setTextIfChanged($('.queue-loaded'),status.loadedLabel);
+  const queue=$('.compact-queue');
+  if(queue&&queue.dataset.queueState!==status.state)queue.dataset.queueState=status.state;
+  const button=$('#queue-refill-button');
+  if(button){const disabled=String(status.state==='loading');if(button.getAttribute('aria-disabled')!==disabled)button.setAttribute('aria-disabled',disabled);}
+}
 function sourceOrder() {
   // YouTube is opt-in: do not silently introduce video ads into the audio mix.
   return state.source === 'mix' ? ['audius', 'jellyfin', 'jamendo', 'commons'].filter((x) => availableSources.includes(x)) : [state.source];
@@ -417,7 +436,7 @@ function focusDiscoveryRecovery() {
 }
 /** Fetch new batches progressively. Counters represent loaded songs, not provider catalog sizes. */
 async function loadMore(genre = state.genre, showStatus = false, prioritizeRelated = false, restoreKeyboardFocus = false) {
-  if (challengeIds.length) return;
+  if (challengeIds.length || (!showStatus && view!=='discover')) return;
   const feed = getFeed(genre);
   cancelStaleDiscovery(feed);
   const requestSearch=searchQuery;
@@ -430,7 +449,7 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
     feed.retryAt=Date.now()+45000;
     feed.emptyRefills=0;
     feed.error='Still looking for matches. Try searching an artist, or keep listening to available discoveries.';
-    if(showStatus) render();
+    updateQueueView();
     return;
   }
   feed.retryAt=0;
@@ -446,6 +465,7 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
   feed.loading = true;
   feed.error = '';
   if (showStatus || !current) render();
+  else updateQueueView();
   let successes = 0;
   try {
     const seedMode = seedActive && !requestSearch && ['deezer','youtube','jellyfin','library-hits'].includes(state.source);
@@ -581,12 +601,7 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
       const neededCard = !current;
       if (neededCard) chooseNext();
       if (neededCard || showStatus) render();
-      else {
-        const queueLabel = $('#queue-count');
-        if (queueLabel) queueLabel.textContent = String(availableCount(genre));
-        const loaded = $('.queue-loaded');
-        if (loaded) loaded.textContent = `${feed.ids.size} loaded · Deezer`;
-      }
+      else updateQueueView();
       maybeResumeContinuous();
       // A keyboard Retry/Filter action can replace the focused button twice:
       // once for loading and again for the result. Return to Play or Retry only
@@ -606,21 +621,28 @@ async function loadMore(genre = state.genre, showStatus = false, prioritizeRelat
 /** Regular check, not an unconditional API request. Keeps a deep queue for
  * quick swipe sessions; no timers are created by individual card renders. */
 function autoRefillTick() {
+  // Do not rebuild the candidate pool every three seconds on unrelated pages
+  // or while the tab is hidden. This check does not start or stop audio.
+  if(view!=='discover'||modal||challengeIds.length||document.hidden)return;
   const feed=getFeed();
-  const ready=availableCount(state.genre);
-  const active=view==='discover' && !modal && !searchQuery;
+  const ready=upcomingCount(state.genre);
+  const active=!searchQuery;
+  updateQueueView(discoveryQueueSnapshot(feed,ready));
   if(Date.now()>=feed.retryAt && shouldRefill({ready,loaded:feed.ids.size,loading:feed.loading,hasMore:feed.hasMore,
-    visible:!document.hidden,active,challenge:Boolean(challengeIds.length)})) {
+    visible:true,active,challenge:false})) {
     void loadMore(state.genre,false);
   }
-  const counter=$('#queue-count');
-  if(counter) counter.textContent=String(ready);
 }
 setInterval(autoRefillTick,REFILL_INTERVAL_MS);
+document.addEventListener('visibilitychange',()=>{
+  // No audio side effects; when returning to the tab, resume refill checks.
+  if(document.hidden)updateQueueView();
+  else autoRefillTick();
+});
 function maybeTopUp(restoreKeyboardFocus = false) {
   if (challengeIds.length) return;
   const feed = getFeed();
-  if (availableCount(state.genre) < 12 && feed.hasMore && !feed.loading)
+  if (upcomingCount(state.genre) < 12 && feed.hasMore && !feed.loading && Date.now()>=feed.retryAt)
     void loadMore(state.genre,false,false,restoreKeyboardFocus);
   else if (restoreKeyboardFocus && document.activeElement === main)
     focusDiscoveryRecovery();
@@ -1359,12 +1381,15 @@ function goTo(nextView) {
   if(nextView!=='collection')cancelCollectionRecovery();
   if (modal) closeModal();
   stopContinuous();
+  const previousView=view;
+  if(previousView==='discover'&&nextView!=='discover')cancelStaleDiscovery(null);
   view = nextView;
   setMobileFiltersOpen(false);
   render();
   // Moving focus to the named main landmark announces the destination once.
   main.focus({preventScroll:true});
   window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  if(nextView==='discover'&&previousView!=='discover'&&!challengeIds.length)maybeTopUp();
 }
 
 function render() {
@@ -1436,9 +1461,11 @@ function render() {
   // removing/adding a track never leaves the visitor on an empty phantom page.
   challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
+  const activeFeed=view==='discover'?getFeed():null;
+  const queue=view==='discover'&&!challengeIds.length?discoveryQueueSnapshot(activeFeed):null;
   const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,removedFavorite: lastRemovedFavorite,
     collectionRecovery:view==='collection'?{...collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted),busy:Boolean(collectionRecoveryFlight),message:collectionRecoveryMessage}:null,
-    feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre),autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
+    feed: activeFeed?{ ...activeFeed, loading: activeFeed.loading || (!activeFeed.primed && !current), available:queue?.ready??0,queue,autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }:{}, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
   if (focusedMobileFilterAction && side && document.body.classList.contains('mobile-filters-open')) {
@@ -1880,6 +1907,7 @@ function openModal(kind, extra = {}) {
   if (isLoadingAudio) stopAudio(); // Abort pending metadata and invalidate its generation.
   else audio.pause(); // Keep an already-loaded preview's position for a later manual Play.
   updatePlaybackView();
+  updateQueueView();
   renderModal();
 }
 
@@ -1915,6 +1943,7 @@ function closeModal() {
   const choice = modal;
   modal = null;
   renderModal();
+  updateQueueView();
   if (wasChoice && choice.id) recordDecision(choice.id, 'like', { recognized: choice.recognized, correct: choice.correct, mood: choice.mood });
 }
 
@@ -2710,6 +2739,7 @@ document.addEventListener('click', async (event) => {
       return;
 
     case 'load-more': {
+      if(view!=='discover'||modal||getFeed().loading||action.getAttribute('aria-disabled')==='true')return;
       const restoreKeyboardFocus=document.activeElement===action;
       // The active retry button disappears while its feed is loading.
       if (restoreKeyboardFocus) main.focus({preventScroll:true});

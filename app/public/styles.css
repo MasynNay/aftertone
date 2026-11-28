@@ -3169,3 +3169,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .collection-recovery-panel{display:grid;gap:10px;margin:16px 0;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);}
 .collection-recovery-panel h2{font-size:16px;margin:0 0 8px;}.collection-recovery-panel p{font-size:12px;line-height:1.6;color:var(--muted);margin:5px 0;overflow-wrap:anywhere;}
 .collection-recovery-actions{display:flex;flex-wrap:wrap;gap:8px;}.collection-recovery-actions button{min-height:44px;white-space:normal;}.collection-recovery-panel #collection-recovery-status:focus{outline:2px solid var(--accent);outline-offset:4px;}
+
+/* Queue feedback stays stable while listening; only text/state updates. */
+.compact-queue #queue-refill-status{display:block;margin:3px 0 0;line-height:1.45;}
+.compact-queue[data-queue-state="cooldown"] .queue-light,.compact-queue[data-queue-state="paused"] .queue-light,.compact-queue[data-queue-state="exhausted"] .queue-light,.compact-queue[data-queue-state="bounded"] .queue-light{background:var(--muted);box-shadow:none;}
+.compact-queue #queue-refill-button{min-height:44px;white-space:nowrap;}.compact-queue #queue-refill-button[aria-disabled="true"]{opacity:.55;cursor:wait;}
+@media(max-width:600px){.compact-queue #queue-refill-button{margin-left:18px;}.compact-queue>span:nth-child(2){flex:1;min-width:0;}.compact-queue .queue-loaded{white-space:normal;}}
