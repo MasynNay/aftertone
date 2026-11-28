@@ -77,7 +77,7 @@ test('playlist dialog cancels obsolete link imports and ignores delayed file rea
   const lifecycle=source.match(/function cancelPlaylistLinkFlight\(\) \{([\s\S]*?)\n\}/)?.[1];
   assert.ok(lifecycle,'Missing cancellation helper for the active playlist dialog');
   assert.match(lifecycle,/flight\.controller\.abort\(\)/);
-  assert.match(source,/function openModal\(kind, extra = \{\}\) \{\s*cancelPlaylistLinkFlight\(\)/);
+  assert.match(source,/function openModal\(kind, extra = \{\}\) \{\s*cancelPendingChoice\(\);\s*cancelPlaylistLinkFlight\(\)/);
   assert.match(source,/function closeModal\(\) \{\s*if \(!modal\) return;\s*cancelPlaylistLinkFlight\(\)/);
   assert.match(source,/function startPlaylistDiscovery\(\) \{[\s\S]*?cancelPlaylistLinkFlight\(\)/);
   const link=source.slice(source.indexOf('async function importPlaylistLinkFromDialog()'),source.indexOf('function openModal(kind'));

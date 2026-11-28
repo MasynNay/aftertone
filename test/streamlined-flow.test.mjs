@@ -26,9 +26,12 @@ test('sidebar settings contain genre, language and optional import controls',()=
  assert.doesNotMatch(sidebar,/source-select/);
 });
 
-test('quick keep records decision immediately and never enters recognition modal',()=>{
+test('quick keep records a guarded decision directly and never enters recognition modal',()=>{
  const code=readFileSync(new URL('../app/public/main.js', import.meta.url),'utf8');
- assert.match(code,/else recordDecision\(selected, 'like'\)/);
+ const choice=code.split('function acceptChoice(action) {')[1].split('function handleModalAction')[0];
+ assert.match(choice,/!\['like','pass'\]\.includes\(action\)/);
+ assert.match(choice,/recordDecision\(selected,action\)/);
+ assert.doesNotMatch(choice,/openModal\('choice'/);
  assert.doesNotMatch(code,/else openModal\('choice'/);
  assert.match(code,/const quizSession =|let quizSession =/);
 });
