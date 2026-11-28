@@ -3184,3 +3184,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .journal-paths>button{display:grid;gap:4px;text-align:left;white-space:normal;overflow-wrap:anywhere;min-width:0;padding:12px;}
 .journal-paths>button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);}
 .journal-clear{justify-self:start;}
+
+/* Personal playlists: compact, responsive ordered list and saved-song actions. */
+.personal-playlists{margin:20px 0;display:grid;gap:12px;min-width:0;}
+.personal-playlists h2{font-size:clamp(18px,2vw,24px);margin:5px 0 0;}
+.personal-playlist-form,.personal-playlist-editor{display:grid;gap:8px;min-width:0;}
+.personal-playlist-form>div,.personal-playlist-row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.personal-playlist-form input{min-width:0;flex:1 1 160px;max-width:100%;}
+.personal-playlists button,.personal-playlist-add{min-height:44px;}
+.personal-playlists select{width:100%;min-width:0;min-height:44px;}
+#personal-playlist-status{margin:0;font-size:12px;color:var(--muted);}
+.personal-playlist-rows{margin:0;padding:0;list-style:none;display:grid;gap:0;}
+.personal-playlist-rows li{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:10px 0;}
+.personal-playlist-rows li>div:first-child{display:grid;gap:4px;min-width:0;overflow-wrap:anywhere;}
+.personal-playlist-rows li span{font-size:12px;color:var(--muted);}
+.personal-playlist-add{margin-top:8px;width:100%;white-space:normal;}
+.personal-playlist-add[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);}

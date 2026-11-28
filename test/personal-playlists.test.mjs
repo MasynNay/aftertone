@@ -1,0 +1,64 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {editPersonalPlaylist,validatePersonalPlaylists,playlistAvailability} from '../app/src/personal-playlists.mjs';
+import {createInitialState,removeFavorite,restoreRemovedFavorite} from '../app/src/taste.mjs';
+import {saveState,loadState} from '../app/src/persistence.mjs';
+import {createProgressBackup,inspectProgressBackup,restoreProgressBackup,compareProgressContents,compareProgressSummaries} from '../app/src/progress-backup.mjs';
+import {createViews} from '../app/public/views.js';
+const a={id:'deezer:1',title:'First',artist:'Artist'},b={id:'deezer:2',title:'Second',artist:'Artist'};
+const initial=()=>({...createInitialState(),favorites:[a.id,b.id],savedTracks:[a,b]});
+const edit=(s,type,opts={})=>editPersonalPlaylist(s,{id:'pl-one',type,...opts});
+const storage=()=>{const m=new Map();return {getItem:k=>m.get(k)??null,setItem:(k,v)=>m.set(k,v),removeItem:k=>m.delete(k)}};
+test('personal playlists support creation, ordered add, move, rename and deletion without changing favorites',()=>{
+  const original=initial();
+  let s=edit(original,'create',{name:' Road Trip '});
+  s=edit(s,'add',{trackId:a.id});s=edit(s,'add',{trackId:b.id});
+  assert.equal(edit(s,'add',{trackId:a.id}),s);
+  s=edit(s,'move',{trackId:b.id,direction:-1});
+  assert.deepEqual(s.personalPlaylists[0].trackIds,[b.id,a.id]);
+  s=edit(s,'rename',{name:'Night'});
+  assert.equal(s.personalPlaylists[0].name,'Night');
+  s=edit(s,'remove',{trackId:a.id});
+  assert.deepEqual(s.personalPlaylists[0].trackIds,[b.id]);
+  s=edit(s,'delete');
+  assert.deepEqual(s.personalPlaylists,[]);
+  assert.deepEqual(s.favorites,original.favorites);assert.deepEqual(s.history,original.history);
+  assert.equal(original.personalPlaylists,undefined);
+});
+test('playlist membership survives removing and re-keeping a favorite',()=>{
+  let s=edit(edit(initial(),'create',{name:'Mix'}),'add',{trackId:a.id});
+  s=removeFavorite(s,a.id);
+  assert.equal(playlistAvailability(s.personalPlaylists[0],s.favorites,[a,b])[0].available,false);
+  s=restoreRemovedFavorite(s,a.id,0);
+  assert.equal(playlistAvailability(s.personalPlaylists[0],s.favorites,[a,b])[0].available,true);
+});
+test('validate names, capacity and song references before any mutation',()=>{
+  let s=edit(initial(),'create',{name:'Café'});
+  assert.throws(()=>editPersonalPlaylist(s,{type:'create',id:'pl-two',name:'Cafe'}),/duplicate/i);
+  assert.throws(()=>edit(s,'add',{trackId:'deezer:3'}),/Save this song/);
+  assert.throws(()=>edit(s,'rename',{name:' '}),/Invalid/);
+  assert.throws(()=>validatePersonalPlaylists([{id:'pl-one',name:'Mix',trackIds:[a.id,a.id]}]),/duplicate/);
+  assert.throws(()=>validatePersonalPlaylists(Array.from({length:31},(_,i)=>({id:'pl-'+i,name:'Name '+i,trackIds:[]}))),/Invalid/);
+  assert.throws(()=>validatePersonalPlaylists([{id:'pl-one',name:'Mix',trackIds:Array.from({length:501},(_,i)=>'deezer:'+i)}]),/Invalid/);
+});
+test('playlists round-trip through saved state and existing backup format; older replacements disclose loss',()=>{
+  const s=edit(edit(initial(),'create',{name:'Mix'}),'add',{trackId:a.id});
+  const from=storage(),to=storage();assert.ok(saveState(from,s));
+  assert.deepEqual(loadState(from).personalPlaylists,s.personalPlaylists);
+  const file=createProgressBackup(from);
+  restoreProgressBackup(to,file);
+  assert.deepEqual(loadState(to).personalPlaylists,s.personalPlaylists);
+  const legacy=JSON.parse(file);delete legacy.session.personalPlaylists;
+  const current=inspectProgressBackup(file),incoming=inspectProgressBackup(JSON.stringify(legacy));
+  assert.ok(compareProgressSummaries(current.summary,incoming.summary).reductions.includes('Personal playlists'));
+  assert.ok(compareProgressContents(current,incoming).some(x=>x.label==='Personal playlists absent from backup'&&x.count===1));
+  legacy.session.personalPlaylists=[{id:'bad',name:'Mix',trackIds:[]}];
+  assert.throws(()=>inspectProgressBackup(JSON.stringify(legacy)),/Invalid/);
+});
+test('Collection renders escaped playlist controls, membership and unavailable rows',()=>{
+  const state=edit(edit(initial(),'create',{name:'<Mix>'}),'add',{trackId:a.id});
+  const html=createViews({state,catalog:[a,b],current:null,allGenres:['all'],challengeIds:[],challengeResponses:[],personalPlaylistId:'pl-one'}).renderCollection();
+  assert.match(html,/Your Playlists/);assert.match(html,/&lt;Mix&gt;/);assert.doesNotMatch(html,/<Mix>/);
+  assert.match(html,/data-action="personal-playlist-toggle" data-id="deezer:1" aria-pressed="true"/);
+  assert.match(html,/1 of 1 songs available/);
+});

@@ -2,6 +2,7 @@ import { createInitialState } from './taste.mjs';
 import { THEME_IDS } from './themes.mjs';
 import { normalizeVolume } from './volume.mjs';
 import {MAX_HISTORY,MAX_FAVORITE_IDS,MAX_SAVED_TRACKS} from './collection-capacity.mjs';
+import {validatePersonalPlaylists} from './personal-playlists.mjs';
 export const STORAGE_KEY = 'aftertone:session:v1';
 
 /** A defensive boundary: malformed saved state cannot break the app. */
@@ -29,8 +30,13 @@ export function sanitizeState(value) {
     license: typeof t.license === 'string' ? t.license.slice(0, 180) : 'See original source',
     language: typeof t.language === 'string' ? t.language.slice(0,12) : 'unknown', inferredLanguage: typeof t.inferredLanguage === 'string' ? t.inferredLanguage.slice(0,12) : 'unknown',
   }));
+  let playlists;
+  if(Object.hasOwn(value,'personalPlaylists')){
+    try{playlists=validatePersonalPlaylists(value.personalPlaylists);}catch{/* Invalid optional data must not crash listening. */}
+  }
   return {
     version: 1, history, favorites, savedTracks,
+    ...(playlists?{personalPlaylists:playlists}:{}),
     genre: typeof value.genre === 'string' ? value.genre.slice(0, 24) : 'all',
     theme: THEME_IDS.includes(value.theme) ? value.theme : 'night',
     sound: value.sound !== false,
