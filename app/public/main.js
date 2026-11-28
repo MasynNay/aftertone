@@ -2689,7 +2689,7 @@ document.addEventListener('click', async (event) => {
   }
   const preview = event.target.closest('[data-preview]');
   if (preview) return togglePlayback(lookup(preview.dataset.preview));
-  const path=event.target.closest('.discovery-paths .path-option[data-path]');
+  const path=event.target.closest('[data-path]:not([data-action="journal-path"])');
   if(view==='discover' && path && ['familiar','balanced','explore'].includes(path.dataset.path)) {
     changeDiscoveryPath(path.dataset.path); // Distinct request and presentation pools.
     return;
