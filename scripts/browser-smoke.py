@@ -1270,6 +1270,21 @@ def check_choice_keyboard_focus(browser, base):
         require(page.locator('.journal-entries li').count()==1,
                 "Clearing journal filter lost recorded history")
         before = page.evaluate("localStorage.getItem('aftertone:session:v1')")
+        require(page.locator('[data-achievement-id="first-choice"]').count()==1,
+                'First real decision did not unlock the milestone')
+        earned=page.locator('[data-action="achievement-filter"][data-filter="earned"]')
+        earned.focus()
+        page.keyboard.press("Enter")
+        require(page.locator('.achievement-card').count()==1 and
+                page.locator('.achievement-card.is-earned').count()==1,
+                'Achievement filter did not show only reached milestones')
+        require(page.evaluate("document.activeElement?.dataset?.filter")=="earned",
+                'Achievement filtering lost focus')
+        page.locator('[data-action="achievement-filter"][data-filter="all"]').click()
+        require(page.locator('.achievement-card').count()==19,
+                'Achievement cabinet lost milestones')
+        require(page.evaluate("localStorage.getItem('aftertone:session:v1')")==before,
+                'Achievement browsing changed saved progress')
         journal_path = page.locator('[data-action="journal-path"]:not([data-path="all"])').first
         journal_path.focus()
         page.keyboard.press("Enter")

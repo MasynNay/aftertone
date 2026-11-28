@@ -1,3 +1,8 @@
+## v0.12 development — Achievement Cabinet (November 28, 2026)
+
+- Added 19 evidence-based milestones across discovery, Collection, Tune Lab and Music Duels, including League and Champions Cup completion. Category progress, filters and a next-milestone link live in Taste Map; the compact Discovery Passport links to the cabinet.
+- Progress is derived from current local data, not independent unlock flags. Undo, deletion and restore remain meaningful. No streak penalty, invented duration, external analytics or new persistence schema. Normalized Passport artist identities.
+
 ## v0.12 development — Music Duels League (November 28, 2026)
 
 - Added optional 4-, 8-, and 16-song round-robin leagues alongside knockout brackets. Each song meets every other song once (6, 28 or 120 matchups), with provisional and final standings, deterministic tie rules and archived podiums.
