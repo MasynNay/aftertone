@@ -4,7 +4,7 @@ export function makeRecognitionQuiz(track, catalog, random = Math.random) {
   const label = field === 'artist' ? 'Who made this track?' : 'What is the name of this track?';
   const correct = track[field];
   const decoys = [...new Set(catalog.filter((entry) => entry.id !== track.id).map((entry) => entry[field]))]
-    .filter((value) => value !== correct);
+    .filter((value) => typeof value==='string'&&value.trim()&&value.trim().toLowerCase()!==String(correct).trim().toLowerCase());
   // Shuffle decoys with injected randomness and rotate the correct placement.
   for (let i = decoys.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));

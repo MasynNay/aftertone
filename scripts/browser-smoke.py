@@ -4161,6 +4161,33 @@ def check_tune_lab_keyboard_continuity(browser, base):
         require(len(final.get("history",[]))==1 and
                 len(final.get("favorites",[]))==1,
                 "Tune Lab keyboard interactions created an extra Keep/Pass")
+        require(final["savedTracks"][0]["mood"]=="Warm",
+                "Mood was not persisted on the saved track")
+        # Simulate a saved song whose original history was cleared or which
+        # was saved from a tournament instead of a discovery vote.
+        page.evaluate("""() => {
+          const key='aftertone:session:v1';
+          const s=JSON.parse(localStorage.getItem(key));
+          s.history=[];
+          localStorage.setItem(key,JSON.stringify(s));
+        }""")
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="quiz"]').click()
+        page.locator('[data-action="quiz-start"]').click()
+        page.locator('[data-quiz-answer]').first.click()
+        page.locator("#quiz-feedback").wait_for(state="visible",timeout=TIMEOUT)
+        require(page.locator('[data-quiz-mood="Warm"]').get_attribute("aria-pressed")=="true",
+                "Saved mood disappeared after reload with no listening history")
+        page.locator('[data-quiz-mood="Dreamy"]').click()
+        repaired=page.evaluate("""() => JSON.parse(localStorage.getItem('aftertone:session:v1'))""")
+        require(repaired["history"]==[] and repaired["favorites"]==final["favorites"] and
+                repaired["savedTracks"][0]["mood"]=="Dreamy",
+                "Mood-only update fabricated a vote or failed to persist")
+        page.locator('#main-nav button[data-view="collection"]').click()
+        require(page.locator('#collection-mood option').get_by_text('Dreamy (1)',exact=True).count()==1 or
+                "Dreamy (1)" in page.locator('#collection-mood').inner_text(),
+                "Saved-only mood was not available in Collection filters")
         require(not errors,"Tune Lab browser errors: "+"; ".join(errors))
         print(f"PASS {browser.browser_type.name}: Tune Lab keyboard question, feedback, moods and next")
     except Exception:

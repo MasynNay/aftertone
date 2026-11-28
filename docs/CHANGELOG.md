@@ -1,3 +1,9 @@
+## v0.12 development — Accurate taste totals and durable moods (November 27, 2026)
+
+- Count every valid Keep/Pass even when song metadata is missing. Ignore malformed recognition booleans; use meaningful historical genre/mood values when provider metadata is unclassified. Taste Map explains genre coverage.
+- Tune Lab mood check-ins persist on saved tracks, including tournament or legacy favorites without listening history. Existing decisions are updated only when present; no synthetic votes. Verified persistence, reload, backup and Collection facets retain the selected mood.
+- Filter invalid quiz decoys and clarify empty accuracy display. Added unit and cross-browser regression tests.
+
 ## v0.12 development — Saved-song metadata recovery (November 27, 2026)
 
 - Collection can explicitly recover missing durable favorite metadata in batches of five. Local catalog matches are reused first; exact numeric Deezer IDs use the existing bounded metadata lookup. Unavailable or unsupported IDs remain saved, and no audio or new votes are created.

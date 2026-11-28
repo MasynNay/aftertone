@@ -1,7 +1,7 @@
 import {eligibleChallengeTracks,defaultChallengeDraft,reconcileChallengeDraft,toggleChallengeDraft,moveChallengeDraft,challengeLibraryPage,MAX_CHALLENGE_TRACKS} from '../src/challenge-draft.mjs';
 import {readChallengeDraft,saveChallengeDraft,clearChallengeDraft} from '../src/challenge-draft-store.mjs';
 import {apiFetch} from './api-browser.js';
-import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS } from '/src/taste.mjs';
+import { createInitialState, computeTaste, selectNext, recordChoice, removeFavorite, restoreRemovedFavorite, restoreLastChoice, MOODS, setSavedTrackMood } from '/src/taste.mjs';
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import {loadQuizStats,saveQuizStats,nextQuizStats} from '/src/quiz-progress.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
@@ -2037,7 +2037,11 @@ function startQuizRound() {
   if (!ids.length) {quizSession=null; render(); return;}
   const candidates = ids.filter(id=>id!==quizSession?.id);
   const chosen = (candidates.length ? candidates : ids)[Math.floor(Math.random()*(candidates.length||ids.length))];
-  quizSession={id:chosen,quiz:makeRecognitionQuiz(lookup(chosen),catalog),answer:null,mood:null};
+  const track=lookup(chosen);
+  const savedMood=state.savedTracks.find(t=>t.id===chosen)?.mood;
+  const priorMood=state.history.findLast(h=>h.id===chosen)?.mood;
+  const mood=[savedMood,priorMood,track?.mood].find(value=>MOODS.includes(value))||null;
+  quizSession={id:chosen,quiz:makeRecognitionQuiz(track,catalog),answer:null,mood};
   render();
   // Start / Next replace their own button. Move only a keyboard-initiated
   // action to an answer or the visible Skip control on the new question.
@@ -2631,13 +2635,24 @@ document.addEventListener('click', async (event) => {
     return;
   }
   const quizMood=event.target.closest('[data-quiz-mood]');
-  if(quizMood && view==='quiz' && quizSession?.answer!==null) {
+  if(quizMood && view==='quiz' && quizSession && quizSession.answer!==null) {
     const mood=quizMood.dataset.quizMood;
     if (!MOODS.includes(mood)) return;
     // A mood check-in should not look saved if storage rejects the change.
-    const next={...state,history:state.history.map(h=>h.id===quizSession.id
-      ? {...h,mood} : h)};
-    if(!commitSessionChange(next))return;
+    if(!quizSession || !state.favorites.includes(quizSession.id))return;
+    const track=lookup(quizSession.id);
+    if(!track)return;
+    let next;
+    try { next=setSavedTrackMood(state,track,mood); }
+    catch(error){quizSession.moodSaveError=error.message;return render();}
+    if(next===state)return;
+    if(!commitSessionChange(next)){
+      quizSession.moodSaveError='Your mood was not saved. Check browser storage, then try again.';
+      return render();
+    }
+    // Catalog is an in-memory index; update only after verified persistence.
+    track.mood=mood;
+    quizSession.moodSaveError='';
     quizSession.mood=mood;
     return render();
   }
