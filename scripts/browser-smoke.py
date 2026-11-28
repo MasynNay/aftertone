@@ -3979,6 +3979,27 @@ def check_tune_lab_keyboard_continuity(browser, base):
         page.locator('[data-quiz-answer]').first.wait_for(state="visible",timeout=TIMEOUT)
         require(page.evaluate("""() => document.activeElement?.hasAttribute(
             'data-quiz-answer')"""),"Tune Lab Start abandoned keyboard focus")
+        # The browser can silently drop storage writes. The same question must
+        # remain retryable, with no score or answer revealed until verified.
+        page.evaluate("""() => {
+          const original=Storage.prototype.setItem;
+          window.__restoreQuizStorage=()=>{Storage.prototype.setItem=original;};
+          Storage.prototype.setItem=function(key,value) {
+            if(key==='aftertone:tune-lab:v1')return;
+            return original.call(this,key,value);
+          };
+        }""")
+        page.keyboard.press("Enter")
+        require(page.get_by_text("Your answer was not confirmed as saved",exact=False).is_visible(),
+                "Silent quiz write failure did not expose a retry message")
+        require(page.locator("#quiz-feedback").count()==0 and
+                page.locator("[data-quiz-answer]:not([disabled])").count()>0,
+                "Failed quiz write revealed a result or disabled retries")
+        require(page.evaluate("""() => {
+          const stats=JSON.parse(localStorage.getItem('aftertone:tune-lab:v1')||'{}');
+          return !stats.answered && document.activeElement?.hasAttribute('data-quiz-answer');
+        }"""),"Failed quiz write changed the score or lost focus")
+        page.evaluate("window.__restoreQuizStorage()")
         page.keyboard.press("Enter")
         feedback=page.locator("#quiz-feedback")
         feedback.wait_for(state="visible",timeout=TIMEOUT)
