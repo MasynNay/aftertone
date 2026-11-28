@@ -5,7 +5,8 @@
 import {STORAGE_KEY,loadState,sanitizeState} from './persistence.mjs';
 import {DUEL_STORAGE_KEY,loadDuelStore,DUEL_MAX_ARCHIVES} from './duels.mjs';
 import {parseFavoriteArtists} from './discovery-personalization.mjs';
-import {parsePlaylist} from './playlist-import.mjs';
+import {parsePlaylist,trackIdentity} from './playlist-import.mjs';
+import {MAX_HISTORY,MAX_FAVORITE_IDS,MAX_SAVED_TRACKS as MAX_TRACKS} from './collection-capacity.mjs';
 import {PLAYLIST_STORAGE_KEY as PLAYLIST_KEY,ARTISTS_STORAGE_KEY as ARTISTS_KEY,MAX_SAVED_PLAYLIST_TRACKS as MAX_PLAYLIST_TRACKS} from './personalization-store.mjs';
 
 export const BACKUP_FORMAT='aftertone-progress';
@@ -14,8 +15,7 @@ export const BACKUP_MAX_BYTES=4_000_000;
 const QUIZ_KEY='aftertone:tune-lab:v1';
 const LYRIC_OFFSETS_KEY='aftertone:lyric-offsets:v1';
 const MAX_LYRIC_OFFSETS=200;
-const MAX_HISTORY=5000;
-const MAX_TRACKS=1500;
+
 
 function boundedCount(value,label) {
   if (!Number.isSafeInteger(value) || value<0 || value>1_000_000)
@@ -51,7 +51,7 @@ function safeArtists(value) {
 function safeSession(raw) {
   if(!raw || typeof raw!=='object' || raw.version!==1 ||
      !Array.isArray(raw.history) || raw.history.length>MAX_HISTORY ||
-     !Array.isArray(raw.favorites) || raw.favorites.length>MAX_HISTORY ||
+     !Array.isArray(raw.favorites) || raw.favorites.length>MAX_FAVORITE_IDS ||
      !Array.isArray(raw.savedTracks) || raw.savedTracks.length>MAX_TRACKS)
     throw new Error('Backup has an unsupported or malformed listening session.');
   const normalized=sanitizeState(raw);
@@ -63,6 +63,7 @@ function safeSession(raw) {
   // must not become persistent UI or recommendation state.
   normalized.history=normalized.history.map(event=>({
     id:event.id,action:event.action,genre:event.genre,artist:event.artist,
+    ...(event.alreadySaved===true?{alreadySaved:true}:{}),
     ...(typeof event.title==='string'&&event.title.trim()?{title:event.title.trim().slice(0,180)}:{}),
     context:event.context,route:event.route,
     recognized:typeof event.recognized==='boolean'?event.recognized:null,
@@ -270,6 +271,43 @@ export function compareProgressSummaries(current,incoming) {
     if(delta<0)reductions.push(label);
   }
   return {lines,reductions};
+}
+
+/** Compare actual identities from validated restore plans, not merely totals.
+ * Only counts are exposed to the dialog. Older plans omit optional keys, so
+ * an absent key never becomes an invented deletion. No storage writes. */
+export function compareProgressContents(current,incoming) {
+  const plan=inspected=>{
+    if(!Array.isArray(inspected?.writes))throw new Error('Validated restore plans are required.');
+    return new Map(inspected.writes.map(([key,value])=>[key,value===null?null:JSON.parse(value)]));
+  };
+  const before=plan(current),after=plan(incoming);
+  const old=before.get(STORAGE_KEY),next=after.get(STORAGE_KEY);
+  if(!old||!next)throw new Error('Validated listening sessions are required.');
+  const changes=[];
+  const add=(label,count)=>{if(count>0)changes.push({label,count});};
+  const missing=(a,b)=>{const other=new Set(b);return new Set(a.filter(id=>!other.has(id))).size;};
+  const nextFavorites=new Set(next.favorites);
+  add('Saved songs absent from backup',missing(old.favorites,next.favorites));
+  const oldMetadata=new Set(old.savedTracks.map(t=>t.id)),nextMetadata=new Set(next.savedTracks.map(t=>t.id));
+  add('Retained favorites losing song details',old.favorites.filter(id=>nextFavorites.has(id)&&oldMetadata.has(id)&&!nextMetadata.has(id)).length);
+  const choices=new Map(next.history.map(e=>[e.id,e.action]));
+  add('Listening choices absent from backup',missing(old.history.map(e=>e.id),next.history.map(e=>e.id)));
+  add('Listening choices changing Keep/Pass',new Set(old.history.filter(e=>choices.has(e.id)&&choices.get(e.id)!==e.action).map(e=>e.id)).size);
+  const oldDuels=before.get(DUEL_STORAGE_KEY)?.tournaments||[],nextDuels=after.get(DUEL_STORAGE_KEY)?.tournaments||[];
+  add('Tournaments absent from backup',missing(oldDuels.map(t=>t.id),nextDuels.map(t=>t.id)));
+  const artistKey=name=>name.normalize('NFKD').replace(/\p{M}/gu,'').trim().toLowerCase();
+  add('Favorite artists absent from backup',missing((before.get(ARTISTS_KEY)||[]).map(artistKey),(after.get(ARTISTS_KEY)||[]).map(artistKey)));
+  if(after.has(PLAYLIST_KEY)) {
+    const ids=playlist=>(playlist?.tracks||[]).map(t=>trackIdentity(t.artist,t.title));
+    add('Imported playlist songs absent from backup',missing(ids(before.get(PLAYLIST_KEY)),ids(after.get(PLAYLIST_KEY))));
+  }
+  if(after.has(LYRIC_OFFSETS_KEY)) {
+    const oldOffsets=before.get(LYRIC_OFFSETS_KEY)||{},nextOffsets=after.get(LYRIC_OFFSETS_KEY)||{};
+    add('Lyric timing adjustments absent from backup',missing(Object.keys(oldOffsets),Object.keys(nextOffsets)));
+    add('Lyric timing adjustments changing value',Object.keys(oldOffsets).filter(id=>Object.hasOwn(nextOffsets,id)&&oldOffsets[id]!==nextOffsets[id]).length);
+  }
+  return changes;
 }
 
 /** Verify writes: some storage wrappers can silently drop a write rather than

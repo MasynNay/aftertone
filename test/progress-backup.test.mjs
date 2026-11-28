@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createInitialState} from '../app/src/taste.mjs';
 import {STORAGE_KEY,loadState,saveState} from '../app/src/persistence.mjs';
 import {createTournament,DUEL_STORAGE_KEY,loadDuelStore,saveDuelStore} from '../app/src/duels.mjs';
-import {BACKUP_FORMAT,BACKUP_VERSION,BACKUP_MAX_BYTES,createProgressBackup,inspectProgressBackup,compareProgressSummaries,restoreProgressBackup} from '../app/src/progress-backup.mjs';
+import {BACKUP_FORMAT,BACKUP_VERSION,BACKUP_MAX_BYTES,createProgressBackup,inspectProgressBackup,compareProgressSummaries,compareProgressContents,restoreProgressBackup} from '../app/src/progress-backup.mjs';
 import {createViews} from '../app/public/views.js';
 
 function storage(initial={}) {
@@ -381,4 +381,33 @@ test('restore confirmation surfaces the comparison and warns when counts fall',(
   assert.match(restore,/restoreProgressBackup\(localStorage,content\)/);
   assert.ok(restore.indexOf('compareProgressSummaries')<restore.indexOf('window.confirm'));
   assert.ok(restore.indexOf('window.confirm')<restore.indexOf('restoreProgressBackup(localStorage,content)'));
+});
+
+test('identity-aware restore warns about same-size replacements and changed decisions without writes',()=>{
+  const browser=populated();
+  const current=inspectProgressBackup(createProgressBackup(browser));
+  const replacement=JSON.parse(createProgressBackup(browser));
+  replacement.session.favorites=[songs[1].id];
+  replacement.session.savedTracks=[songs[1]];
+  replacement.session.history[0].action='pass';
+  replacement.artists=['Different Artist','Another Artist'];
+  replacement.playlist.tracks[0]={artist:'New Artist',title:'New Song'};
+  replacement.lyricOffsets['deezer:200']=46;
+  const before=browser.entries();
+  const incoming=inspectProgressBackup(JSON.stringify(replacement));
+  assert.deepEqual(compareProgressSummaries(current.summary,incoming.summary).reductions,[]);
+  const changes=compareProgressContents(current,incoming);
+  for(const label of ['Saved songs absent from backup','Listening choices changing Keep/Pass',
+    'Favorite artists absent from backup','Imported playlist songs absent from backup','Lyric timing adjustments changing value'])
+    assert.ok(changes.some(item=>item.label===label&&item.count===1),label);
+  assert.deepEqual(browser.entries(),before);
+  assert.deepEqual(compareProgressContents(current,current),[]);
+});
+test('retained favorites losing metadata are distinguished from missing IDs and old optional data is preserved',()=>{
+  const current=inspectProgressBackup(createProgressBackup(populated()));
+  const replacement=JSON.parse(createProgressBackup(populated()));
+  replacement.version=1;delete replacement.session.savedTracks;delete replacement.playlist;delete replacement.lyricOffsets;
+  const changes=compareProgressContents(current,inspectProgressBackup(JSON.stringify(replacement)));
+  assert.deepEqual(changes,[{label:'Retained favorites losing song details',count:1}]);
+  assert.throws(()=>compareProgressContents({},current),/Validated restore plans/);
 });

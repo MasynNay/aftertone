@@ -83,7 +83,11 @@ test('swipe, Undo and Collection changes are committed only after verified persi
     source.indexOf("nav.addEventListener('click'"));
   assert.match(ui,/if\(!commitSessionChange\(restoreLastChoice\(state\)\)\)return;/);
   assert.match(ui,/if\(!commitSessionChange\(removeFavorite\(state,id\)\)\)return;/);
-  assert.match(ui,/if\(restored!==state && !commitSessionChange\(restored\)\)return;/);
+  const restore=ui.slice(ui.indexOf("case 'undo-remove-favorite':"),ui.indexOf("case 'export-json':"));
+  assert.match(restore,/if\(restored!==state\)/);
+  assert.match(restore,/addCollectionTracks\(restored,metadata\?\[metadata\]:\[\]\)/);
+  assert.match(restore,/if\(!commitSessionChange\(restored\)\)return;/);
+  assert.ok(restore.indexOf('commitSessionChange(restored)')<restore.indexOf('lastRemovedFavorite=null'));
 });
 
 test('Music Duels collection saves and destructive resets never announce false success',()=>{

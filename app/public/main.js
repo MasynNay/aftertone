@@ -5,7 +5,7 @@ import { createInitialState, computeTaste, selectNext, recordChoice, removeFavor
 import { makeRecognitionQuiz } from '/src/quiz.mjs';
 import {loadQuizStats,saveQuizStats,nextQuizStats} from '/src/quiz-progress.mjs';
 import { loadState, saveState } from '/src/persistence.mjs';
-import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, compareProgressSummaries, restoreProgressBackup } from '/src/progress-backup.mjs';
+import { BACKUP_MAX_BYTES, createProgressBackup, inspectProgressBackup, compareProgressSummaries, compareProgressContents, restoreProgressBackup } from '/src/progress-backup.mjs';
 import { encodeChallenge, decodeChallenge, isPublicDeezerChallengeId } from '/src/challenge.mjs';
 import { createViews } from './views.js';
 import { html, urlSafe, tag, setTextIfChanged } from './view-utils.js';
@@ -31,6 +31,7 @@ import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTo
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
+import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
 import {JOURNAL_FILTERS} from '/src/listening-journal.mjs';
 
 const main = document.querySelector('#main-content');
@@ -1881,8 +1882,10 @@ function recordDecision(id, action, extra = {}) {
   const meta=lookup(id);
   let next=recordChoice(state,{id,action,genre:meta?.genre,artist:meta?.artist,title:meta?.title,
     context:challengeIds.length?'challenge':searchQuery?'search':'discovery',route:state.discoveryMix,...extra});
-  if(action==='like' && meta && !next.savedTracks.some(track=>track.id===id))
-    next={...next,savedTracks:[...next.savedTracks,meta].slice(-1500)};
+  if(action==='like' && next!==state) {
+    try { next=addCollectionTracks(next,meta?[meta]:[]); }
+    catch(error) { stopContinuous();render();toast(error.message);return false; }
+  }
   // A failed/quota-limited or silently ignored write must not count as a
   // Keep/Pass, change the active song, or advance a shared challenge.
   if(!commitSessionChange(next)) {
@@ -2311,14 +2314,10 @@ function handleDuelAction(action, id=null) {
   }
   if(action==='save-champions') {
     const winners=hallOfFame(duelTournaments).filter(t=>t.gold>0);
-    const next={...state,favorites:[...state.favorites],savedTracks:[...state.savedTracks]};
-    let added=0;
-    for(const track of winners) {
-      if(!next.favorites.includes(track.id)){next.favorites.push(track.id);added++;}
-      if(!next.savedTracks.some(t=>t.id===track.id))next.savedTracks.push(track);
-    }
-    next.favorites=next.favorites.slice(-5000);
-    next.savedTracks=next.savedTracks.slice(-1500);
+    let next;
+    try { next=addCollectionTracks(state,winners); }
+    catch(error){return toast(error.message);}
+    const added=next.favorites.length-state.favorites.length;
     if(!commitSessionChange(next))return;
     for(const track of winners)if(!catalogIds.has(track.id))addToCatalog([track]);
     render();
@@ -2346,14 +2345,9 @@ function handleDuelAction(action, id=null) {
   if(action==='export-podium')return exportDuelPodium(event);
   if(action==='save-podium') {
     const entries=podiumTracks(event);
-    const next={...state,favorites:[...state.favorites],savedTracks:[...state.savedTracks]};
-    for(const track of entries) {
-      if(!next.favorites.includes(track.id))next.favorites.push(track.id);
-      if(!next.savedTracks.some(t=>t.id===track.id))next.savedTracks.push(track);
-    }
-    // Keep the original caps and do not add UI catalog entries before saving.
-    next.favorites=next.favorites.slice(-5000);
-    next.savedTracks=next.savedTracks.slice(-1500);
+    let next;
+    try { next=addCollectionTracks(state,entries); }
+    catch(error){return toast(error.message);}
     if(!commitSessionChange(next))return;
     for(const track of entries)if(!catalogIds.has(track.id))addToCatalog([track]);
     render();
@@ -2432,7 +2426,8 @@ async function importProgressBackupFile(file) {
     announceProgressBackup('Checking backup file…');
     if(file.size>BACKUP_MAX_BYTES)throw new Error('Backup must be smaller than 4 MB.');
     const content=await file.text();
-    const preview=inspectProgressBackup(content).summary;
+    const incomingPlan=inspectProgressBackup(content);
+    const preview=incomingPlan.summary;
     const optional=preview.version===1
       ? 'This older backup does not contain imported playlists or lyric timing adjustments. Those existing settings will stay unchanged.'
       : 'Also restore '+preview.playlistTracks+' imported playlist tracks and '+
@@ -2447,11 +2442,15 @@ async function importProgressBackupFile(file) {
     // to replace it; corrupted local data must not be shown as empty.
     let comparisonText='Current browser progress could not be verified. The backup may replace existing data.';
     try {
-      const current=inspectProgressBackup(createProgressBackup(localStorage)).summary;
+      const currentPlan=inspectProgressBackup(createProgressBackup(localStorage));
+      const current=currentPlan.summary;
       const comparison=compareProgressSummaries(current,preview);
+      const identityChanges=compareProgressContents(currentPlan,incomingPlan);
       comparisonText='Current → backup (not a merge):\n'+comparison.lines.join('\n');
       if(comparison.reductions.length)
         comparisonText+='\n\nWARNING: Restoring would reduce: '+comparison.reductions.join(', ')+'.';
+      if(identityChanges.length)
+        comparisonText+='\n\nWARNING: Existing items would be removed or changed, even if the totals stay the same:\n'+identityChanges.map(item=>item.label+': '+item.count).join('\n');
     } catch {
       comparisonText+=' Export a current backup if possible before continuing.';
     }
@@ -2769,8 +2768,14 @@ document.addEventListener('click', async (event) => {
       if (!lastRemovedFavorite) return;
       const returnFocus=document.activeElement===action;
       const {id:removedId,index}=lastRemovedFavorite;
-      const restored=restoreRemovedFavorite(state,removedId,index);
-      if(restored!==state && !commitSessionChange(restored))return;
+      let restored=restoreRemovedFavorite(state,removedId,index);
+      if(restored!==state) {
+        if(restored.favorites.length>MAX_FAVORITE_IDS)return toast('Collection is full. Remove a song before restoring this favorite.');
+        const metadata=lookup(removedId);
+        try { restored=addCollectionTracks(restored,metadata?[metadata]:[]); }
+        catch(error){return toast(error.message);}
+        if(!commitSessionChange(restored))return;
+      }
       lastRemovedFavorite=null;
       render();
       if (returnFocus) ($('#collection-search') || main).focus({preventScroll:true});
@@ -2849,7 +2854,7 @@ document.addEventListener('click', async (event) => {
       return continueSharedChallenge(document.activeElement===action);
     case 'exit-challenge': return exitSharedChallenge(document.activeElement===action);
     case 'reset-listens':
-      if (!confirm('Restart discovery? Saved favorites will stay, but listening history and recognition scores will be cleared.')) return;
+      if (!confirm('Restart discovery? Listening history will be cleared. Saved favorites and Tune Lab scores will stay.')) return;
       if(!commitSessionChange({...state,history:[]}))return;
       chooseNext();return render();
     default: return;

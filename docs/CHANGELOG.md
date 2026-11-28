@@ -1,3 +1,14 @@
+## v0.12 development — Restore identity comparison (November 27, 2026)
+
+- Restore confirmation now identifies missing existing favorite IDs, history choices, tournament IDs, favorite artists and imported playlist entries even when total counts are unchanged. It also warns about changed Keep/Pass decisions, changed lyric timing, and retained favorites losing metadata. Older v1 optional keys remain unchanged. No individual song names or private data are transmitted.
+- Expanded unit and dual-browser confirmation/cancel regression coverage; current backup schema remains compatible.
+
+## v0.12 development — Collection capacity protection (November 27, 2026)
+
+- Prevent silent eviction of existing favorite metadata and IDs at existing session/backup limits. New discovery saves and batch tournament imports fail explicitly and atomically if there is no room; old unreferenced metadata may be reclaimed.
+- Keep an already-saved song when undoing a later Keep, including through backup/restore. No duplicate favorite IDs are introduced by repeat choices. Collection removal undo verifies capacity and can restore available metadata.
+- Clarify that restarting discovery clears history, not the independent Tune Lab score. Added capacity and backup regression tests.
+
 ## v0.12 development — Listening Journal (November 27, 2026)
 
 - Taste Map adds a read-only listening journal with full-history path counts, Keep/Pass filters, 20-entry pages, and explicit missing-title/artist fallback. New decisions retain bounded song titles in the existing compatible session and backup format. New shared challenge choices are categorized separately from normal discovery paths; older records retain their original context.
