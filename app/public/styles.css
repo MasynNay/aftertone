@@ -1177,6 +1177,102 @@ h1 em {
   }
 }
 
+
+/* Collection overview: full-library counts with quick browse-only facets. */
+.collection-insights {
+  margin: 0 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  padding: 18px;
+}
+.collection-insights-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.collection-insights-head strong {
+  font-size: 12px;
+  letter-spacing: .07em;
+}
+.collection-insights-head span,
+.collection-insights-group > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.collection-insights-metrics {
+  display: grid;
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.collection-insights-metrics > div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.collection-insights-metrics strong {
+  font-size: clamp(20px,3vw,29px);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.collection-insights-metrics span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.collection-insights-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.collection-insights-shortcuts {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.collection-insights-group { min-width: 0; flex: 1 1 250px; }
+.collection-insights-group > span { display: block; margin: 0 0 8px; }
+.collection-insights-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.collection-insights-chip {
+  min-height: 44px;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface2);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.collection-insights-chip small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.collection-insights-chip.is-selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accentInk);
+}
+.collection-insights-chip.is-selected small { color: inherit; }
+@media (max-width: 520px) {
+  .collection-insights { padding: 14px; }
+  .collection-insights-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .collection-insights-group { flex-basis: 100%; }
+}
+
 /* Browse-only Collection facets: compact on desktop, full-width on phones. */
 .collection-facet {
   display: flex;
