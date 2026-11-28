@@ -1772,6 +1772,38 @@ def check_large_collection_pagination(browser, base):
                 'Remove and Undo changed the original saved order')
         require(after['history']==before['history'],
                 'Paging or Undo inserted an unrequested listening choice')
+        # Personal playlist edits are independent of the saved Collection.
+        page.locator('#personal-playlist-name').fill('Road Trip')
+        page.locator('#personal-playlist-create button[type="submit"]').click()
+        require(page.locator('#personal-playlist-select').input_value().startswith('pl-'),
+                'New playlist was not selected')
+        page.locator('[data-action="personal-playlist-toggle"]').first.click()
+        page.locator('[data-action="personal-playlist-toggle"]').nth(1).click()
+        require(page.locator('.personal-playlist-rows li').count()==2,
+                'Playlist did not retain both songs')
+        original_ids=page.evaluate("JSON.parse(localStorage.getItem('aftertone:session:v1')).personalPlaylists[0].trackIds")
+        page.locator('[data-action="personal-playlist-move"][data-direction="-1"]').nth(1).click()
+        require(page.evaluate("JSON.parse(localStorage.getItem('aftertone:session:v1')).personalPlaylists[0].trackIds")==original_ids[::-1],
+                'Playlist order was not saved')
+        page.locator('#personal-playlist-rename-name').fill('Night Drive')
+        page.locator('#personal-playlist-rename button[type="submit"]').click()
+        require(page.locator('#personal-playlist-rename-name').input_value()=='Night Drive',
+                'Playlist rename failed')
+        require(page.evaluate("document.documentElement.scrollWidth <= innerWidth+2"),
+                'Playlist editor introduced horizontal overflow')
+        page.reload(wait_until="load",timeout=TIMEOUT)
+        close=page.locator('#modal-root button[data-modal="close"]')
+        if close.count():close.first.click(timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        page.locator('#personal-playlist-select').select_option(index=1)
+        require(page.locator('#personal-playlist-rename-name').input_value()=='Night Drive' and
+                page.locator('.personal-playlist-rows li').count()==2,
+                'Playlist did not survive reload')
+        require(page.evaluate("""() => {
+          const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+          return {favorites:s.favorites,history:s.history};
+        }""")=={'favorites':before['favorites'],'history':before['history']},
+                'Playlist editing changed saved songs or votes')
         require(not errors,'Paginated Collection browser errors: '+'; '.join(errors))
         print(f"PASS {label}: 123 saved songs, 40-card pages, full export, focus, search, Undo")
     except Exception:

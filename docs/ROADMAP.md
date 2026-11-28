@@ -1,5 +1,9 @@
 **v0.12 Listening Recap (November 28, 2026):** Expanded Taste Map with local-only date ranges, activity visualization and accessible data table, ranked artists/genres, and artist-to-journal drilldown. Scoped discovery-path click handling to actual discovery controls. Node and synthetic browser regression coverage added; physical-device and real-provider verification remain open.
 
+**v0.12 personal playlists (November 28, 2026):** Named ordered saved-song playlists, membership management, bounded editing and existing progress backup integration. No autoplay or new provider contracts. Playlist playback queues remain a separate future milestone. Full verification and physical-device acceptance remain open.
+
+**v0.12 discovery fairness (November 28, 2026):** Lane-specific request rotation prevents systematic artist starvation. Wild Card prioritizes unfamiliar genre cursors, falls back to remaining eligible genres, and never requests related artists in its fallback. Comfort honors its broad quota. No new provider or persistence schema; live-provider validation remains open.
+
 **v0.12 journal browsing (November 27, 2026):** Combined full-history title/artist search, path and Keep/Pass filters; corrected genre coverage display. Browsing remains read-only and does not change backups or decisions. Manual device and provider checks remain open.
 
 **v0.12 discovery queue (November 27, 2026):** Accurate upcoming count, live provider/refill state, manual recovery, no interval candidate work outside active discovery. Preserve existing playback behavior and the soft background queue bound.

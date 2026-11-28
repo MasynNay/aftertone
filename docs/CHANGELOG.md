@@ -4,6 +4,18 @@
 - Artist insight cards open the existing searchable journal; fixed journal path controls being intercepted by discovery-mode switching. Neither recap nor journal browsing writes listening data or preferences.
 - UTC calendar-day labels and undated-history disclosure prevent invented listening statistics. All-history means retained decisions, not lifetime analytics.
 
+## v0.12 development — Personal playlists (November 28, 2026)
+
+- Create, rename, delete, reorder and curate named local playlists directly from Collection. Up to 30 playlists, 500 song references per playlist and 5,000 memberships across the library.
+- Playlist membership is independent of favorite removal: unavailable entries remain visible and can be removed explicitly or reactivated by saving the song again. No audio copied.
+- Existing progress backups include optional personal playlists, with strict validation and replacement-loss warnings. Legacy files remain readable; restoring a file without playlists replaces the current playlist set with none after confirmation.
+
+## v0.12 development — Fair discovery request rotation (November 28, 2026)
+
+- Rotate related and liked artist requests by their actual scheduled lane occurrence rather than absolute request index; deduplicate normalized performer aliases.
+- Honor Comfort Zone's broad slot and exhaust all eligible Wild Card genre cursors before declaring discovery finished. Explicit genre filters remain in force; Wild Card never falls back to graph-neighbor requests.
+- Add deterministic tests for starvation, exhaustion, explicit filters and artist aliases; no changes to storage, playback or provider interfaces.
+
 ## v0.12 development — Honest discovery queue and refill controls (November 27, 2026)
 
 ### Journal browsing (development)

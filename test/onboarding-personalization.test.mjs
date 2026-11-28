@@ -62,3 +62,12 @@ test('first-run choices are optional and can be reopened later from Discover', a
   assert.match(sidebar,/data-action="import-playlist"/);
   assert.match(sidebar,/data-action="use-saved-artists"/);
 });
+
+test('liked performer lanes combine normalized aliases and ignore placeholder performers',()=>{
+  const history=[{action:'like',artist:'AC/DC'},{action:'like',artist:'AC DC',context:'search'},
+    {action:'like',artist:'Beyoncé'},{action:'like',artist:'Beyonce'},
+    {action:'like',artist:'Unknown Artist'},{action:'like',artist:'Various Artists'},null,
+    {action:'pass',artist:'Unwanted'}];
+  assert.deepEqual(likedArtistLanes(history).map(({artist,weight})=>({artist,weight})),[
+    {artist:'Beyoncé',weight:2},{artist:'AC/DC',weight:1.5}]);
+});

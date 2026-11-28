@@ -100,3 +100,36 @@ test('New Territory alternates related and broad performers when both are availa
   assert.deepEqual(filterPoolForPath(pool,'balanced',{...context,position:0}).map(x=>x.artist),['Niall Horan','Maren Morris']);
   assert.deepEqual(filterPoolForPath(pool,'balanced',{...context,position:1}).map(x=>x.artist),['Rina Sawayama','FKA twigs']);
 });
+
+test('scheduled related requests rotate across every neighbor even when slots are two apart',()=>{
+  const neighbors=[{artist:'A'},{artist:'B'},{artist:'C'},{artist:'D'}];
+  const plans=Array.from({length:20},(_,requestNumber)=>planDiscoveryRequest({mode:'balanced',requestNumber,related:neighbors}));
+  assert.deepEqual(plans.filter(p=>p.kind==='related').slice(0,8).map(p=>p.lane.artist),['A','B','C','D','A','B','C','D']);
+  assert.equal(plans.filter(p=>p.kind==='broad').length,10);
+});
+test('Comfort honors scheduled broad slot and rotates distinct liked artists',()=>{
+  const liked=[{artist:'A'},{artist:'B'},{artist:'C'}];
+  const plans=Array.from({length:10},(_,requestNumber)=>planDiscoveryRequest({mode:'familiar',requestNumber,liked,related,seeds}));
+  assert.equal(plans[9].kind,'broad');
+  assert.deepEqual(plans.filter(p=>p.kind==='liked').map(p=>p.lane.artist),['A','B','C','A']);
+});
+test('Wild Card uses remaining known-genre cursors only after novel genres are exhausted',()=>{
+  const history=[{action:'like',genre:' ROCK '},{action:'like',genre:'jazz'}];
+  const exhausted=new Set(['broad',...['electronic','hiphop','folk','indie','funk','classical','ambient','cinematic','pop'].map(g=>'wild:'+g)]);
+  for(let requestNumber=0;requestNumber<20;requestNumber++){
+    const plan=planDiscoveryRequest({mode:'explore',requestNumber,history,exhausted,related});
+    assert.equal(plan.kind,'wild');assert.ok(['rock','jazz'].includes(plan.genre));
+  }
+  exhausted.add('wild:rock');exhausted.add('wild:jazz');
+  assert.equal(planDiscoveryRequest({mode:'explore',requestNumber:3,history,related,exhausted}).kind,'none');
+  assert.equal(planDiscoveryRequest({mode:'explore',selectedGenre:'rock',exhausted,related}).kind,'none');
+  assert.ok(!Array.from({length:9},(_,i)=>chooseWildcardGenre(i,history)).includes('rock'));
+});
+test('normalized artist lanes do not waste requests on aliases or exhausted cursors',()=>{
+  const related=[{artist:'Beyoncé'},{artist:'Beyonce'},{artist:'Other'},{artist:'Third'}];
+  const plans=Array.from({length:6},(_,n)=>planDiscoveryRequest({mode:'balanced',requestNumber:n*2,related}));
+  assert.deepEqual(plans.map(p=>p.lane.artist),['Beyoncé','Other','Third','Beyoncé','Other','Third']);
+  const exhausted=new Set(['related:seed:beyonce','broad']);
+  assert.equal(planDiscoveryRequest({mode:'balanced',requestNumber:0,related,exhausted}).lane.artist,'Other');
+  assert.equal(planDiscoveryRequest({mode:'balanced',requestNumber:Infinity,related}).lane.artist,'Beyoncé');
+});

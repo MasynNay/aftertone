@@ -1,5 +1,6 @@
 import { computeTaste } from '../src/taste.mjs';
 import {collectionFacets,collectionPageModel,collectionSearchKey} from '../src/collection-pagination.mjs';
+import {personalPlaylists,playlistAvailability,MAX_PERSONAL_PLAYLISTS,MAX_PLAYLIST_MEMBERS} from '../src/personal-playlists.mjs';
 import {collectionInsights} from '../src/collection-insights.mjs';
 import {listeningRecap} from '../src/listening-recap.mjs';
 import {listeningJournal} from '../src/listening-journal.mjs';
@@ -14,7 +15,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', journalFilter='all',journalPage=1,journalPath='all',journalQuery='',recapPeriod='all',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', personalPlaylistId='',personalPlaylistPage=1, journalFilter='all',journalPage=1,journalPath='all',journalQuery='',recapPeriod='all',removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   // One index per render avoids searching the full catalog for every saved
   // song. Keep the FIRST matching entry, matching the previous .find behavior.
   const byId=new Map();
@@ -233,8 +234,33 @@ function renderCollectionRecovery() {
   </section>`;
 }
 
+
+function renderPersonalPlaylists(items) {
+  const lists=personalPlaylists(state);
+  const selected=lists.find(p=>p.id===personalPlaylistId);
+  const rows=playlistAvailability(selected,state.favorites,catalog);
+  const pages=Math.max(1,Math.ceil(rows.length/20));
+  const page=Math.max(1,Math.min(pages,personalPlaylistPage));
+  const available=rows.filter(r=>r.available).length;
+  return `<section class="panel personal-playlists" aria-labelledby="personal-playlists-heading">
+    <div class="panel-heading"><div><span class="eyebrow">MAKE IT YOURS</span><h2 id="personal-playlists-heading">Your Playlists.</h2></div><span class="panel-accent" aria-hidden="true">♫</span></div>
+    <p class="journal-copy">Organize saved music without changing your Collection. Choose a playlist, then add songs using the buttons on your saved song cards. Playlists store song references, not audio.</p>
+    <form id="personal-playlist-create" class="personal-playlist-form"><label for="personal-playlist-name">New playlist name</label><div><input class="search-input" id="personal-playlist-name" maxlength="60" required placeholder="Late Night, Road Trip…"><button class="accent-button" type="submit" ${lists.length>=MAX_PERSONAL_PLAYLISTS?'disabled':''}>Create Playlist</button></div></form>
+    <p class="journal-copy">${lists.length} of ${MAX_PERSONAL_PLAYLISTS} playlists · Up to ${MAX_PLAYLIST_MEMBERS} songs each</p>
+    ${lists.length?`<label for="personal-playlist-select">Edit playlist</label><select id="personal-playlist-select" class="select-input"><option value="">Choose a playlist</option>${lists.map(p=>`<option value="${html(p.id)}" ${selected?.id===p.id?'selected':''}>${html(p.name)} (${p.trackIds.length})</option>`).join('')}</select>`:''}
+    ${selected?`<div class="personal-playlist-editor">
+      <form id="personal-playlist-rename" class="personal-playlist-form"><label for="personal-playlist-rename-name">Playlist name</label><div><input id="personal-playlist-rename-name" class="search-input" maxlength="60" value="${html(selected.name)}" required><button type="submit" class="secondary-button">Rename</button><button type="button" class="secondary-button" data-action="personal-playlist-delete">Delete Playlist</button></div></form>
+      <p id="personal-playlist-status" role="status" tabindex="-1" data-page="${page}">${available} of ${rows.length} songs available · ${rows.length-available} unavailable</p>
+      ${rows.length?`<ol class="personal-playlist-rows" start="${(page-1)*20+1}">${rows.slice((page-1)*20,page*20).map((row,i)=>`<li><div><strong>${html(row.track?.title||'Song details unavailable')}</strong><span>${html(row.track?.artist||row.id)}${row.available?'':row.saved?' · Missing details':' · Not currently saved'}</span></div><div class="personal-playlist-row-actions"><button type="button" class="secondary-button" data-action="personal-playlist-move" data-id="${html(row.id)}" data-direction="-1" aria-label="Move song earlier" ${(page-1)*20+i===0?'disabled':''}>↑</button><button type="button" class="secondary-button" data-action="personal-playlist-move" data-id="${html(row.id)}" data-direction="1" aria-label="Move song later" ${(page-1)*20+i===rows.length-1?'disabled':''}>↓</button><button type="button" class="secondary-button" data-action="personal-playlist-remove" data-id="${html(row.id)}" aria-label="Remove song from playlist">Remove</button></div></li>`).join('')}</ol>`:'<p class="empty-micro">This playlist is empty. Add saved songs below.</p>'}
+      ${pages>1?`<div class="personal-playlist-row-actions"><button type="button" class="secondary-button" data-action="personal-playlist-page" data-page="${page-1}" ${page===1?'disabled':''}>Previous</button><span>Page ${page} of ${pages}</span><button type="button" class="secondary-button" data-action="personal-playlist-page" data-page="${page+1}" ${page===pages?'disabled':''}>Next</button></div>`:''}
+    </div>`:''}
+  </section>`;
+}
+
 function renderCollection() {
   const items = state.favorites.map(lookup).filter(Boolean);
+  const activePlaylist=personalPlaylists(state).find(p=>p.id===personalPlaylistId);
+  const playlistMembers=new Set(activePlaylist?.trackIds||[]);
   const facets=collectionFacets(items,state.history);
   const insights=collectionInsights(items,state.favorites,state.history,facets);
   // A deleted last song may remove a facet. Fall back visibly to "All" rather
@@ -257,9 +283,10 @@ function renderCollection() {
     </div>
   </nav>`;
   return `<section><div class="eyebrow">KEEP WHAT MOVES YOU</div><div class="page-head"><div><h1>Your Collection<span style="color:var(--accent)">.</span></h1><p class="lead">No algorithms telling you what to love. Every track here earned its place.</p></div><div class="collection-header-actions"><button class="secondary-button" data-action="export-json" ${items.length ? '' : 'disabled'}>↧ Export Library</button><button class="secondary-button" data-action="backup-progress">↧ Backup Progress</button><button class="secondary-button" data-action="restore-progress" aria-describedby="collection-backup-note">↥ Restore Backup</button><input id="progress-backup-file" type="file" accept=".json,application/json" aria-label="Choose an AFTERTONE progress backup" hidden /></div></div>
-  <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+  <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets and personal playlists, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
   ${renderCollectionInsights(insights,{genre,mood})}
   ${renderCollectionRecovery()}
+  ${renderPersonalPlaylists(items)}
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
   ${items.length ? `<div class="collection-tools">
     <input id="collection-search" class="search-input" type="search" placeholder="Search songs, artists, moods…" aria-label="Search saved music" value="${html(collectionQuery)}" />
@@ -283,7 +310,7 @@ function renderCollection() {
   ${filtered ? `<p class="collection-match-count" role="status" aria-live="polite" aria-atomic="true">Showing ${paged.total} of ${items.length} saved ${items.length===1?'song':'songs'}.</p>` : ''}
   ${paged.total ? `${paged.pages>1?pagingControls():''}<div class="collection-grid">${paged.visible.map((track) => {
     const [a,b] = shade(track.id); const event = facets.eventById.get(track.id);
-    return `<article class="track-tile"><div class="tile-art" style="--tone-a:${a};--tone-b:${b}">${track.artwork ? `<img loading="lazy" src="${urlSafe(track.artwork)}" alt="" />` : '<span class="art-glyph">◉</span>'}<span class="tile-count">${event?.recognized===true ? 'RECOGNIZED' : event?.recognized===false ? 'NEW TO YOU' : 'SAVED'}</span></div><div class="tile-body"><strong title="${html(track.title)}">${html(track.title)}</strong><p>${html(track.artist)}</p><div class="tag-row">${tag(track.genre)}${tag(facets.moodById.get(track.id) || track.mood)}</div><div class="tile-actions"><button data-preview="${html(track.id)}" aria-label="Listen to ${html(track.title)}">▶ Listen</button><button data-action="remove-favorite" data-id="${html(track.id)}" class="remove-button" aria-label="Remove ${html(track.title)} from collection">×</button></div></div></article>`;
+    return `<article class="track-tile"><div class="tile-art" style="--tone-a:${a};--tone-b:${b}">${track.artwork ? `<img loading="lazy" src="${urlSafe(track.artwork)}" alt="" />` : '<span class="art-glyph">◉</span>'}<span class="tile-count">${event?.recognized===true ? 'RECOGNIZED' : event?.recognized===false ? 'NEW TO YOU' : 'SAVED'}</span></div><div class="tile-body"><strong title="${html(track.title)}">${html(track.title)}</strong><p>${html(track.artist)}</p><div class="tag-row">${tag(track.genre)}${tag(facets.moodById.get(track.id) || track.mood)}</div><div class="tile-actions"><button data-preview="${html(track.id)}" aria-label="Listen to ${html(track.title)}">▶ Listen</button><button data-action="remove-favorite" data-id="${html(track.id)}" class="remove-button" aria-label="Remove ${html(track.title)} from collection">×</button></div>${activePlaylist?`<button type="button" class="secondary-button personal-playlist-add" data-action="personal-playlist-toggle" data-id="${html(track.id)}" aria-pressed="${playlistMembers.has(track.id)}" aria-label="${playlistMembers.has(track.id)?'Remove':'Add'} ${html(track.title)} ${playlistMembers.has(track.id)?'from':'to'} ${html(activePlaylist.name)}">${playlistMembers.has(track.id)?'✓ In playlist':'＋ Add to playlist'}</button>`:''}</div></article>`;
   }).join('')}</div>${pagingControls(true)}` : `<div class="empty-state"><h2>No Matches.</h2><p>No saved songs match these search or filter choices. Clear filters to see your collection again.</p><button type="button" class="accent-button" data-action="${genre==='all'&&mood==='all'?'clear-collection-search':'clear-collection-filters'}">Show All Saved Songs</button></div>`}
   <p style="font-size:11px;color:var(--dim);margin-top:22px">${plural(items.length,'saved track')} · Recordings provided by their source hosts. Visit the original source for attribution and licensing.</p>` : `<div class="empty-state"><div class="empty-icon">♡</div><h2>Nothing Saved Yet.</h2><p>Start swiping. The moment a track catches your ear, your collection comes to life.</p><button class="accent-button" data-view="discover">Explore Music →</button></div>`}</section>`;
 }
@@ -317,7 +344,6 @@ function renderListeningJournal() {
     ${pages>1?'<div class="journal-pagination"><button type="button" class="secondary-button" data-action="journal-page" data-page="'+(page-1)+'" '+(page<=1?'disabled':'')+'>← Newer</button><span>Page '+page+' of '+pages+'</span><button type="button" class="secondary-button" data-action="journal-page" data-page="'+(page+1)+'" '+(page>=pages?'disabled':'')+'>Older →</button></div>':''}
     </section>`;
 }
-
 
 function renderListeningRecap() {
   const recap=listeningRecap(state.history,catalog,{period:recapPeriod});
