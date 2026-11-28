@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {listeningJournal} from '../app/src/listening-journal.mjs';
 import {createInitialState,recordChoice} from '../app/src/taste.mjs';
 import {sanitizeState} from '../app/src/persistence.mjs';
+import {getPassportProgress} from '../app/src/discovery/passport.mjs';
 import {createViews} from '../app/public/views.js';
 test('journal pages are newest-first, bounded, filterable and preserve old history',()=>{
   const history=Array.from({length:53},(_,i)=>({id:'deezer:'+i,title:'Song '+i,artist:'Artist',action:i%2?'pass':'like',route:'balanced',at:i+1}));
@@ -37,4 +38,12 @@ test('taste map exposes truthful Tune Lab accuracy and escapes journal metadata'
   assert.match(markup,/data-filter="pass" aria-pressed="false">Passed \(1\)/);
   assert.match(markup,/&lt;script&gt;fake&lt;\/script&gt;/);
   assert.doesNotMatch(markup,/<script>/);
+});
+
+test('new shared challenge votes are not attributed to a discovery path or Wild Card quest',()=>{
+  const next=recordChoice(createInitialState(),{id:'deezer:1',action:'pass',context:'challenge',route:'explore'});
+  const history=sanitizeState(next).history;
+  assert.equal(history[0].context,'challenge');
+  assert.deepEqual(listeningJournal(history,[]).paths.map(p=>p.id),['challenge']);
+  assert.equal(getPassportProgress(history).quests.find(q=>q.id==='orbit').progress,0);
 });

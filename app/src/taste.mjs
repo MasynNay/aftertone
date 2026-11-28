@@ -122,7 +122,7 @@ export function selectNext(catalog, history, genre = 'all', random = Math.random
 
 export function recordChoice(state, { id, action, recognized = null, correct = null, mood = null, genre = null, artist = null, title = null, context = 'discovery', route = 'balanced', at = Date.now() }) {
   if (!id || !['like', 'pass'].includes(action) || state.history.some((item) => item.id === id)) return state;
-  const event = { id, action, recognized, correct, mood, genre, artist, ...(typeof title==='string'&&title.trim()?{title:title.trim().slice(0,180)}:{}), context: context === 'search' ? 'search' : 'discovery', route: ['balanced','familiar','explore'].includes(route) ? route : 'balanced', at };
+  const event = { id, action, recognized, correct, mood, genre, artist, ...(typeof title==='string'&&title.trim()?{title:title.trim().slice(0,180)}:{}), context: ['search','challenge'].includes(context) ? context : 'discovery', route: ['balanced','familiar','explore'].includes(route) ? route : 'balanced', at };
   return {
     ...state,
     history: [...state.history, event].slice(-5000),

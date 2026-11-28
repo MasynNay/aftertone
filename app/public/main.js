@@ -1817,7 +1817,7 @@ function openModal(kind, extra = {}) {
 function recordDecision(id, action, extra = {}) {
   const meta=lookup(id);
   let next=recordChoice(state,{id,action,genre:meta?.genre,artist:meta?.artist,title:meta?.title,
-    context:searchQuery?'search':'discovery',route:state.discoveryMix,...extra});
+    context:challengeIds.length?'challenge':searchQuery?'search':'discovery',route:state.discoveryMix,...extra});
   if(action==='like' && meta && !next.savedTracks.some(track=>track.id===id))
     next={...next,savedTracks:[...next.savedTracks,meta].slice(-1500)};
   // A failed/quota-limited or silently ignored write must not count as a

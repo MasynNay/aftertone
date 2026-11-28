@@ -7,7 +7,7 @@ export function getPassportProgress(history = [], quizStats = {}) {
   const events = Array.isArray(history) ? history : [];
   const kept = events.filter(event => event?.action === 'like');
   const distinctArtists = new Set(kept.map(event => String(event.artist || '').trim().toLocaleLowerCase()).filter(Boolean));
-  const wildcardDecisions = events.filter(event => event?.context !== 'search' && event?.route === 'explore' && ['like','pass'].includes(event.action)).length;
+  const wildcardDecisions = events.filter(event => !['search','challenge'].includes(event?.context) && event?.route === 'explore' && ['like','pass'].includes(event.action)).length;
   const answered = Math.max(0, Number(quizStats.answered) || 0);
   const definitions = [
     { id:'spark', title:'First sparks', detail:'Keep three songs worth returning to', goal:3, value:new Set(kept.map(event=>event.id)).size, action:'discover', actionLabel:'Keep exploring' },
