@@ -824,8 +824,9 @@ function nextUnratedPreview(returnFocus=false) {
   rememberCurrentUnrated();
   unvotedPreviews.add(current.id);
   stopContinuous();
-  chooseNext();render();maybeTopUp(returnFocus);
+  chooseNext();render();
   if(returnFocus) ($('#stage-play') || main).focus({preventScroll:true});
+  maybeTopUp(returnFocus);
 }
 function revisitUnratedPreview(returnFocus=false) {
   if(modal||animatingChoice)return;
@@ -985,6 +986,7 @@ function updatePlaybackView() {
     const pressed=String(autoAdvanceEnabled);
     if(mode.getAttribute('aria-pressed')!==pressed)mode.setAttribute('aria-pressed',pressed);
     setTextIfChanged(mode,autoAdvanceEnabled?'Auto-advance: On':'Auto-advance: Off');
+    setTextIfChanged($('#first-listen-playback-mode'),autoAdvanceEnabled?'Continuous listening begins after your first Play. You control the volume and can stop at any time.':'Single-preview mode waits for your decision. You control the volume and can stop at any time.');
   }
   const stop = $('#stop-session');
   if (stop) stop.hidden = !continuousListening;
@@ -995,7 +997,7 @@ function updatePlaybackView() {
       : 'Browser blocked playback · Check media permissions, then press Play')
     : challengeIds.length
       ? 'Listen, then Keep or Pass. Failed clips can be skipped without a vote.'
-      : continuousListening ? '● Auto-playing · Stop to end' : autoAdvanceEnabled ? '▶ Play once for continuous listening' : 'Single preview · stays on this song until you decide';
+      : continuousListening ? '● Auto-playing · Stop to end' : autoAdvanceEnabled ? (activeAudioId===current?.id && !audio.paused ? 'Auto-advance enabled · starts on your next Play' : '▶ Play once for continuous listening') : 'Single preview · stays on this song until you decide';
   const button = $('#stage-play');
   if (button && current) {
     if (current.source === 'youtube') {
