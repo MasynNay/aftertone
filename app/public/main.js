@@ -2482,8 +2482,10 @@ let progressRestoreBusy=false;
 async function importProgressBackupFile(file) {
   // File.text() is asynchronous. Guard against overlapping restore attempts.
   if (progressRestoreBusy) return;
+  const wasRecovering=Boolean(collectionRecoveryFlight);
   cancelCollectionRecovery();
   progressRestoreBusy=true;
+  if(wasRecovering&&view==='collection')render();
   const restoreButton=$('[data-action="restore-progress"]');
   if (restoreButton) restoreButton.disabled=true;
   try {

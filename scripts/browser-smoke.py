@@ -5343,7 +5343,19 @@ def check_legacy_backup_missing_track_metadata(browser, base):
                                 accept_downloads=True,service_workers="block")
     context.route("**/*",lambda route:route.continue_()
                   if urlsplit(route.request.url).netloc==origin else route.abort())
-    context.route("https://api.deezer.com/**",mock_deezer)
+    requested=[]
+    def recovery_provider(route):
+        parsed=urlsplit(route.request.url)
+        if parsed.path=="/track/9100999":
+            requested.append(parsed.path)
+            callback=parse_qs(parsed.query).get("callback",[""])[0]
+            require(re.fullmatch(r"__aftertoneDeezer_\d+",callback),"Invalid recovery callback")
+            payload={**demo_tracks()[0],"id":9100999,"title":"Recovered Fixture Melody"}
+            route.fulfill(status=200,content_type="application/javascript",
+                          body=f"window[{json.dumps(callback)}]({json.dumps(payload)});")
+            return
+        mock_deezer(route)
+    context.route("https://api.deezer.com/**",recovery_provider)
     page=context.new_page()
     errors=[]
     page.on("pageerror",lambda error:errors.append(str(error)))
@@ -5356,10 +5368,10 @@ def check_legacy_backup_missing_track_metadata(browser, base):
         page.evaluate("""() => {
           const key='aftertone:session:v1';
           const s=JSON.parse(localStorage.getItem(key));
-          const id='deezer:9100001';
+          const id='deezer:9100999';
           s.favorites=[id];
           s.savedTracks=[{
-            id,source:'deezer',title:'Fixture Melody 01',
+            id,source:'deezer',title:'Recovered Fixture Melody',
             artist:'Fixture Artist 01',genre:'unknown',mood:'Fresh'
           }];
           s.history=[{id,action:'like',artist:'Fixture Artist 01',
@@ -5369,7 +5381,7 @@ def check_legacy_backup_missing_track_metadata(browser, base):
           localStorage.setItem('aftertone:optional-playlist:v1',
             JSON.stringify({tracks:[{artist:'Old Artist',title:'Old Song'}]}));
           localStorage.setItem('aftertone:lyric-offsets:v1',
-            JSON.stringify({'deezer:9100001':15}));
+            JSON.stringify({'deezer:9100999':15}));
         }""")
         page.locator('#main-nav button[data-view="collection"]').click()
         with page.expect_download(timeout=TIMEOUT) as exported:
@@ -5393,7 +5405,7 @@ def check_legacy_backup_missing_track_metadata(browser, base):
           localStorage.setItem('aftertone:optional-playlist:v1',
             JSON.stringify({tracks:[{artist:'Retained Artist',title:'Retained Song'}]}));
           localStorage.setItem('aftertone:lyric-offsets:v1',
-            JSON.stringify({'deezer:9100001':51}));
+            JSON.stringify({'deezer:9100999':51}));
         }""")
         optional_before=page.evaluate("""() => [
           localStorage.getItem('aftertone:optional-playlist:v1'),
@@ -5412,7 +5424,7 @@ def check_legacy_backup_missing_track_metadata(browser, base):
         page.wait_for_function("""() => {
           try {
             const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
-            return s.favorites?.includes('deezer:9100001') && s.history?.length===1;
+            return s.favorites?.includes('deezer:9100999') && s.history?.length===1;
           }catch{return false;}
         }""",timeout=TIMEOUT)
         require(len(prompts)==1 and "no song title or artist metadata" in prompts[0],
@@ -5426,28 +5438,47 @@ def check_legacy_backup_missing_track_metadata(browser, base):
             localStorage.getItem('aftertone:lyric-offsets:v1')
           ]
         })""")
-        require(restored["session"]["favorites"]==["deezer:9100001"] and
+        require(restored["session"]["favorites"]==["deezer:9100999"] and
                 len(restored["session"]["history"])==1,
                 "Old backup lost a recorded favorite or listening decision")
         require(restored["session"]["savedTracks"]==[],
                 "Restore falsely manufactured full titles for ID-only legacy favorites")
         require(restored["optional"]==optional_before,
                 "Restoring legacy v1 deleted newer playlist or lyric settings")
-        # The legacy ID is real in our synthetic catalog, but it has no
-        # durable title until the visitor explicitly chooses recovery.
+        # This exact legacy ID exists only at the synthetic provider endpoint,
+        # not in any discovery result. Recovery must be user-initiated.
         page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
         page.locator('#main-nav button[data-view="collection"]').click()
         recover=page.locator('[data-action="recover-collection-metadata"]')
         require(recover.is_visible(),"Missing legacy metadata had no recovery action")
+        require(not requested,"Metadata recovery contacted the provider without consent")
+        # A browser that silently discards the session write must not claim
+        # successful recovery or add the returned remote track to Collection.
+        page.evaluate("""() => {
+          window.__originalRecoverySetItem=Storage.prototype.setItem;
+          Storage.prototype.setItem=function(key,value) {
+            if(key==='aftertone:session:v1')return;
+            return window.__originalRecoverySetItem.call(this,key,value);
+          };
+        }""")
+        recover.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => document.querySelector('#collection-recovery-status')?.textContent?.includes('Recovery was not saved')""",timeout=TIMEOUT)
+        require(len(requested)==1 and page.locator('.track-tile').count()==0,
+                "Failed recovery leaked a remote card or requested unrelated songs")
+        require(page.evaluate("""() => JSON.parse(localStorage.getItem('aftertone:session:v1')).savedTracks.length===0"""),
+                "Failed recovery unexpectedly saved metadata")
+        page.evaluate("""() => {Storage.prototype.setItem=window.__originalRecoverySetItem;}""")
         recover.focus()
         page.keyboard.press("Enter")
         page.wait_for_function("""() => document.querySelector('#collection-recovery-status')?.textContent?.includes('Recovered and saved details for 1 song.')""",timeout=TIMEOUT)
         repaired=page.evaluate("""() => JSON.parse(localStorage.getItem('aftertone:session:v1'))""")
         require(repaired["favorites"]==restored["session"]["favorites"] and
                 repaired["history"]==restored["session"]["history"] and
-                len(repaired["savedTracks"])==1 and repaired["savedTracks"][0]["id"]=="deezer:9100001",
+                len(repaired["savedTracks"])==1 and repaired["savedTracks"][0]["id"]=="deezer:9100999",
                 "Recovery changed decisions or failed to persist the exact song")
-        require("Fixture Melody 01" in page.locator("#main-content").inner_text(),
+        require(len(requested)==2,"Retry did not request the same exact missing ID")
+        require("Recovered Fixture Melody" in page.locator("#main-content").inner_text(),
                 "Recovered favorite did not become a visible Collection card")
         require(page.evaluate("document.activeElement?.id==='collection-recovery-status'"),
                 "Recovery lost keyboard focus")

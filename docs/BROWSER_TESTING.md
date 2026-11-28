@@ -136,4 +136,4 @@ The dual-browser backup journey now checks a validated replacement with identica
 
 ### Legacy favorite metadata recovery
 
-The dual-browser legacy v1 restore journey now deliberately recovers its exact saved favorite ID, asserts the original favorites and history are unchanged, checks stored metadata and visible card, and verifies keyboard focus remains on recovery feedback. Unit tests cover batch limits, local reuse, unsupported IDs and refusal to accept unsolicited identities.
+The dual-browser legacy v1 restore journey now deliberately recovers an exact saved favorite ID absent from the discovery catalog. It verifies no provider call before opt-in, simulates a silently rejected session write (no visible remote card or false success), retries the exact ID, asserts original favorites and history are unchanged, checks durable metadata and visible card, and verifies keyboard focus on feedback. Unit tests cover batch limits, local reuse, unsupported IDs and refusal to accept unsolicited identities.
