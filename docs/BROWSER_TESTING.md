@@ -1,3 +1,7 @@
+## Restore comparison and non-destructive cancellation (v0.12 development)
+
+Chromium and Firefox tests import a valid fictional progress backup into a profile with a different saved-song and listening-history count. Before storage can change, the native confirmation must show explicit **current → backup** counts, signed differences, and replacement-not-merge wording. Canceling the prompt must preserve the current browser's stored data byte-for-byte; confirming uses the existing validated and rollback-protected restore path. Pure Node tests additionally exercise reductions (including playlist data), malformed summaries, and legacy v1 backups that do not overwrite optional playlist or lyric information. These tests use local, fictional metadata and do not establish real-device storage durability or third-party media rights.
+
 ## Mobile Filters overlay keyboard behavior (v0.12 development)
 
 At 320px and 390px, Chromium and Firefox test the fixed Filters panel's open-only `role=dialog` and `aria-modal=true`, Tab wrapping from the final visible control back to Done, Shift+Tab wrapping back, restoration from a background focus attempt, suppression of Arrow-key Keep/Pass shortcuts behind the panel, and retained Done focus when the sidebar redraws. The suite also checks the existing Escape, Done, filter-change and search-submit flows, plus desktop-breakpoint cleanup of the dialog role and expanded state. This is synthetic keyboard/browser coverage; real touch and screen-reader verification remain separate.

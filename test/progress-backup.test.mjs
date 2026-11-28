@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createInitialState} from '../app/src/taste.mjs';
 import {STORAGE_KEY,loadState,saveState} from '../app/src/persistence.mjs';
 import {createTournament,DUEL_STORAGE_KEY,loadDuelStore,saveDuelStore} from '../app/src/duels.mjs';
-import {BACKUP_FORMAT,BACKUP_VERSION,BACKUP_MAX_BYTES,createProgressBackup,inspectProgressBackup,restoreProgressBackup} from '../app/src/progress-backup.mjs';
+import {BACKUP_FORMAT,BACKUP_VERSION,BACKUP_MAX_BYTES,createProgressBackup,inspectProgressBackup,compareProgressSummaries,restoreProgressBackup} from '../app/src/progress-backup.mjs';
 import {createViews} from '../app/public/views.js';
 
 function storage(initial={}) {
@@ -336,4 +336,48 @@ test('normal backed-up favorites with metadata never trigger a missing-song warn
   assert.match(code,/no song title or artist metadata in this file/);
   assert.match(code,/favorite IDs and listening decisions can be restored/);
   assert.match(code,/const \{summary\}=inspectProgressBackup\(payload\)/);
+});
+
+test('restore preview reports changes and losses, without changing local storage',()=>{
+  const browser=populated();
+  const source=populated();
+  const edited=loadState(source);
+  edited.favorites=[];
+  edited.history=[];
+  source.setItem(STORAGE_KEY,JSON.stringify(edited));
+  source.setItem('aftertone:tune-lab:v1',JSON.stringify({answered:1,correct:1}));
+  source.removeItem('aftertone:optional-playlist:v1');
+  const current=inspectProgressBackup(createProgressBackup(browser)).summary;
+  const incoming=inspectProgressBackup(createProgressBackup(source)).summary;
+  const snapshot=browser.entries();
+  const result=compareProgressSummaries(current,incoming);
+  assert.ok(result.lines.includes('Saved songs: 1 → 0 (-1)'));
+  assert.ok(result.lines.includes('Listening choices: 1 → 0 (-1)'));
+  assert.ok(result.lines.includes('Tune Lab answers: 4 → 1 (-3)'));
+  assert.ok(result.lines.includes('Imported playlist songs: 2 → 0 (-2)'));
+  assert.ok(result.reductions.includes('Saved songs'));
+  assert.ok(result.reductions.includes('Imported playlist songs'));
+  assert.deepEqual(browser.entries(),snapshot,'Preview must not change the browser');
+});
+test('legacy v1 comparison explicitly preserves optional data',()=>{
+  const current=inspectProgressBackup(createProgressBackup(populated())).summary;
+  const old={...current,version:1,playlistTracks:null,lyricOffsets:null};
+  const result=compareProgressSummaries(current,old);
+  assert.ok(result.lines.some(line=>line.startsWith('Imported playlist songs: unchanged')));
+  assert.ok(result.lines.some(line=>line.startsWith('Lyric timing adjustments: unchanged')));
+  assert.deepEqual(result.reductions,[]);
+  assert.throws(()=>compareProgressSummaries(null,old),/required/);
+  assert.throws(()=>compareProgressSummaries(current,{...old,favorites:-1}),/Invalid incoming/);
+});
+test('restore confirmation surfaces the comparison and warns when counts fall',()=>{
+  const code=readFileSync(new URL('../app/public/main.js',import.meta.url),'utf8');
+  const restore=code.split('async function importProgressBackupFile(file) {')[1]
+    ?.split('// Native artwork can expire')[0] || '';
+  assert.match(restore,/compareProgressSummaries\(current,preview\)/);
+  assert.match(restore,/WARNING: Restoring would reduce:/);
+  assert.match(restore,/Current browser progress could not be verified/);
+  assert.match(restore,/if\(!window.confirm\(message\)\)/);
+  assert.match(restore,/restoreProgressBackup\(localStorage,content\)/);
+  assert.ok(restore.indexOf('compareProgressSummaries')<restore.indexOf('window.confirm'));
+  assert.ok(restore.indexOf('window.confirm')<restore.indexOf('restoreProgressBackup(localStorage,content)'));
 });
