@@ -1,4 +1,5 @@
 /** Local-only first-run artist choices and discovery-pool boundaries. */
+import {artistKey} from './discovery/rotation.mjs';
 const canonical = value => String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
 
 export function parseFavoriteArtists(value, max=5) {
@@ -28,9 +29,9 @@ export function fromActiveFeed(track, activeIds, source='deezer') {
 export function likedArtistLanes(history, limit=8) {
   const counts=new Map();
   for (const h of history || []) {
-    if (h.action !== 'like' || !h.artist) continue;
-    const key=canonical(h.artist);
-    if (!key) continue;
+    if (h?.action !== 'like' || typeof h.artist!=='string') continue;
+    const key=artistKey(h.artist);
+    if (!key || ['unknown','unknown artist','various artists'].includes(key)) continue;
     const existing=counts.get(key) || {artist:h.artist,count:0};
     existing.count += h.context === 'search' ? 0.5 : 1;
     counts.set(key,existing);

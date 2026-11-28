@@ -1,3 +1,9 @@
+## v0.12 development — Fair discovery request rotation (November 28, 2026)
+
+- Rotate related and liked artist requests by their actual scheduled lane occurrence rather than absolute request index; deduplicate normalized performer aliases.
+- Honor Comfort Zone's broad slot and exhaust all eligible Wild Card genre cursors before declaring discovery finished. Explicit genre filters remain in force; Wild Card never falls back to graph-neighbor requests.
+- Add deterministic tests for starvation, exhaustion, explicit filters and artist aliases; no changes to storage, playback or provider interfaces.
+
 ## v0.12 development — Honest discovery queue and refill controls (November 27, 2026)
 
 ### Journal browsing (development)
