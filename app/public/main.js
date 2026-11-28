@@ -32,6 +32,7 @@ import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/vo
 import { csvRows } from '/src/csv.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
 import {addCollectionTracks,MAX_FAVORITE_IDS} from '/src/collection-capacity.mjs';
+import {collectionRecoveryPlan,prepareRecoveredFavorites} from '/src/collection-recovery.mjs';
 import {JOURNAL_FILTERS} from '/src/listening-journal.mjs';
 
 const main = document.querySelector('#main-content');
@@ -275,6 +276,8 @@ let collectionSort = 'recent';
 let collectionGenre = 'all'; // Browse-only facet; never persisted or included in backups.
 let collectionMood = 'all';
 let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
+let collectionRecoveryFlight=null,collectionRecoveryMessage='';
+const collectionRecoveryAttempted=new Set();
 let journalFilter='all',journalPage=1; // Read-only Taste Map browsing.
 // Undo for the most recent removal remains visible while this tab is open.
 let lastRemovedFavorite = null;
@@ -1353,6 +1356,7 @@ window.addEventListener('resize', () => {
 function goTo(nextView) {
   setThemeMenuOpen(false);
   if (!['discover', 'collection', 'taste', 'challenges', 'quiz', 'duels'].includes(nextView)) return;
+  if(nextView!=='collection')cancelCollectionRecovery();
   if (modal) closeModal();
   stopContinuous();
   view = nextView;
@@ -1433,6 +1437,7 @@ function render() {
   challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
   const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,removedFavorite: lastRemovedFavorite,
+    collectionRecovery:view==='collection'?{...collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted),busy:Boolean(collectionRecoveryFlight),message:collectionRecoveryMessage}:null,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre),autoAdvanceEnabled,canRevisit:Boolean(revisitablePreview()) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -2383,6 +2388,64 @@ function exportLibrary(type = 'json') {
   toast('Export created.');
 }
 
+/** Recovery is opt-in, five identities at a time. Reuse the bounded public
+ * Deezer metadata endpoint; no preview audio or search queries are requested. */
+function cancelCollectionRecovery() {
+  if(!collectionRecoveryFlight)return;
+  collectionRecoveryFlight.abort();
+  collectionRecoveryFlight=null;
+  collectionRecoveryMessage='Recovery canceled. Saved songs were not changed by the unfinished request.';
+}
+async function recoverCollectionMetadata(returnFocus=false) {
+  if(view!=='collection'||collectionRecoveryFlight||progressRestoreBusy)return;
+  const plan=collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted);
+  if(!plan.ids.length)return;
+  if(plan.retry)collectionRecoveryAttempted.clear();
+  const controller=new AbortController();
+  collectionRecoveryFlight=controller;
+  collectionRecoveryMessage='Checking '+plan.ids.length+' saved song '+(plan.ids.length===1?'identity':'identities')+'…';
+  render();
+  if(returnFocus)$('#collection-recovery-status')?.focus({preventScroll:true});
+  let remote=[],providerIssue=false;
+  try {
+    if(plan.remote.length) {
+      try {
+        const response=await apiFetch('/api/challenge-tracks?ids='+encodeURIComponent(plan.remote.join(',')),{signal:controller.signal});
+        if(!response.ok)throw new Error(response.status===429?'Deezer is limiting requests.':'Provider metadata unavailable.');
+        const payload=await response.json();
+        if(!Array.isArray(payload.tracks))throw new Error('Provider metadata unavailable.');
+        const allowed=new Set(plan.remote);
+        remote=payload.tracks.filter(t=>allowed.has(t?.id)&&t.source==='deezer');
+      }catch(error) {
+        if(controller.signal.aborted)return;
+        providerIssue=true;
+      }
+    }
+    if(controller.signal.aborted||collectionRecoveryFlight!==controller||view!=='collection')return;
+    const {next,tracks}=prepareRecoveredFavorites(state,plan.ids,[...plan.local,...remote]);
+    if(tracks.length&&!commitSessionChange(next))throw new Error('Recovery was not saved. Check browser storage and try again.');
+    if(tracks.length)addToCatalog(tracks);
+    for(const id of plan.ids)collectionRecoveryAttempted.add(id);
+    const remaining=collectionRecoveryPlan(state,catalog,collectionRecoveryAttempted).missing;
+    collectionRecoveryMessage=(tracks.length?'Recovered and saved details for '+tracks.length+' '+(tracks.length===1?'song.':'songs.'):'No new song details could be recovered.')+
+      (remaining?' '+remaining+' saved '+(remaining===1?'identity still needs':'identities still need')+' details.':' All saved songs now have stored details.')+
+      (providerIssue?' Deezer could not complete the lookup. Retry when the service is available.':'')+
+      ' Favorites and listening choices were preserved.';
+  }catch(error) {
+    if(controller.signal.aborted||collectionRecoveryFlight!==controller)return;
+    collectionRecoveryMessage=error.message||'Recovery could not be saved. Your favorites were preserved.';
+  }finally {
+    if(collectionRecoveryFlight===controller) {
+      collectionRecoveryFlight=null;
+      if(view==='collection'){
+        const restoreFocus=document.activeElement?.id==='collection-recovery-status'||document.activeElement===document.body;
+        render();
+        if(restoreFocus)$('#collection-recovery-status')?.focus({preventScroll:true});
+      }
+    }
+  }
+}
+
 /** Persistent action feedback stays available after the temporary toast fades. */
 function announceProgressBackup(message) {
   const status=$('#progress-backup-status');
@@ -2419,6 +2482,7 @@ let progressRestoreBusy=false;
 async function importProgressBackupFile(file) {
   // File.text() is asynchronous. Guard against overlapping restore attempts.
   if (progressRestoreBusy) return;
+  cancelCollectionRecovery();
   progressRestoreBusy=true;
   const restoreButton=$('[data-action="restore-progress"]');
   if (restoreButton) restoreButton.disabled=true;
@@ -2780,6 +2844,10 @@ document.addEventListener('click', async (event) => {
       render();
       if (returnFocus) ($('#collection-search') || main).focus({preventScroll:true});
       return;
+    }
+    case 'recover-collection-metadata': return recoverCollectionMetadata(document.activeElement===action);
+    case 'cancel-collection-recovery': {
+      cancelCollectionRecovery();render();$('#collection-recovery-status')?.focus({preventScroll:true});return;
     }
     case 'export-json': return exportLibrary('json');
     case 'export-csv': return exportLibrary('csv');

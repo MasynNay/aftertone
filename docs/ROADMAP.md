@@ -1,3 +1,5 @@
+**v0.12 Collection recovery (November 27, 2026):** Explicit bounded recovery for legacy favorite IDs, using local catalog or exact Deezer lookup, with cancellation and verified persistence. Unsupported identities remain intact; no claim of universal provider recovery.
+
 **v0.12 Collection capacity protection (November 27, 2026):** Shared existing session/backup limits, atomic additions, no silent favorite metadata eviction, and provenance-aware Undo. Preserve legacy favorites and test backup round trips. Physical-device storage limits still vary by browser.
 
 **v0.12 Taste Map listening journal (November 27, 2026):** Added read-only decision history, path breakdown, Keep/Pass filtering and bounded 20-row paging. Optional title metadata survives future reload/backup; older events remain readable without invented titles. Tune Lab score presentation uses verified quiz counters. Automated verification covers browsing, escaping and persistence; physical-device review remains open.

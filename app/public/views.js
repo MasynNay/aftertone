@@ -12,7 +12,7 @@ import { html, plural, clamp, urlSafe, h32, shade, tag } from './view-utils.js';
  * Side-effect-free page templates. The caller passes a state snapshot, making
  * rendering deterministic and easy to test independently of the DOM.
  */
-export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', journalFilter='all',journalPage=1,removedFavorite = null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
+export function createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds=new Set(), challengeRecovery=null, challengeDraft=null, challengeFilterQuery='', challengePage=1, challengeDraftSaved=false, challengeDraftCustomized=false, catalogWarning, catalogLive, collectionQuery='', collectionSort='recent', collectionPage=1, collectionGenre='all', collectionMood='all', journalFilter='all',journalPage=1,removedFavorite = null,collectionRecovery=null, feed = {}, availableSources = ['mix', 'audius', 'commons'], searchQuery = '', searchDraft = searchQuery, sourceLabel = 'All sources', seedInfo = { active:false, kind:'playlist', ready:false, count:0, artists:0, related:0, hasArtists:false }, quizSession=null, quizStats={answered:0,correct:0} }) {
   // One index per render avoids searching the full catalog for every saved
   // song. Keep the FIRST matching entry, matching the previous .find behavior.
   const byId=new Map();
@@ -215,6 +215,21 @@ function renderCollectionInsights(insights,{genre='all',mood='all'}={}) {
   </section>`;
 }
 
+function renderCollectionRecovery() {
+  const recovery=collectionRecovery;
+  if(!recovery||(!recovery.missing&&!recovery.message))return '';
+  const {missing,recoverable,unsupported,ids,busy,message,retry}=recovery;
+  return `<section class="collection-recovery-panel" aria-labelledby="collection-recovery-heading">
+    <div><h2 id="collection-recovery-heading">Restore missing song details</h2>
+    <p>${missing?missing+' saved '+(missing===1?'song is':'songs are')+' missing durable metadata. Your original favorite IDs are still saved.':'All saved songs have stored details.'}</p>
+    ${missing?'<p>Recover up to five exact song IDs at a time. Available local metadata is reused; otherwise only requested Deezer IDs are sent to Deezer. No audio is downloaded.</p>':''}
+    ${unsupported?'<p>'+unsupported+' '+(unsupported===1?'identity cannot':'identities cannot')+' be recovered from the current catalog or supported Deezer lookup. Keep a progress backup; nothing is removed.</p>':''}</div>
+    <div class="collection-recovery-actions">${recoverable?'<button type="button" class="secondary-button" data-action="recover-collection-metadata" '+(busy?'disabled':'')+'>'+(busy?'Checking…':(retry?'Retry':'Recover')+' '+ids.length+' song '+(ids.length===1?'identity':'identities'))+'</button>':''}
+    ${busy?'<button type="button" class="secondary-button" data-action="cancel-collection-recovery">Cancel recovery</button>':''}</div>
+    <p id="collection-recovery-status" role="status" aria-live="polite" aria-atomic="true" tabindex="-1">${html(message||'Recovery is optional. No saved song will be removed.')}</p>
+  </section>`;
+}
+
 function renderCollection() {
   const items = state.favorites.map(lookup).filter(Boolean);
   const facets=collectionFacets(items,state.history);
@@ -241,6 +256,7 @@ function renderCollection() {
   return `<section><div class="eyebrow">KEEP WHAT MOVES YOU</div><div class="page-head"><div><h1>Your Collection<span style="color:var(--accent)">.</span></h1><p class="lead">No algorithms telling you what to love. Every track here earned its place.</p></div><div class="collection-header-actions"><button class="secondary-button" data-action="export-json" ${items.length ? '' : 'disabled'}>↧ Export Library</button><button class="secondary-button" data-action="backup-progress">↧ Backup Progress</button><button class="secondary-button" data-action="restore-progress" aria-describedby="collection-backup-note">↥ Restore Backup</button><input id="progress-backup-file" type="file" accept=".json,application/json" aria-label="Choose an AFTERTONE progress backup" hidden /></div></div>
   <p id="collection-backup-note" class="collection-backup-note">Restore replaces your current progress; download a backup first. Backup files are not encrypted. Your data stays in this browser unless you download a copy. Version 2 backups include saved tracks, listening choices, preferences, Music Duels, imported playlist song names and manual lyric timing offsets, but never audio files.</p><p id="progress-backup-status" class="collection-backup-note" role="status" aria-live="polite" aria-atomic="true" hidden></p>
   ${renderCollectionInsights(insights,{genre,mood})}
+  ${renderCollectionRecovery()}
   ${removedFavorite && !state.favorites.includes(removedFavorite.id) ? `<div class="collection-removal-notice"><p role="status" aria-live="polite">Removed “${html(removedFavorite.title)}” from Collection.</p><button type="button" class="secondary-button" data-action="undo-remove-favorite">Undo Remove</button></div>` : ''}
   ${items.length ? `<div class="collection-tools">
     <input id="collection-search" class="search-input" type="search" placeholder="Search songs, artists, moods…" aria-label="Search saved music" value="${html(collectionQuery)}" />

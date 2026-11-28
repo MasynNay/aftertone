@@ -132,3 +132,8 @@ The dual-browser synthetic autoplay quota fixture now also disables auto-advance
 ### Same-count backup replacements
 
 The dual-browser backup journey now checks a validated replacement with identical totals but different saved-song identity, Keep/Pass and playlist title. The confirmation must disclose each identity-level change; cancel must retain all original stored keys. Existing full round-trip and legacy optional-key tests remain intact.
+
+
+### Legacy favorite metadata recovery
+
+The dual-browser legacy v1 restore journey now deliberately recovers its exact saved favorite ID, asserts the original favorites and history are unchanged, checks stored metadata and visible card, and verifies keyboard focus remains on recovery feedback. Unit tests cover batch limits, local reuse, unsupported IDs and refusal to accept unsolicited identities.

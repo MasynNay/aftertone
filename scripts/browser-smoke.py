@@ -5433,6 +5433,24 @@ def check_legacy_backup_missing_track_metadata(browser, base):
                 "Restore falsely manufactured full titles for ID-only legacy favorites")
         require(restored["optional"]==optional_before,
                 "Restoring legacy v1 deleted newer playlist or lyric settings")
+        # The legacy ID is real in our synthetic catalog, but it has no
+        # durable title until the visitor explicitly chooses recovery.
+        page.locator("#listening-card").wait_for(state="visible",timeout=TIMEOUT)
+        page.locator('#main-nav button[data-view="collection"]').click()
+        recover=page.locator('[data-action="recover-collection-metadata"]')
+        require(recover.is_visible(),"Missing legacy metadata had no recovery action")
+        recover.focus()
+        page.keyboard.press("Enter")
+        page.wait_for_function("""() => document.querySelector('#collection-recovery-status')?.textContent?.includes('Recovered and saved details for 1 song.')""",timeout=TIMEOUT)
+        repaired=page.evaluate("""() => JSON.parse(localStorage.getItem('aftertone:session:v1'))""")
+        require(repaired["favorites"]==restored["session"]["favorites"] and
+                repaired["history"]==restored["session"]["history"] and
+                len(repaired["savedTracks"])==1 and repaired["savedTracks"][0]["id"]=="deezer:9100001",
+                "Recovery changed decisions or failed to persist the exact song")
+        require("Fixture Melody 01" in page.locator("#main-content").inner_text(),
+                "Recovered favorite did not become a visible Collection card")
+        require(page.evaluate("document.activeElement?.id==='collection-recovery-status'"),
+                "Recovery lost keyboard focus")
         require(not errors,"Legacy backup browser errors: "+"; ".join(errors))
         print(f"PASS {label}: authentic old v1 favorite IDs, metadata warning, optional settings retained")
     except Exception:
