@@ -342,11 +342,10 @@ function commitSessionChange(next) {
     toast('Your change was NOT saved. Check browser storage, then try again.');
     return false;
   }
-  const previous=state;
-  state=next;
-  if(savedPlayback&&(previous.favorites!==next.favorites||previous.personalPlaylists!==next.personalPlaylists)){
+  if(savedPlayback&&(state.favorites!==next.favorites||state.personalPlaylists!==next.personalPlaylists)){
     savedPlayback=null;stopAudio();updatePlaybackView();
   }
+  state=next;
   return true;
 }
 const currentTheme = () => THEMES.find((t) => t.id === state.theme) || THEMES[0];
@@ -893,69 +892,12 @@ function togglePreviewMode() {
   if(!autoAdvanceEnabled)continuousListening=false;
   updatePlaybackView();
 }
-function startSavedPlayback(kind,shuffle=false){
-  if(view!=='collection'||modal)return;
-  const selected=personalPlaylists(state).find(p=>p.id===personalPlaylistId);
-  if(kind==='playlist'&&!selected)return;
-  const ids=kind==='playlist'?selected.trackIds:state.favorites;
-  const queue=buildSavedQueue(ids,state.favorites,catalog,{shuffle});
-  if(!queue.length)return toast('No saved audio previews are available in this selection.');
-  stopContinuous();
-  savedPlayback={ids:queue,index:0,name:kind==='playlist'?selected.name:'Your Collection',running:true,done:false};
-  void togglePlayback(lookup(queue[0]));
-}
-function moveSavedPlayback(direction,automatic=false){
-  const session=savedPlayback;
-  if(!session||view!=='collection'||modal)return;
-  const next=nextSavedIndex(session.ids,session.index,{direction,repeat:savedPlaybackRepeat});
-  if(next===null){
-    if(automatic){session.running=false;session.done=true;stopAudio();updatePlaybackView();}
-    return;
-  }
-  const track=lookup(session.ids[next]);
-  if(!track||!state.favorites.includes(track.id)){stopContinuous();return toast('Saved queue changed. Start listening again.');}
-  stopAudio();session.index=next;session.running=true;session.done=false;
-  void togglePlayback(track,automatic);
-}
-function completeSavedPreview(){
-  const session=savedPlayback;
-  if(!session||!session.running||view!=='collection'||modal||isLoadingAudio||session.ids[session.index]!==activeAudioId)return false;
-  session.running=false;
-  moveSavedPlayback(1,true);return true;
-}
-function updateSavedPlayback(){
-  const panel=$('#saved-playback-panel');
-  if(!panel)return;
-  const session=savedPlayback;
-  panel.hidden=!session;
-  if(!session)return;
-  const id=session.ids[session.index],track=lookup(id);
-  const playing=activeAudioId===id&&!audio.paused&&!isLoadingAudio;
-  const loading=activeAudioId===id&&isLoadingAudio;
-  const failed=failedAudioId===id||permissionBlockedTrackId===id;
-  setTextIfChanged($('#saved-playback-title'),track?.title||'Saved preview');
-  setTextIfChanged($('#saved-playback-artist'),track?.artist||'');
-  setTextIfChanged($('#saved-playback-status'),session.done?'Queue finished · '+session.ids.length+' previews':session.name+' · '+(session.index+1)+' of '+session.ids.length+' · '+(loading?'Loading':playing?'Playing':failed?(failedAudioQuota?'Provider limited — retry later':'Preview unavailable or blocked — retry or skip'):'Paused'));
-  const toggle=$('#saved-playback-toggle');
-  if(toggle)setTextIfChanged(toggle,loading?'Cancel loading':playing?'Pause':session.done?'Replay last':failed?'Retry preview':'Play');
-  const prev=$('#saved-playback-prev'),next=$('#saved-playback-next');
-  if(prev)prev.disabled=!savedPlaybackRepeat&&session.index===0;
-  if(next)next.disabled=!savedPlaybackRepeat&&session.index===session.ids.length-1;
-  const repeat=$('#saved-playback-repeat');
-  if(repeat){if(repeat.getAttribute('aria-pressed')!==String(savedPlaybackRepeat))repeat.setAttribute('aria-pressed',String(savedPlaybackRepeat));setTextIfChanged(repeat,savedPlaybackRepeat?'Repeat: On':'Repeat: Off');}
-  const seconds=activeAudioId===id?Math.min(previewLength,audio.currentTime||0):0;
-  const fill=$('#saved-playback-progress');if(fill)fill.style.width=(seconds/previewLength*100)+'%';
-  setTextIfChanged($('#saved-playback-time'),'0:'+String(Math.floor(seconds)).padStart(2,'0')+' / 0:'+previewLength);
-}
 async function togglePlayback(track, automatic = false) {
   if (!track || (view==='discover' && animatingChoice)) return;
   if (isLoadingAudio && activeAudioId === track.id) {
     // A second *manual* Play is an explicit cancel, not a dead button.
     // Automatic resume checks must still avoid interrupting their own lookup.
-    if (!automatic) {
-      if(savedPlayback){savedPlayback.running=false;stopAudio();updatePlaybackView();}
-      else stopContinuous();
-    }
+    if (!automatic) stopContinuous();
     return;
   }
   // Switching contestants while a prior preview is resolving cancels the stale
@@ -1018,6 +960,7 @@ async function togglePlayback(track, automatic = false) {
       audio.currentTime = 0;
       await audio.play();
     }
+    if (activeAudioId !== track.id || generation !== audioGeneration) return;
     failedSources.delete(track.id);
     if (deezerRefreshedOnce.size > 300) deezerRefreshedOnce.clear();
     // play() can resolve before the browser decodes any audio. Do not reset
@@ -1960,9 +1903,9 @@ async function importPlaylistLinkFromDialog() {
 }
 
 function openModal(kind, extra = {}) {
-  savedPlayback=null;
   cancelPendingChoice();
   cancelPlaylistLinkFlight();
+  savedPlayback=null;
   setThemeMenuOpen(false);
   const focusedBefore=document.activeElement;
   const wasMobileDrawerAction=document.body.classList.contains('mobile-filters-open') &&
@@ -3397,6 +3340,61 @@ main.addEventListener('pointerup', (event) => {
 main.addEventListener('pointercancel', (event) => {clearSwipeGesture(event.pointerId);});
 main.addEventListener('lostpointercapture', (event) => {clearSwipeGesture(event.pointerId);});
 window.addEventListener('blur', () => {clearSwipeGesture();});
+
+function startSavedPlayback(kind,shuffle=false){
+  if(view!=='collection'||modal)return;
+  const selected=personalPlaylists(state).find(p=>p.id===personalPlaylistId);
+  if(kind==='playlist'&&!selected)return;
+  const ids=kind==='playlist'?selected.trackIds:state.favorites;
+  const queue=buildSavedQueue(ids,state.favorites,catalog,{shuffle});
+  if(!queue.length)return toast('No saved audio previews are available in this selection.');
+  stopContinuous();
+  savedPlayback={ids:queue,index:0,name:kind==='playlist'?selected.name:'Your Collection',running:true,done:false};
+  void togglePlayback(lookup(queue[0]));
+}
+function moveSavedPlayback(direction,automatic=false){
+  const session=savedPlayback;
+  if(!session||view!=='collection'||modal)return;
+  const next=nextSavedIndex(session.ids,session.index,{direction,repeat:savedPlaybackRepeat});
+  if(next===null){
+    if(automatic){session.running=false;session.done=true;stopAudio();updatePlaybackView();}
+    return;
+  }
+  const track=lookup(session.ids[next]);
+  if(!track||!state.favorites.includes(track.id)){stopContinuous();return toast('Saved queue changed. Start listening again.');}
+  stopAudio();session.index=next;session.running=true;session.done=false;
+  void togglePlayback(track,automatic);
+}
+function completeSavedPreview(){
+  const session=savedPlayback;
+  if(!session||!session.running||view!=='collection'||modal||isLoadingAudio||session.ids[session.index]!==activeAudioId)return false;
+  session.running=false;
+  moveSavedPlayback(1,true);return true;
+}
+function updateSavedPlayback(){
+  const panel=$('#saved-playback-panel');
+  if(!panel)return;
+  const session=savedPlayback;
+  panel.hidden=!session;
+  if(!session)return;
+  const id=session.ids[session.index],track=lookup(id);
+  const playing=activeAudioId===id&&!audio.paused&&!isLoadingAudio;
+  const loading=activeAudioId===id&&isLoadingAudio;
+  const failed=failedAudioId===id||permissionBlockedTrackId===id;
+  setTextIfChanged($('#saved-playback-title'),track?.title||'Saved preview');
+  setTextIfChanged($('#saved-playback-artist'),track?.artist||'');
+  setTextIfChanged($('#saved-playback-status'),session.done?'Queue finished · '+session.ids.length+' previews':session.name+' · '+(session.index+1)+' of '+session.ids.length+' · '+(loading?'Loading':playing?'Playing':failed?(failedAudioQuota?'Provider limited — retry later':'Preview unavailable or blocked — retry or skip'):'Paused'));
+  const toggle=$('#saved-playback-toggle');
+  if(toggle)setTextIfChanged(toggle,loading?'Cancel loading':playing?'Pause':session.done?'Replay last':failed?'Retry preview':'Play');
+  const prev=$('#saved-playback-prev'),next=$('#saved-playback-next');
+  if(prev)prev.disabled=!savedPlaybackRepeat&&session.index===0;
+  if(next)next.disabled=!savedPlaybackRepeat&&session.index===session.ids.length-1;
+  const repeat=$('#saved-playback-repeat');
+  if(repeat){if(repeat.getAttribute('aria-pressed')!==String(savedPlaybackRepeat))repeat.setAttribute('aria-pressed',String(savedPlaybackRepeat));setTextIfChanged(repeat,savedPlaybackRepeat?'Repeat: On':'Repeat: Off');}
+  const seconds=activeAudioId===id?Math.min(previewLength,audio.currentTime||0):0;
+  const fill=$('#saved-playback-progress');if(fill)fill.style.width=(seconds/previewLength*100)+'%';
+  setTextIfChanged($('#saved-playback-time'),'0:'+String(Math.floor(seconds)).padStart(2,'0')+' / 0:'+previewLength);
+}
 
 async function init() {
   main.innerHTML = `<div class="eyebrow">THE LISTENING ROOM</div><h1>Finding the <em>frequency...</em></h1><p class="lead">Tuning the record shelf.</p>`;
