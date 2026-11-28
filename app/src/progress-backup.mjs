@@ -63,6 +63,7 @@ function safeSession(raw) {
   // must not become persistent UI or recommendation state.
   normalized.history=normalized.history.map(event=>({
     id:event.id,action:event.action,genre:event.genre,artist:event.artist,
+    ...(typeof event.title==='string'&&event.title.trim()?{title:event.title.trim().slice(0,180)}:{}),
     context:event.context,route:event.route,
     recognized:typeof event.recognized==='boolean'?event.recognized:null,
     correct:typeof event.correct==='boolean'?event.correct:null,

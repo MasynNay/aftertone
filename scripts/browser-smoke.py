@@ -1226,6 +1226,29 @@ def check_choice_keyboard_focus(browser, base):
             timeout=TIMEOUT)
         require(page.evaluate("window.__choiceFocusDocument")=="no-reload",
                 "Choice actions unexpectedly reloaded the application")
+        # Taste Map journal is read-only and reports the same durable decision.
+        page.locator('#main-nav [data-view="taste"]').click()
+        require(page.locator('#journal-page-status').inner_text()=='Showing 1–1 of 1 decisions',
+                "Listening journal did not show the saved decision")
+        require(page.locator('.journal-entries li').count()==1 and
+                'Kept' in page.locator('.journal-entries li').first.inner_text(),
+                "Journal omitted the actual Keep")
+        passed=page.locator('[data-action="journal-filter"][data-filter="pass"]')
+        passed.focus()
+        page.keyboard.press("Enter")
+        require(page.locator('#journal-page-status').inner_text()=='No matching decisions yet.' and
+                page.locator('.journal-entries li').count()==0,
+                "Pass filter did not isolate recorded passes")
+        require(page.evaluate("""() => document.activeElement?.dataset?.filter==='pass' &&
+            document.activeElement.getAttribute('aria-pressed')==='true'"""),
+            "Journal filter lost keyboard focus")
+        page.locator('[data-action="journal-filter"][data-filter="all"]').click()
+        require(page.locator('.journal-entries li').count()==1,
+                "Clearing journal filter lost recorded history")
+        require(page.evaluate("""() => {
+            const s=JSON.parse(localStorage.getItem('aftertone:session:v1'));
+            return s.history.length===1 && s.favorites.length===1 && !!s.history[0].title;
+        }"""),"Journal browsing changed decisions or failed to retain title metadata")
         require(not errors, "Browser exception during keyboard decision flow: "+"; ".join(errors))
         print(f"PASS {label}: Pass/Undo/Keep preserve keyboard context without reload")
     except Exception:
