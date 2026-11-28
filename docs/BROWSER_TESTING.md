@@ -1,3 +1,7 @@
+## Listening Journal (v0.12)
+
+The existing dual-browser keyboard choice journey now opens Taste Map, verifies a real synthetic Keep in the journal, filters to Pass with keyboard focus retained, restores all decisions, and checks the original saved favorites/history plus newly retained title metadata. Unit tests cover full-history paging and path counts.
+
 ## Verified personalization imports (v0.12 development)
 
 The playlist dialog cancellation fixture also simulates silently dropped playlist replacement, deletion and artist-preference storage writes. It requires the corresponding status message, preserved retry inputs, unchanged old playlist, successful retry and independent active artist personalization after removing an inactive playlist. All provider metadata is fictional; these are browser regressions, not live licensing or physical device validation.

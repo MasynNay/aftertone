@@ -30,6 +30,7 @@ import { pickThemedEntries, tournamentAvailability, tournamentTheme, isMysteryTo
 import { normalizeVolume, updateVolumeSetting, toggleMuteSetting } from '/src/volume.mjs';
 import { csvRows } from '/src/csv.mjs';
 import {collectionSearchKey} from '/src/collection-pagination.mjs';
+import {JOURNAL_FILTERS} from '/src/listening-journal.mjs';
 
 const main = document.querySelector('#main-content');
 const modalRoot = document.querySelector('#modal-root');
@@ -271,6 +272,7 @@ let collectionSort = 'recent';
 let collectionGenre = 'all'; // Browse-only facet; never persisted or included in backups.
 let collectionMood = 'all';
 let collectionPage = 1; // Browsing position stays in this tab, not in backup data.
+let journalFilter='all',journalPage=1; // Read-only Taste Map browsing.
 // Undo for the most recent removal remains visible while this tab is open.
 let lastRemovedFavorite = null;
 let pointerStart = null;
@@ -1366,7 +1368,7 @@ function render() {
   // removing/adding a track never leaves the visitor on an empty phantom page.
   challengePage=challengeLibraryPage(eligibleForChallenge,challengeDraftIds,challengeFilterQuery,challengePage).page;
   updateChrome();
-  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, removedFavorite: lastRemovedFavorite,
+  const pages = createViews({ state, catalog, current, allGenres, challengeIds, challengeResponses, challengeSkippedIds, challengeRecovery, challengeDraft:challengeDraftIds, challengeFilterQuery, challengePage, challengeDraftSaved, challengeDraftCustomized, catalogWarning, catalogLive, collectionQuery, collectionSort, collectionPage, collectionGenre, collectionMood, journalFilter,journalPage,removedFavorite: lastRemovedFavorite,
     feed: { ...getFeed(), loading: getFeed().loading || (!getFeed().primed && !current), available: availableCount(state.genre) }, availableSources, searchQuery, searchDraft, sourceLabel: SOURCE_LABEL[state.source], seedInfo: playlistInfo(), quizSession, quizStats });
   const side = $('#sidebar-preferences');
   if (side) { side.innerHTML = view === 'discover' ? pages.renderSidebarPreferences() : ''; side.hidden = view !== 'discover'; side.classList.toggle('is-collapsed', sidebarFiltersCollapsed); const toggle = side.querySelector('[data-action=toggle-side-filters]'); if(toggle) {toggle.setAttribute('aria-expanded',String(!sidebarFiltersCollapsed));toggle.textContent = sidebarFiltersCollapsed ? '▸' : '▾';}}
@@ -1393,7 +1395,10 @@ function render() {
       collectionGenre=main.querySelector('#collection-genre')?.value||'all';
       collectionMood=main.querySelector('#collection-mood')?.value||'all';
       break;
-    case 'taste': main.innerHTML = pages.renderTaste(); break;
+    case 'taste':
+      main.innerHTML=pages.renderTaste();
+      journalPage=Number(main.querySelector('#journal-page-status')?.dataset.page||1);
+      break;
     case 'challenges': main.innerHTML = pages.renderChallenges(); break;
     case 'quiz': main.innerHTML = pages.renderQuizLab(); break;
     case 'duels': main.innerHTML = renderDuels({tournaments:duelTournaments,selectedId:selectedDuelId,catalog,favorites:state.favorites,savedTracks:state.savedTracks,volume:state.volume,sound:state.sound,hallSeason}); break;
@@ -1811,7 +1816,7 @@ function openModal(kind, extra = {}) {
 
 function recordDecision(id, action, extra = {}) {
   const meta=lookup(id);
-  let next=recordChoice(state,{id,action,genre:meta?.genre,artist:meta?.artist,
+  let next=recordChoice(state,{id,action,genre:meta?.genre,artist:meta?.artist,title:meta?.title,
     context:searchQuery?'search':'discovery',route:state.discoveryMix,...extra});
   if(action==='like' && meta && !next.savedTracks.some(track=>track.id===id))
     next={...next,savedTracks:[...next.savedTracks,meta].slice(-1500)};
@@ -2620,6 +2625,21 @@ document.addEventListener('click', async (event) => {
       render();
       if (returnFocus) restoreDecisionFocus('undo');
       return toast('Last choice undone.');
+    }
+    case 'journal-filter': {
+      if(view!=='taste'||!JOURNAL_FILTERS.includes(action.dataset.filter))return;
+      const focused=document.activeElement===action;
+      journalFilter=action.dataset.filter;journalPage=1;render();
+      if(focused)main.querySelector('[data-action="journal-filter"][data-filter="'+journalFilter+'"]')?.focus({preventScroll:true});
+      return;
+    }
+    case 'journal-page': {
+      if(view!=='taste'||action.disabled)return;
+      const next=Number(action.dataset.page);
+      if(!Number.isSafeInteger(next)||next<1)return;
+      journalPage=next;render();
+      main.querySelector('#journal-page-status')?.focus();
+      return;
     }
     case 'collection-page': {
       if(view!=='collection' || action.disabled) return;

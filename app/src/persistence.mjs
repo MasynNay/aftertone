@@ -7,7 +7,7 @@ export const STORAGE_KEY = 'aftertone:session:v1';
 export function sanitizeState(value) {
   const defaults = createInitialState();
   if (!value || value.version !== 1 || !Array.isArray(value.history) || !Array.isArray(value.favorites)) return defaults;
-  const history = value.history.filter((item) => item && typeof item.id === 'string' && /^(commons|jamendo|audius|jellyfin|youtube|deezer):[\w-]+$/.test(item.id) && ['like', 'pass'].includes(item.action)).slice(-5000).map((item) => ({ ...item, genre: typeof item.genre === 'string' ? item.genre.slice(0,30) : null, artist: typeof item.artist === 'string' ? item.artist.slice(0,180) : null, context: item.context === 'search' ? 'search' : 'discovery', route: ['balanced','familiar','explore'].includes(item.route) ? item.route : null }));
+  const history = value.history.filter((item) => item && typeof item.id === 'string' && /^(commons|jamendo|audius|jellyfin|youtube|deezer):[\w-]+$/.test(item.id) && ['like', 'pass'].includes(item.action)).slice(-5000).map((item) => ({ ...item, ...(Object.hasOwn(item,'title')?{title:typeof item.title==='string'?item.title.slice(0,180):null}:{}), genre: typeof item.genre === 'string' ? item.genre.slice(0,30) : null, artist: typeof item.artist === 'string' ? item.artist.slice(0,180) : null, context: item.context === 'search' ? 'search' : 'discovery', route: ['balanced','familiar','explore'].includes(item.route) ? item.route : null }));
   const favorites = [...new Set(value.favorites.filter((id) => typeof id === 'string' && /^(commons|jamendo|audius|jellyfin|youtube|deezer):[\w-]+$/.test(id)))].slice(-5000);
   // Persist track identities for live discoveries so collection survives a restart.
   // Restrict URLs, lengths and count when hydrating untrusted localStorage.
