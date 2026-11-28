@@ -1,3 +1,10 @@
+## v0.12 development — Listening Journal (November 27, 2026)
+
+- Taste Map adds a read-only listening journal with full-history path counts, Keep/Pass filters, 20-entry pages, and explicit missing-title/artist fallback. New decisions retain bounded song titles in the existing compatible session and backup format. New shared challenge choices are categorized separately from normal discovery paths; older records retain their original context.
+- Tune Lab accuracy now reflects actual saved Tune Lab scores, rather than only historical recognition fields. Collection tiles no longer label every unassessed song a discovery.
+- Queue copy describes conditional automatic refills instead of promising a request every three seconds.
+- Unit and browser regressions cover bounded history, honest metadata, escaped content, filter focus and data neutrality. Manual device/provider review remains open.
+
 ## v0.12 development — Verified personalization imports (November 27, 2026)
 
 - Playlist replacement/deletion and favorite artist saves verify browser storage before changing the current personalization. Failed writes keep the dialog open with persistent retry messages and intact inputs.

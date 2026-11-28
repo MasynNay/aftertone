@@ -24,7 +24,7 @@ function populated() {
   const original={...createInitialState(),theme:'night',discoveryMix:'explore',
     favorites:[songs[0].id],
     savedTracks:[songs[0]],
-    history:[{id:songs[0].id,action:'like',artist:songs[0].artist,genre:'unknown',context:'discovery',
+    history:[{id:songs[0].id,action:'like',artist:songs[0].artist,title:songs[0].title,genre:'unknown',context:'discovery',
       route:'explore',recognized:true,correct:true,mood:'Bright',at:1730000000000}]};
   assert.equal(saveState(s,original),true);
   assert.equal(saveDuelStore(s,[createTournament({id:'duel_backup123',name:'Backup Cup',tracks:songs})]),true);
@@ -54,6 +54,7 @@ test('backup round trip preserves favorites, history, volume, themes, music duel
   assert.equal(loadState(to).discoveryMix,'explore');
   assert.deepEqual(loadState(to).favorites,[songs[0].id]);
   assert.equal(loadState(to).history[0].mood,'Bright');
+  assert.equal(loadState(to).history[0].title,songs[0].title);
   assert.equal(loadDuelStore(to).length,1);
   assert.equal(JSON.parse(to.getItem('aftertone:tune-lab:v1')).correct,3);
   assert.deepEqual(JSON.parse(to.getItem('aftertone:favorite-artists:v1')),['Test Artist','Another Artist']);
