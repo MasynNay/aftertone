@@ -125,3 +125,6 @@ If capacity is limited, **one well-tested fix per month is better than frequent 
 **Planned** = issue exists and acceptance criteria are defined. **In progress** = an implementation branch/PR or documented work exists. **Shipped** = code merged, checks passed, deployed if appropriate, and issue closed. **Blocked** = dependency or provider policy prevents safe completion. Update status as work happens; do not imply a feature is complete solely because CI is green.
 
 The older [NEXT_STEPS.md](NEXT_STEPS.md) records ideas from the early prototype and is retained for historical context. This document is the current source of truth.
+
+
+**v0.12 preview navigation milestone (November 27, 2026):** Added session-only Auto-advance toggle and neutral Next/Previous controls. Default autoplay remains unchanged, unrated history is bounded and scoped to active feed, and shared challenges remain isolated. Browser/provider rights and physical-device validation remain open.

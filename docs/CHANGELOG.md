@@ -710,3 +710,10 @@
 ## 0.1–0.5.1 — Prototypes
 
 - Evolved from a small Commons catalog through independent sources and a visible YouTube player to Deezer metadata/short previews. Legacy adapters are retained for older saved data and regression tests, but not presented in the current discovery UI.
+
+
+## v0.12 development — Preview session controls (November 27, 2026)
+
+- Continuous listening stays on by default; an in-card Auto-advance switch offers single-preview listening without changing saved preferences or starting sound.
+- Next without rating and Previous unrated enable neutral navigation in the active feed. Completed clips are remembered in a bounded 20-ID session list, never converted to votes. Shared challenges remain ordered and unchanged; broken clips are not offered as successful previews.
+- Keyboard focus returns to the restored Play control, and short ended previews can replay. Unit and simulated browser tests cover single-mode end, neutral navigation, no data writes and restoring continuous playback.

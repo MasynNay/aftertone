@@ -118,3 +118,8 @@ If an environment blocks Chromium network navigation, report that limitation ins
 After a release, open the deployed /demo/ application in Firefox and Chrome. Search an artist, play a real preview when authorized and available, adjust volume, confirm autoplay after a user gesture, Keep and Pass a track, reopen Collection, and complete a Music Duels matchup. Note any third-party failures or regional restrictions and check that the app does not go blank.
 
 These checks must be performed on the real website to validate providers. No automated fixture grants permission for public use of third-party media.
+
+
+## Single-preview and neutral navigation
+
+The dual-browser synthetic autoplay quota fixture now also disables auto-advance, drives the 22-second media event, checks the same recording remains selected, uses Next without rating and Previous unrated with keyboard focus, verifies no votes or automatic audio on return, and re-enables default continuous listening before its existing quota tests.

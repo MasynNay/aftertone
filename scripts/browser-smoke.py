@@ -5782,6 +5782,41 @@ def check_autoplay_quota_holds_unheard_song(browser, base):
               return {history:s.history||[],favorites:s.favorites||[]};
             }""")
         before=choices()
+        original=page.locator("#listening-card").get_attribute("aria-label")
+        mode=page.locator('#preview-mode')
+        require(mode.get_attribute("aria-pressed")=="true","Continuous listening default changed")
+        mode.focus()
+        page.keyboard.press("Enter")
+        require(mode.get_attribute("aria-pressed")=="false" and
+                page.evaluate("document.activeElement?.id==='preview-mode'"),
+                "Single-preview toggle did not retain keyboard focus")
+        page.locator("#stage-play").click()
+        page.wait_for_function("""() =>
+          document.querySelector('#stage-play')?.getAttribute('aria-label')==='Pause preview'
+        """,timeout=TIMEOUT)
+        page.evaluate("""() => {
+          const audio=document.querySelector('#player');
+          audio.currentTime=22;
+          audio.dispatchEvent(new Event('timeupdate'));
+        }""")
+        require(page.locator("#listening-card").get_attribute("aria-label")==original and
+                page.locator("#stage-play").get_attribute("aria-label")=="Play preview",
+                "Single preview advanced instead of holding the same song")
+        require(page.locator("#stop-session").is_hidden(),"Single preview started radio")
+        page.locator("#next-unrated").focus()
+        page.keyboard.press("Enter")
+        require(page.locator("#listening-card").get_attribute("aria-label")!=original,
+                "Neutral Next did not advance")
+        require(page.locator("#previous-unrated").is_enabled(),"Previous unrated was not offered")
+        page.locator("#previous-unrated").focus()
+        page.keyboard.press("Enter")
+        require(page.locator("#listening-card").get_attribute("aria-label")==original,
+                "Previous unrated did not restore the original preview")
+        require(page.evaluate("document.activeElement?.id==='stage-play'") and
+                page.locator("#stage-play").get_attribute("aria-label")=="Play preview",
+                "Revisiting started audio or lost focus")
+        require(choices()==before,"Neutral navigation recorded a choice")
+        mode.click()
         page.locator("#stage-play").click()
         page.wait_for_function("""() =>
           document.querySelector('#stage-play')?.getAttribute('aria-label')==='Pause preview'
